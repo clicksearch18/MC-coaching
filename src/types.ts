@@ -143,6 +143,8 @@ export interface ChatMessage {
 export interface StudentProfile {
   id: string;
   name: string;
+  email?: string;
+  accessCode?: string;
   company: string;
   avatar: string;
   niche: string;

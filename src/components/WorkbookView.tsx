@@ -40,6 +40,7 @@ const PHASES = [
 export const WorkbookView: React.FC<WorkbookViewProps> = ({
   student,
   lessons,
+  isCoachMode,
   onUpdateLesson,
   onResetLessonsToDefault,
   onToggleTask,
@@ -106,16 +107,18 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={openEditor}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-xs font-semibold text-sky-300 transition-colors cursor-pointer"
-          >
-            <Pencil className="w-3.5 h-3.5" />
-            <span>Edit Lesson {activeLesson.weekNumber}</span>
-          </button>
-        </div>
+        {isCoachMode && (
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={openEditor}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-xs font-semibold text-sky-300 transition-colors cursor-pointer"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              <span>Edit Lesson {activeLesson.weekNumber} (Admin CMS)</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Top Sleek Phase Navigation & Global Progress Pills */}

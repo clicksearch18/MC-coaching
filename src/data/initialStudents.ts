@@ -77,6 +77,8 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
   {
     id: 'student-josh',
     name: 'Josh Beechraft (Founder Cohort)',
+    email: 'josh@marketconcussion.com',
+    accessCode: 'JOSH-01',
     company: 'Market Concussion / The Brand Shift',
     avatar: 'JB',
     niche: 'B2B Client Acquisition & AI Systems',
@@ -216,6 +218,8 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
   {
     id: 'student-elena',
     name: 'Elena Rostova',
+    email: 'elena@apexhealth.com',
+    accessCode: 'ELENA-02',
     company: 'Apex Executive Health',
     avatar: 'ER',
     niche: 'Concierge Longevity & Performance Medicine',
@@ -255,6 +259,8 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
   {
     id: 'student-devon',
     name: 'Devon Brooks',
+    email: 'devon@keystonebasements.com',
+    accessCode: 'DEVON-03',
     company: 'Keystone Basement Systems',
     avatar: 'DB',
     niche: 'Residential Structural Waterproofing',
@@ -298,6 +304,8 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
 
 export function createNewStudentProfile(params: {
   name: string;
+  email?: string;
+  accessCode?: string;
   company: string;
   niche: string;
   startingLesson?: number;
@@ -313,6 +321,10 @@ export function createNewStudentProfile(params: {
     .map(part => part[0]?.toUpperCase() || '')
     .join('') || 'ST';
 
+  const firstWord = (params.name.split(' ')[0] || 'STUDENT').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const generatedCode =
+    params.accessCode?.trim().toUpperCase() || `${firstWord}-${Math.floor(10 + Math.random() * 90)}`;
+
   const lesson = params.startingLesson || 1;
   const phase =
     lesson <= 4 ? 1 : lesson <= 8 ? 2 : lesson <= 18 ? 3 : lesson <= 22 ? 4 : 5;
@@ -320,6 +332,8 @@ export function createNewStudentProfile(params: {
   return {
     id: `student-${Date.now()}`,
     name: params.name.trim(),
+    email: params.email?.trim() || `${firstWord.toLowerCase()}@client.com`,
+    accessCode: generatedCode,
     company: params.company.trim(),
     avatar: initials,
     niche: params.niche.trim() || 'B2B Operator',

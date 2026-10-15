@@ -22,8 +22,11 @@ interface CoachDashboardViewProps {
   students: StudentProfile[];
   selectedStudentId: string;
   onSelectStudent: (id: string) => void;
+  onPreviewStudentDashboard?: (studentId: string) => void;
   onAddStudent: (params: {
     name: string;
+    email?: string;
+    accessCode?: string;
     company: string;
     niche: string;
     startingLesson: number;
@@ -59,6 +62,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
   students,
   selectedStudentId,
   onSelectStudent,
+  onPreviewStudentDashboard,
   onAddStudent,
   onUpdateStudentSpecifics,
   onAddCustomVideoToStudent,
@@ -74,6 +78,8 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
   // New Student Onboarding Modal State
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newAccessCode, setNewAccessCode] = useState('');
   const [newCompany, setNewCompany] = useState('');
   const [newNiche, setNewNiche] = useState('');
   const [newStartingLesson, setNewStartingLesson] = useState(1);
@@ -125,6 +131,8 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
     if (!newName.trim() || !newCompany.trim()) return;
     onAddStudent({
       name: newName,
+      email: newEmail,
+      accessCode: newAccessCode,
       company: newCompany,
       niche: newNiche,
       startingLesson: newStartingLesson,
@@ -134,6 +142,8 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
       customSupportingVideos: newParsedSupporting
     });
     setNewName('');
+    setNewEmail('');
+    setNewAccessCode('');
     setNewCompany('');
     setNewNiche('');
     setNewStartingLesson(1);
@@ -326,6 +336,17 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              {onPreviewStudentDashboard && (
+                <button
+                  type="button"
+                  onClick={() => onPreviewStudentDashboard(activeStudent.id)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 text-xs font-semibold text-white cursor-pointer"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Preview Student Dashboard</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={onOpenImportModal}
@@ -415,15 +436,15 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                 </button>
               </div>
 
-              {/* Step 2: Edit Profile, Current Lesson, & Core Positioning Specifics */}
+              {/* Step 2: Edit Profile, Login Credentials, Current Lesson, & Core Positioning Specifics */}
               <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8 space-y-4">
                 <div className="flex items-center justify-between border-b border-white/8 pb-3">
                   <div>
                     <div className="text-xs font-bold uppercase tracking-wider text-sky-400">
-                      2. Student Profile, Lesson Pace & Positioning Specifics
+                      2. Student Profile, Login Access & Positioning Specifics
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      Changes auto-save immediately to {activeStudent.name}’s student dashboard.
+                      Changes auto-save immediately to Supabase & {activeStudent.name}’s student dashboard.
                     </p>
                   </div>
                   <button
@@ -471,6 +492,39 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                         onUpdateStudentSpecifics(activeStudent.id, { niche: e.target.value })
                       }
                       className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <label className="block font-semibold text-slate-300 mb-1">
+                      Student Login Email (Used on <code className="text-sky-400">/login</code>)
+                    </label>
+                    <input
+                      type="email"
+                      value={activeStudent.email || ''}
+                      onChange={e =>
+                        onUpdateStudentSpecifics(activeStudent.id, { email: e.target.value })
+                      }
+                      placeholder="student@company.com"
+                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-300 mb-1">
+                      Student Login Access Code (Used on <code className="text-sky-400">/login</code>)
+                    </label>
+                    <input
+                      type="text"
+                      value={activeStudent.accessCode || ''}
+                      onChange={e =>
+                        onUpdateStudentSpecifics(activeStudent.id, {
+                          accessCode: e.target.value.toUpperCase()
+                        })
+                      }
+                      placeholder="e.g., MARCUS-04"
+                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 font-mono text-sky-300 focus:border-sky-400 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -854,6 +908,31 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                 onChange={e => setNewCompany(e.target.value)}
                 placeholder="e.g., Apex Commercial Roofing"
                 className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-300 mb-1">Student Login Email</label>
+              <input
+                type="email"
+                value={newEmail}
+                onChange={e => setNewEmail(e.target.value)}
+                placeholder="marcus@apexroofing.com"
+                className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-300 mb-1">
+                Student Access Code (Auto-generated if blank)
+              </label>
+              <input
+                type="text"
+                value={newAccessCode}
+                onChange={e => setNewAccessCode(e.target.value.toUpperCase())}
+                placeholder="e.g., MARCUS-04"
+                className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 font-mono text-sky-300 focus:border-sky-400 focus:outline-none"
               />
             </div>
           </div>

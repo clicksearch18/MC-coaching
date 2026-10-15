@@ -8,7 +8,9 @@ import {
   Upload,
   Send,
   Smartphone,
-  UserCheck
+  UserCheck,
+  LogOut,
+  ShieldCheck
 } from 'lucide-react';
 import { INITIAL_STUDENTS, createNewStudentProfile } from './data/initialStudents';
 import { WORKBOOK_WEEKS } from './data/workbookData';
@@ -17,6 +19,7 @@ import { DailyCadenceView } from './components/DailyCadenceView';
 import { WorkbookView } from './components/WorkbookView';
 import { ShiftMagnetsView } from './components/ShiftMagnetsView';
 import { CoachDashboardView } from './components/CoachDashboardView';
+import { LoginView } from './components/LoginView';
 import { ModalDialog } from './components/ModalDialog';
 import { parseStudentSpreadsheet } from './utils/excelParser';
 import {
@@ -30,6 +33,12 @@ import {
 
 const STORAGE_KEY = 'mcm_cam005_students_v3';
 const LESSONS_STORAGE_KEY = 'mcm_cam005_lessons_v2';
+const AUTH_SESSION_KEY = 'mcm_cam005_auth_session_v1';
+
+interface AuthSession {
+  role: 'UNAUTHENTICATED' | 'STUDENT' | 'ADMIN';
+  studentId?: string;
+}
 
 interface PushBanner {
   id: string;
@@ -59,8 +68,38 @@ export function App() {
     return WORKBOOK_WEEKS;
   });
 
-  const [roleMode, setRoleMode] = useState<'STUDENT' | 'COACH'>('STUDENT');
-  const [activeTab, setActiveTab] = useState<'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'COACH'>('CADENCE');
+  const [authSession, setAuthSession] = useState<AuthSession>(() => {
+    const path = window.location.pathname.toLowerCase();
+    const params = new URLSearchParams(window.location.search);
+    const magicStudentId = params.get('student');
+
+    if (path === '/login') {
+      return { role: 'UNAUTHENTICATED' };
+    }
+    if (magicStudentId) {
+      return { role: 'STUDENT', studentId: magicStudentId };
+    }
+    try {
+      const saved = localStorage.getItem(AUTH_SESSION_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as AuthSession;
+        if (path === '/admin' && parsed.role !== 'ADMIN') {
+          return { role: 'UNAUTHENTICATED' };
+        }
+        return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return { role: 'UNAUTHENTICATED' };
+  });
+
+  const [roleMode, setRoleMode] = useState<'STUDENT' | 'COACH'>(() =>
+    window.location.pathname.toLowerCase() === '/admin' ? 'COACH' : 'STUDENT'
+  );
+  const [activeTab, setActiveTab] = useState<'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'COACH'>(() =>
+    window.location.pathname.toLowerCase() === '/admin' ? 'COACH' : 'CADENCE'
+  );
   const [activeStudentId, setActiveStudentId] = useState<string>(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('student') || INITIAL_STUDENTS[0].id;
@@ -100,7 +139,18 @@ export function App() {
         await upsertStudentsToSupabase(students);
         setDbSyncStatus('SYNCED');
       } else {
-        setStudents(remoteStudents);
+        const enriched = remoteStudents.map(rs => {
+          const fallback = INITIAL_STUDENTS.find(i => i.id === rs.id);
+          return {
+            ...rs,
+            email: rs.email || fallback?.email || '',
+            accessCode:
+              rs.accessCode ||
+              fallback?.accessCode ||
+              `${rs.name.split(' ')[0].toUpperCase()}-01`
+          };
+        });
+        setStudents(enriched);
         setDbSyncStatus('SYNCED');
       }
 
@@ -488,12 +538,67 @@ export function App() {
     });
   };
 
-  const navItems = [
+  const handleLoginStudent = (studentId: string) => {
+    const session: AuthSession = { role: 'STUDENT', studentId };
+    setAuthSession(session);
+    setActiveStudentId(studentId);
+    setRoleMode('STUDENT');
+    setActiveTab('CADENCE');
+    try {
+      localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
+      window.history.pushState({}, '', `/student?student=${studentId}`);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleLoginAdmin = () => {
+    const session: AuthSession = { role: 'ADMIN' };
+    setAuthSession(session);
+    setRoleMode('COACH');
+    setActiveTab('COACH');
+    try {
+      localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
+      window.history.pushState({}, '', '/admin');
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleLogout = () => {
+    setAuthSession({ role: 'UNAUTHENTICATED' });
+    try {
+      localStorage.removeItem(AUTH_SESSION_KEY);
+      window.history.pushState({}, '', '/login');
+    } catch {
+      // ignore
+    }
+  };
+
+  if (authSession.role === 'UNAUTHENTICATED') {
+    const initialMode = window.location.pathname.toLowerCase() === '/admin' ? 'ADMIN' : 'STUDENT';
+    return (
+      <LoginView
+        students={students}
+        initialMode={initialMode}
+        onLoginStudent={handleLoginStudent}
+        onLoginAdmin={handleLoginAdmin}
+      />
+    );
+  }
+
+  const isAdminSession = authSession.role === 'ADMIN';
+
+  const allNavItems = [
     { id: 'CADENCE' as const, label: 'Daily Studio', sub: '10-Min Cadence', icon: Video, role: 'STUDENT' as const },
     { id: 'WORKBOOK' as const, label: 'Lessons 1–26', sub: 'Self-Paced Workbook', icon: BookOpen, role: 'STUDENT' as const },
     { id: 'MAGNETS' as const, label: 'Shift Magnets', sub: 'Lead Magnets & DMs', icon: Magnet, role: 'STUDENT' as const },
     { id: 'COACH' as const, label: 'Coach & Admin', sub: 'Student Setup & Cohort', icon: UserCheck, role: 'COACH' as const }
   ];
+
+  const navItems = isAdminSession
+    ? allNavItems
+    : allNavItems.filter(item => item.role === 'STUDENT');
 
   const completedSupportingCount = currentStudent.supportingVideos.filter(v => v.status === 'Completed').length;
 
@@ -550,7 +655,7 @@ export function App() {
                 Market Concussion
               </div>
               <div className="text-[11px] text-slate-400 mt-1">
-                Build The Machine OS
+                {isAdminSession ? 'Admin & Coach Portal' : 'Student Portal'}
               </div>
             </div>
           </div>
@@ -558,7 +663,7 @@ export function App() {
           {/* Primary Navigation Menu */}
           <nav className="space-y-1.5">
             <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-              Workspace Menu
+              {isAdminSession ? 'Admin & Student Views' : 'Student Workspace'}
             </div>
             {navItems.map(item => {
               const Icon = item.icon;
@@ -570,6 +675,15 @@ export function App() {
                   onClick={() => {
                     setRoleMode(item.role);
                     setActiveTab(item.id);
+                    try {
+                      if (item.id === 'COACH') {
+                        window.history.pushState({}, '', '/admin');
+                      } else {
+                        window.history.pushState({}, '', `/student?student=${currentStudent.id}`);
+                      }
+                    } catch {
+                      // ignore
+                    }
                   }}
                   className={`w-full text-left px-3.5 py-3 rounded-xl transition-all flex items-center gap-3 cursor-pointer ${
                     isActive
@@ -625,28 +739,78 @@ export function App() {
           </div>
         </div>
 
-        {/* Bottom Active Profile Switcher */}
-        <div className="pt-4 border-t border-white/8 space-y-2">
-          <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 px-1">
-            Active Student View
-          </label>
-          <select
-            value={activeStudentId}
-            onChange={e => setActiveStudentId(e.target.value)}
-            aria-label="Select active student profile"
-            className="w-full rounded-xl bg-[#141722] border border-white/10 text-xs font-medium text-white px-3 py-2.5 focus:outline-none focus:border-sky-400"
+        {/* Bottom Active Profile Switcher (Admin Only) + Logout */}
+        <div className="pt-4 border-t border-white/8 space-y-2.5">
+          {isAdminSession ? (
+            <>
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 px-1">
+                Active Student View (Admin)
+              </label>
+              <select
+                value={activeStudentId}
+                onChange={e => setActiveStudentId(e.target.value)}
+                aria-label="Select active student profile"
+                className="w-full rounded-xl bg-[#141722] border border-white/10 text-xs font-medium text-white px-3 py-2.5 focus:outline-none focus:border-sky-400"
+              >
+                {students.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name.split(' ')[0]} · Lesson {s.currentWeek}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : (
+            <div className="px-2 py-2 rounded-xl bg-white/[0.02] border border-white/5 text-[11px] text-slate-400">
+              Logged in as <span className="text-white font-semibold">{currentStudent.name}</span>
+              {currentStudent.accessCode && (
+                <span className="block text-[10px] text-sky-400 font-mono mt-0.5">
+                  Access Code: {currentStudent.accessCode}
+                </span>
+              )}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-white/[0.03] hover:bg-rose-500/15 border border-white/10 hover:border-rose-500/30 text-xs font-medium text-slate-300 hover:text-rose-300 transition-colors cursor-pointer"
           >
-            {students.map(s => (
-              <option key={s.id} value={s.id}>
-                {s.name.split(' ')[0]} · Lesson {s.currentWeek}
-              </option>
-            ))}
-          </select>
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sign Out / Switch Portal</span>
+          </button>
         </div>
       </aside>
 
       {/* Right Main Column */}
       <div className="flex-1 flex flex-col min-w-0">
+        {/* Admin Preview Banner when viewing Student Tabs */}
+        {isAdminSession && activeTab !== 'COACH' && (
+          <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 sm:px-8 py-2 flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-amber-200">
+              <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>
+                <strong>Admin Preview Mode:</strong> Viewing Student Dashboard for{' '}
+                <span className="underline font-semibold">{currentStudent.name}</span>
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setRoleMode('COACH');
+                setActiveTab('COACH');
+                try {
+                  window.history.pushState({}, '', '/admin');
+                } catch {
+                  // ignore
+                }
+              }}
+              className="px-2.5 py-1 rounded-lg bg-amber-400 text-slate-950 font-bold text-[11px] hover:bg-amber-300 transition-colors cursor-pointer shrink-0"
+            >
+              ← Return to Admin Dashboard
+            </button>
+          </div>
+        )}
+
         {/* Clean Minimal Top Header */}
         <header className="border-b border-white/8 bg-[#090A0F]/80 backdrop-blur-md sticky top-0 z-20">
           <div className="max-w-6xl mx-auto px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
@@ -655,8 +819,17 @@ export function App() {
                 {currentStudent.avatar}
               </div>
               <div className="min-w-0">
-                <div className="text-sm font-semibold text-white truncate">
-                  {currentStudent.name}
+                <div className="text-sm font-semibold text-white truncate flex items-center gap-2">
+                  <span>{currentStudent.name}</span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      isAdminSession
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        : 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                    }`}
+                  >
+                    {isAdminSession ? 'Admin Mode' : 'Student Portal'}
+                  </span>
                 </div>
                 <div className="text-xs text-slate-400 truncate">
                   {currentStudent.company} · Lesson {currentStudent.currentWeek} of 26 (Phase 0{currentStudent.currentPhase})
@@ -682,22 +855,24 @@ export function App() {
                 <span>{dbSyncStatus === 'SYNCED' ? 'Supabase DB Live' : 'Local Cache'}</span>
               </span>
 
-              <button
-                type="button"
-                onClick={() => {
-                  const url = `${window.location.origin}/?student=${currentStudent.id}`;
-                  navigator.clipboard?.writeText(url);
-                  triggerWebPushAndBanner(
-                    'Student Direct Link Copied!',
-                    `Share ${url} with ${currentStudent.name.split(' ')[0]} so they open directly into their synced profile.`,
-                    'DAILY_LESSON'
-                  );
-                }}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/25 text-xs font-medium text-sky-300 transition-colors cursor-pointer"
-                title="Copy Direct Student Portal Link"
-              >
-                <span>Copy Student Link</span>
-              </button>
+              {isAdminSession && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = `${window.location.origin}/student?student=${currentStudent.id}`;
+                    navigator.clipboard?.writeText(url);
+                    triggerWebPushAndBanner(
+                      'Student Direct Link Copied!',
+                      `Share ${url} with ${currentStudent.name.split(' ')[0]} so they open directly into their synced Student Dashboard.`,
+                      'DAILY_LESSON'
+                    );
+                  }}
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/25 text-xs font-medium text-sky-300 transition-colors cursor-pointer"
+                  title="Copy Direct Student Portal Link"
+                >
+                  <span>Copy Student Link</span>
+                </button>
+              )}
 
               <button
                 type="button"
@@ -732,6 +907,15 @@ export function App() {
               >
                 <Bell className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Test Push</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="md:hidden flex items-center gap-1 px-2.5 py-2 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-slate-300 cursor-pointer"
+                title="Sign Out"
+              >
+                <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -781,7 +965,7 @@ export function App() {
             <WorkbookView
               student={currentStudent}
               lessons={lessons}
-              isCoachMode={roleMode === 'COACH'}
+              isCoachMode={isAdminSession}
               onUpdateLesson={handleUpdateLesson}
               onResetLessonsToDefault={handleResetLessonsToDefault}
               onToggleTask={handleToggleTask}
@@ -799,7 +983,7 @@ export function App() {
             />
           )}
 
-          {activeTab === 'COACH' && (
+          {activeTab === 'COACH' && isAdminSession && (
             <CoachDashboardView
               students={students}
               selectedStudentId={activeStudentId}
@@ -814,6 +998,16 @@ export function App() {
               onOpenImportModal={() => {
                 setImportStatus(null);
                 setShowImportModal(true);
+              }}
+              onPreviewStudentDashboard={(studentId: string) => {
+                setActiveStudentId(studentId);
+                setRoleMode('STUDENT');
+                setActiveTab('CADENCE');
+                try {
+                  window.history.pushState({}, '', `/student?student=${studentId}`);
+                } catch {
+                  // ignore
+                }
               }}
             />
           )}
