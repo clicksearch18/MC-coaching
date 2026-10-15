@@ -19,6 +19,14 @@ import { ShiftMagnetsView } from './components/ShiftMagnetsView';
 import { CoachDashboardView } from './components/CoachDashboardView';
 import { ModalDialog } from './components/ModalDialog';
 import { parseStudentSpreadsheet } from './utils/excelParser';
+import {
+  fetchStudentsFromSupabase,
+  upsertStudentsToSupabase,
+  deleteStudentFromSupabase,
+  fetchLessonsFromSupabase,
+  upsertLessonsToSupabase,
+  isSupabaseConfigured
+} from './lib/supabase';
 
 const STORAGE_KEY = 'mcm_cam005_students_v3';
 const LESSONS_STORAGE_KEY = 'mcm_cam005_lessons_v2';
@@ -53,7 +61,12 @@ export function App() {
 
   const [roleMode, setRoleMode] = useState<'STUDENT' | 'COACH'>('STUDENT');
   const [activeTab, setActiveTab] = useState<'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'COACH'>('CADENCE');
-  const [activeStudentId, setActiveStudentId] = useState<string>(INITIAL_STUDENTS[0].id);
+  const [activeStudentId, setActiveStudentId] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('student') || INITIAL_STUDENTS[0].id;
+  });
+  const [dbSyncStatus, setDbSyncStatus] = useState<'CONNECTING' | 'SYNCED' | 'LOCAL'>('CONNECTING');
+  const [initialDbLoadDone, setInitialDbLoadDone] = useState(false);
 
   // Modals & Push Banners
   const [showImportModal, setShowImportModal] = useState(false);
@@ -65,13 +78,58 @@ export function App() {
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   );
 
+  // Initial load & seed with Supabase DB
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setDbSyncStatus('LOCAL');
+      setInitialDbLoadDone(true);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const [remoteStudents, remoteLessons] = await Promise.all([
+        fetchStudentsFromSupabase(),
+        fetchLessonsFromSupabase()
+      ]);
+      if (cancelled) return;
+
+      if (remoteStudents === null) {
+        setDbSyncStatus('LOCAL');
+      } else if (remoteStudents.length === 0) {
+        await upsertStudentsToSupabase(students);
+        setDbSyncStatus('SYNCED');
+      } else {
+        setStudents(remoteStudents);
+        setDbSyncStatus('SYNCED');
+      }
+
+      if (remoteLessons && remoteLessons.length > 0) {
+        setLessons(remoteLessons);
+      } else if (remoteLessons !== null) {
+        await upsertLessonsToSupabase(WORKBOOK_WEEKS);
+      }
+
+      setInitialDbLoadDone(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(students));
     } catch {
       // ignore
     }
-  }, [students]);
+    if (initialDbLoadDone && isSupabaseConfigured) {
+      upsertStudentsToSupabase(students).then(ok => {
+        if (ok) setDbSyncStatus('SYNCED');
+      });
+    }
+  }, [students, initialDbLoadDone]);
 
   useEffect(() => {
     try {
@@ -79,7 +137,10 @@ export function App() {
     } catch {
       // ignore
     }
-  }, [lessons]);
+    if (initialDbLoadDone && isSupabaseConfigured) {
+      upsertLessonsToSupabase(lessons);
+    }
+  }, [lessons, initialDbLoadDone]);
 
   const currentStudent = students.find(s => s.id === activeStudentId) || students[0];
 
@@ -416,6 +477,7 @@ export function App() {
   };
 
   const handleDeleteStudent = (studentId: string) => {
+    deleteStudentFromSupabase(studentId);
     setStudents(prev => {
       if (prev.length <= 1) return prev;
       const filtered = prev.filter(s => s.id !== studentId);
@@ -604,6 +666,39 @@ export function App() {
 
             {/* Right Action Pills */}
             <div className="flex items-center gap-2">
+              <span
+                className={`hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-semibold ${
+                  dbSyncStatus === 'SYNCED'
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                    : 'bg-white/[0.04] border-white/10 text-slate-400'
+                }`}
+                title="Live Supabase PostgreSQL Database Status"
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    dbSyncStatus === 'SYNCED' ? 'bg-emerald-400' : 'bg-amber-400'
+                  }`}
+                />
+                <span>{dbSyncStatus === 'SYNCED' ? 'Supabase DB Live' : 'Local Cache'}</span>
+              </span>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const url = `${window.location.origin}/?student=${currentStudent.id}`;
+                  navigator.clipboard?.writeText(url);
+                  triggerWebPushAndBanner(
+                    'Student Direct Link Copied!',
+                    `Share ${url} with ${currentStudent.name.split(' ')[0]} so they open directly into their synced profile.`,
+                    'DAILY_LESSON'
+                  );
+                }}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/25 text-xs font-medium text-sky-300 transition-colors cursor-pointer"
+                title="Copy Direct Student Portal Link"
+              >
+                <span>Copy Student Link</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setShowStudentInboxModal(true)}

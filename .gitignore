@@ -11,6 +11,10 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
+Supabase DB Credentials.rtf
 .vercel
 
 # Editor directories and files
