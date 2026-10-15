@@ -295,3 +295,78 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     ]
   }
 ];
+
+export function createNewStudentProfile(params: {
+  name: string;
+  company: string;
+  niche: string;
+  startingLesson?: number;
+  coreTransformation?: string;
+  coreBelief?: string;
+  customPlaybook?: PlaybookPillar[];
+  customSupportingVideos?: SupportingVideoItem[];
+}): StudentProfile {
+  const initials = params.name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase() || '')
+    .join('') || 'ST';
+
+  const lesson = params.startingLesson || 1;
+  const phase =
+    lesson <= 4 ? 1 : lesson <= 8 ? 2 : lesson <= 18 ? 3 : lesson <= 22 ? 4 : 5;
+
+  return {
+    id: `student-${Date.now()}`,
+    name: params.name.trim(),
+    company: params.company.trim(),
+    avatar: initials,
+    niche: params.niche.trim() || 'B2B Operator',
+    currentWeek: lesson,
+    currentPhase: phase,
+    streakDays: 0,
+    todayVideoStatus: 'PENDING',
+    lastActive: 'Just onboarded',
+    minutesAvailableBaseline: 9,
+    minutesAvailableCurrent: 9,
+    fullListSize: 0,
+    dmConversationsWeekly: 0,
+    tasksCompleted: {},
+    worksheetAnswers: {
+      ...(params.coreTransformation ? { m02_q1_transformation: params.coreTransformation } : {}),
+      ...(params.coreBelief ? { m02_q4_belief: params.coreBelief } : {})
+    },
+    rubricScores: {},
+    gateStatus: {
+      1: phase >= 1 ? 'OPEN' : 'LOCKED',
+      2: phase >= 2 ? 'OPEN' : 'LOCKED',
+      3: phase >= 3 ? 'OPEN' : 'LOCKED',
+      4: phase >= 4 ? 'OPEN' : 'LOCKED',
+      5: phase >= 5 ? 'OPEN' : 'LOCKED'
+    },
+    playbook:
+      params.customPlaybook && params.customPlaybook.length > 0
+        ? params.customPlaybook
+        : buildPlaybook(0),
+    supportingVideos:
+      params.customSupportingVideos && params.customSupportingVideos.length > 0
+        ? params.customSupportingVideos
+        : buildSupportingVideos(0),
+    coreVideos: CORE_BRAND_VIDEOS_TEMPLATE.map(c => ({ ...c, status: 'Not Started' })),
+    shiftMagnets: defaultShiftMagnets.map((m, i) => ({
+      ...m,
+      id: `mag-${Date.now()}-${i}`
+    })),
+    messages: [
+      {
+        id: `msg-welcome-${Date.now()}`,
+        senderRole: 'COACH',
+        senderName: 'Coach Josh Beechraft',
+        text: `Welcome to Market Concussion, ${params.name.split(' ')[0]}! Your personalized Concussion Content plan and Lesson ${lesson} Workbook are loaded and ready.`,
+        timestamp: 'Just now'
+      }
+    ]
+  };
+}
+

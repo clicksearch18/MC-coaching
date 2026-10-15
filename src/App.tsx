@@ -10,9 +10,9 @@ import {
   Smartphone,
   UserCheck
 } from 'lucide-react';
-import { INITIAL_STUDENTS } from './data/initialStudents';
+import { INITIAL_STUDENTS, createNewStudentProfile } from './data/initialStudents';
 import { WORKBOOK_WEEKS } from './data/workbookData';
-import { StudentProfile, SupportingVideoItem, ShiftMagnet, WorkbookWeek } from './types';
+import { StudentProfile, SupportingVideoItem, ShiftMagnet, WorkbookWeek, PlaybookPillar } from './types';
 import { DailyCadenceView } from './components/DailyCadenceView';
 import { WorkbookView } from './components/WorkbookView';
 import { ShiftMagnetsView } from './components/ShiftMagnetsView';
@@ -345,11 +345,92 @@ export function App() {
     }
   };
 
+  const handleAddStudent = (params: {
+    name: string;
+    company: string;
+    niche: string;
+    startingLesson: number;
+    coreTransformation: string;
+    coreBelief: string;
+    customPlaybook?: PlaybookPillar[];
+    customSupportingVideos?: SupportingVideoItem[];
+  }) => {
+    const created = createNewStudentProfile(params);
+    setStudents(prev => [created, ...prev]);
+    setActiveStudentId(created.id);
+    triggerWebPushAndBanner(
+      `Student Onboarded: ${created.name}`,
+      `${created.company} (${created.supportingVideos.length} Daily Concussion Content videos) is now live on Lesson ${created.currentWeek}.`,
+      'DAILY_LESSON'
+    );
+  };
+
+  const handleUpdateStudentSpecifics = (
+    studentId: string,
+    updates: Partial<StudentProfile>,
+    worksheetUpdates?: Record<string, string>
+  ) => {
+    updateStudent(studentId, st => {
+      const nextName = updates.name !== undefined ? updates.name : st.name;
+      const initials =
+        nextName
+          .split(' ')
+          .filter(Boolean)
+          .slice(0, 2)
+          .map(p => p[0]?.toUpperCase() || '')
+          .join('') || st.avatar;
+      return {
+        ...st,
+        ...updates,
+        avatar: initials,
+        worksheetAnswers: worksheetUpdates
+          ? { ...st.worksheetAnswers, ...worksheetUpdates }
+          : st.worksheetAnswers
+      };
+    });
+  };
+
+  const handleAddCustomVideoToStudent = (
+    studentId: string,
+    video: { pillarStage: string; title: string; hook1: string; hook2: string; hook3: string }
+  ) => {
+    updateStudent(studentId, st => {
+      const nextDayNum = st.supportingVideos.length + 1;
+      const newVideo: SupportingVideoItem = {
+        id: `supp-custom-${Date.now()}`,
+        dayNumber: nextDayNum,
+        pillarStage: video.pillarStage,
+        title: video.title,
+        hook1: video.hook1,
+        hook2: video.hook2,
+        hook3: video.hook3,
+        selectedHook: 1,
+        status: 'Not Started',
+        attachedMagnetId: st.shiftMagnets[0]?.id
+      };
+      return {
+        ...st,
+        supportingVideos: [...st.supportingVideos, newVideo]
+      };
+    });
+  };
+
+  const handleDeleteStudent = (studentId: string) => {
+    setStudents(prev => {
+      if (prev.length <= 1) return prev;
+      const filtered = prev.filter(s => s.id !== studentId);
+      if (activeStudentId === studentId && filtered[0]) {
+        setActiveStudentId(filtered[0].id);
+      }
+      return filtered;
+    });
+  };
+
   const navItems = [
     { id: 'CADENCE' as const, label: 'Daily Studio', sub: '10-Min Cadence', icon: Video, role: 'STUDENT' as const },
     { id: 'WORKBOOK' as const, label: 'Lessons 1–26', sub: 'Self-Paced Workbook', icon: BookOpen, role: 'STUDENT' as const },
     { id: 'MAGNETS' as const, label: 'Shift Magnets', sub: 'Lead Magnets & DMs', icon: Magnet, role: 'STUDENT' as const },
-    { id: 'COACH' as const, label: 'Coach Command', sub: 'Cohort & Alerts', icon: UserCheck, role: 'COACH' as const }
+    { id: 'COACH' as const, label: 'Coach & Admin', sub: 'Student Setup & Cohort', icon: UserCheck, role: 'COACH' as const }
   ];
 
   const completedSupportingCount = currentStudent.supportingVideos.filter(v => v.status === 'Completed').length;
@@ -628,6 +709,10 @@ export function App() {
               students={students}
               selectedStudentId={activeStudentId}
               onSelectStudent={setActiveStudentId}
+              onAddStudent={handleAddStudent}
+              onUpdateStudentSpecifics={handleUpdateStudentSpecifics}
+              onAddCustomVideoToStudent={handleAddCustomVideoToStudent}
+              onDeleteStudent={handleDeleteStudent}
               onSendMessage={handleSendMessage}
               onTriggerMissedAlertPush={handleTriggerMissedAlertPush}
               onApproveGate={handleApproveGate}
