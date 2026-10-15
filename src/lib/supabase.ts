@@ -182,6 +182,23 @@ export async function upsertLessonsToSupabase(lessons: WorkbookWeek[]): Promise<
   }
 }
 
+export async function upsertSingleLessonToSupabase(lesson: WorkbookWeek): Promise<boolean> {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase.from('mc_lessons').upsert(
+      {
+        week_number: lesson.weekNumber,
+        lesson,
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: 'week_number' }
+    );
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
 export async function fetchAppSettingsFromSupabase(): Promise<AppEmailAndAdminSettings | null> {
   if (!supabase) return null;
   try {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   CheckCircle2,
   ExternalLink,
@@ -13,7 +13,12 @@ import {
   Trash2,
   BookOpen,
   Award,
-  Sparkles
+  Sparkles,
+  RotateCcw,
+  Mail,
+  Download,
+  Search,
+  Copy
 } from 'lucide-react';
 import {
   StudentProfile,
@@ -21,11 +26,13 @@ import {
   SupportingVideoItem,
   CoachReviewStatus,
   AppEmailAndAdminSettings,
+  EmailTemplateConfig,
   WorkbookWeek,
   ChatMessageActionTarget
 } from '../types';
 import { ModalDialog } from './ModalDialog';
 import { parseStudentSpreadsheet, resolveMatchingPillar } from '../utils/excelParser';
+import { buildBrandedEmailHtml, DEFAULT_APP_SETTINGS } from '../data/initialStudents';
 
 interface CoachDashboardViewProps {
   students: StudentProfile[];
@@ -66,6 +73,7 @@ interface CoachDashboardViewProps {
     videoId: string,
     updates: Partial<SupportingVideoItem>
   ) => void;
+  onDeleteStudentVideo?: (studentId: string, videoId: string) => void;
   onDeleteStudent: (studentId: string) => void;
   onSendMessage: (studentId: string, text: string, triggerPush?: boolean) => void;
   onMarkMessagesRead?: (studentId: string) => void;
@@ -79,6 +87,8 @@ interface CoachDashboardViewProps {
   ) => void;
   onTriggerMissedAlertPush: (student: StudentProfile) => void;
   onApproveGate: (studentId: string, phaseNum: number) => void;
+  onRequestGateRevision?: (studentId: string, phaseNum: number, feedback?: string) => void;
+  onToggleStudentTask?: (studentId: string, lessonNumber: number, taskIdx: number) => void;
   onOpenImportModal: () => void;
   appSettings?: AppEmailAndAdminSettings;
   onUpdateAppSettings?: React.Dispatch<React.SetStateAction<AppEmailAndAdminSettings>>;
@@ -108,6 +118,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
   onUpdateStudentSpecifics,
   onAddCustomVideoToStudent,
   onEditStudentVideo,
+  onDeleteStudentVideo,
   onDeleteStudent,
   onSendMessage,
   onMarkMessagesRead,
@@ -115,10 +126,23 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
   onReviewStudentVideo,
   onTriggerMissedAlertPush,
   onApproveGate,
-  onOpenImportModal
+  onRequestGateRevision,
+  onToggleStudentTask,
+  onOpenImportModal,
+  appSettings = DEFAULT_APP_SETTINGS,
+  onUpdateAppSettings
 }) => {
   const [messageInput, setMessageInput] = useState('');
-  const [coachSubTab, setCoachSubTab] = useState<'SETUP' | 'MESSAGE' | 'LINKS' | 'TELEMETRY'>('SETUP');
+  const [coachSubTab, setCoachSubTab] = useState<
+    'SETUP' | 'MESSAGE' | 'LINKS' | 'TELEMETRY' | 'SETTINGS'
+  >('SETUP');
+  const [rosterSearch, setRosterSearch] = useState('');
+  const [rosterFilter, setRosterFilter] = useState<'ALL' | 'UNREAD' | 'REVIEW' | 'GATE' | 'DUE'>(
+    'ALL'
+  );
+  const [selectedTemplateId, setSelectedTemplateId] =
+    useState<EmailTemplateConfig['id']>('WELCOME_INVITE');
+  const [newAdminEmailInput, setNewAdminEmailInput] = useState('');
   const [reviewScope, setReviewScope] = useState<'STUDENT' | 'ALL'>('ALL');
   const [reviewFilter, setReviewFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REVISION'>('ALL');
   const [expandedReviewKey, setExpandedReviewKey] = useState<string | null>(null);
@@ -156,6 +180,8 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
   const [customHook2, setCustomHook2] = useState('');
   const [customHook3, setCustomHook3] = useState('');
   const [saveBanner, setSaveBanner] = useState<string | null>(null);
+  const [confirmDeleteStudent, setConfirmDeleteStudent] = useState(false);
+  const [confirmDeleteVideo, setConfirmDeleteVideo] = useState(false);
 
   // Workbook Lesson Inspector State (in TELEMETRY tab)
   const [inspectLessonNum, setInspectLessonNum] = useState<number>(activeStudent?.currentWeek || 1);
@@ -164,6 +190,8 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
   useEffect(() => {
     setInspectLessonNum(activeStudent?.currentWeek || 1);
     setEditingVideoId('NEW');
+    setConfirmDeleteStudent(false);
+    setConfirmDeleteVideo(false);
     setCustomVideoTitle('');
     const firstP = activeStudent?.playbook?.[0];
     setCustomVideoPillarId(firstP?.id || 'pillar-1');
@@ -248,6 +276,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
 
   const handleSelectVideoToEdit = (videoId: string) => {
     setEditingVideoId(videoId);
+    setConfirmDeleteVideo(false);
     if (videoId === 'NEW') {
       setCustomVideoTitle('');
       const firstP = activeStudent.playbook[0];
@@ -306,7 +335,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
     setTimeout(() => setSaveBanner(null), 3500);
   };
 
-  const buildStudentReviewItems = (st: StudentProfile) => {
+  const buildStudentReviewItems = useCallback((st: StudentProfile) => {
     const dailyItems = st.supportingVideos
       .filter(v => v.status === 'Completed')
       .slice()
@@ -352,33 +381,183 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
       }));
 
     return [...dailyItems, ...coreItems];
-  };
+  }, []);
 
-  const allCohortReviewItems = students.flatMap(buildStudentReviewItems);
-  const activeStudentReviewItems = buildStudentReviewItems(activeStudent);
+  const reviewItemsByStudentId = useMemo(() => {
+    const map: Record<string, ReturnType<typeof buildStudentReviewItems>> = {};
+    for (const st of students) {
+      map[st.id] = buildStudentReviewItems(st);
+    }
+    return map;
+  }, [students, buildStudentReviewItems]);
+
+  const allCohortReviewItems = useMemo(
+    () => students.flatMap(st => reviewItemsByStudentId[st.id] || []),
+    [students, reviewItemsByStudentId]
+  );
+
+  const activeStudentReviewItems = useMemo(
+    () => reviewItemsByStudentId[activeStudent.id] || [],
+    [reviewItemsByStudentId, activeStudent.id]
+  );
+
   const scopedReviewItems = reviewScope === 'ALL' ? allCohortReviewItems : activeStudentReviewItems;
-  const pendingReviewTotal = allCohortReviewItems.filter(i => i.reviewStatus === 'Pending Review').length;
 
-  const activeUnreadMessagesCount = activeStudent.messages.filter(
-    m => m.senderRole === 'STUDENT' && m.readByCoach === false
-  ).length;
+  const pendingReviewTotal = useMemo(
+    () => allCohortReviewItems.filter(i => i.reviewStatus === 'Pending Review').length,
+    [allCohortReviewItems]
+  );
 
-  const submittedGatePhases = [1, 2, 3, 4, 5].filter(
-    p =>
-      activeStudent.gateStatus?.[p] === 'SUBMITTED' ||
-      activeStudent.worksheetAnswers[`phase_gate_status_${p}`] === 'SUBMITTED'
+  const rosterSummariesById = useMemo(() => {
+    const map: Record<
+      string,
+      {
+        doneVideos: number;
+        unread: number;
+        pendingReviews: number;
+        submittedGate: number | undefined;
+      }
+    > = {};
+    for (const st of students) {
+      const items = reviewItemsByStudentId[st.id] || [];
+      map[st.id] = {
+        doneVideos: st.supportingVideos.filter(v => v.status === 'Completed').length,
+        unread: st.messages.filter(m => m.senderRole === 'STUDENT' && m.readByCoach === false).length,
+        pendingReviews: items.filter(i => i.reviewStatus === 'Pending Review').length,
+        submittedGate: [1, 2, 3, 4, 5].find(
+          p =>
+            st.gateStatus?.[p] === 'SUBMITTED' ||
+            st.worksheetAnswers[`phase_gate_status_${p}`] === 'SUBMITTED'
+        )
+      };
+    }
+    return map;
+  }, [students, reviewItemsByStudentId]);
+
+  const activeUnreadMessagesCount = rosterSummariesById[activeStudent.id]?.unread || 0;
+
+  const submittedGatePhases = useMemo(
+    () =>
+      [1, 2, 3, 4, 5].filter(
+        p =>
+          activeStudent.gateStatus?.[p] === 'SUBMITTED' ||
+          activeStudent.worksheetAnswers[`phase_gate_status_${p}`] === 'SUBMITTED'
+      ),
+    [activeStudent.gateStatus, activeStudent.worksheetAnswers]
   );
   const targetPhaseToApprove = submittedGatePhases[0] || activeStudent.currentPhase;
 
-  const filteredReviewItems = scopedReviewItems.filter(item => {
-    if (reviewFilter === 'PENDING') return item.reviewStatus === 'Pending Review';
-    if (reviewFilter === 'APPROVED') return item.reviewStatus === 'Approved';
-    if (reviewFilter === 'REVISION') return item.reviewStatus === 'Needs Revision';
-    return true;
-  });
+  const filteredReviewItems = useMemo(
+    () =>
+      scopedReviewItems.filter(item => {
+        if (reviewFilter === 'PENDING') return item.reviewStatus === 'Pending Review';
+        if (reviewFilter === 'APPROVED') return item.reviewStatus === 'Approved';
+        if (reviewFilter === 'REVISION') return item.reviewStatus === 'Needs Revision';
+        return true;
+      }),
+    [scopedReviewItems, reviewFilter]
+  );
 
   const inspectedLesson =
     lessons.find(l => l.weekNumber === inspectLessonNum) || lessons[0];
+
+  const filteredRosterStudents = useMemo(() => {
+    const q = rosterSearch.trim().toLowerCase();
+    return students.filter(st => {
+      if (q) {
+        const matchesQuery =
+          st.name.toLowerCase().includes(q) ||
+          st.company.toLowerCase().includes(q) ||
+          st.niche.toLowerCase().includes(q) ||
+          (st.email || '').toLowerCase().includes(q);
+        if (!matchesQuery) return false;
+      }
+      const sum = rosterSummariesById[st.id];
+      if (rosterFilter === 'UNREAD') return (sum?.unread || 0) > 0;
+      if (rosterFilter === 'REVIEW') return (sum?.pendingReviews || 0) > 0;
+      if (rosterFilter === 'GATE') return Boolean(sum?.submittedGate);
+      if (rosterFilter === 'DUE') return st.todayVideoStatus !== 'COMPLETED';
+      return true;
+    });
+  }, [students, rosterSearch, rosterFilter, rosterSummariesById]);
+
+  const handleExportCohortCsv = useCallback(() => {
+    const headers = [
+      'Student Name',
+      'Company',
+      'Email',
+      'Access Code',
+      'Niche',
+      'Current Lesson',
+      'Current Phase',
+      'Today Status',
+      'Streak Days',
+      'Videos Completed',
+      'Total Videos',
+      'Shift Magnets',
+      'Unread From Student'
+    ];
+    const escapeCsv = (val: string | number) => {
+      const str = String(val ?? '');
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+    const rows = students.map(st => {
+      const sum = rosterSummariesById[st.id];
+      return [
+        st.name,
+        st.company,
+        st.email || '',
+        st.accessCode || '',
+        st.niche,
+        st.currentWeek,
+        st.currentPhase,
+        st.todayVideoStatus,
+        st.streakDays,
+        sum?.doneVideos || 0,
+        st.supportingVideos.length,
+        st.shiftMagnets.length,
+        sum?.unread || 0
+      ]
+        .map(escapeCsv)
+        .join(',');
+    });
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `market-concussion-cohort-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setSaveBanner(`Exported cohort CSV (${students.length} students).`);
+    setTimeout(() => setSaveBanner(null), 3500);
+  }, [students, rosterSummariesById]);
+
+  const handleBatchNudgeAllDue = useCallback(() => {
+    const dueStudents = students.filter(s => s.todayVideoStatus !== 'COMPLETED');
+    if (dueStudents.length === 0) {
+      onTriggerMissedAlertPush(activeStudent);
+      setSaveBanner(`Sent daily cadence alert to ${activeStudent.name}!`);
+      setTimeout(() => setSaveBanner(null), 3500);
+      return;
+    }
+    dueStudents.forEach(st => {
+      onTriggerMissedAlertPush(st);
+    });
+    onSelectStudent(dueStudents[0].id);
+    setCoachSubTab('MESSAGE');
+    setSaveBanner(
+      `Sent daily cadence nudge & push notification to ${dueStudents.length} due/missed operator${
+        dueStudents.length === 1 ? '' : 's'
+      }!`
+    );
+    setTimeout(() => setSaveBanner(null), 3500);
+  }, [students, activeStudent, onTriggerMissedAlertPush, onSelectStudent]);
 
   const handleChatActionClick = (target: ChatMessageActionTarget) => {
     if (target.videoId || target.coreVideoId) {
@@ -438,7 +617,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
           <span className="w-2.5 h-2.5 rounded-full bg-[#09ADEF] shadow-[0_0_12px_#09ADEF]" />
         </div>
 
-        <div className="glass-panel rounded-2xl p-4 flex items-center justify-between">
+        <div className="glass-panel rounded-2xl p-4 flex items-center justify-between gap-2">
           <div>
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-rose-400">MISSED / DUE</div>
             <div className="font-display text-2xl sm:text-3xl text-white mt-0.5">
@@ -447,20 +626,13 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
           </div>
           <button
             type="button"
-            onClick={() => {
-              const missedStudent =
-                students.find(s => s.todayVideoStatus === 'MISSED') ||
-                students.find(s => s.todayVideoStatus === 'PENDING') ||
-                activeStudent;
-              onSelectStudent(missedStudent.id);
-              onTriggerMissedAlertPush(missedStudent);
-              setCoachSubTab('MESSAGE');
-              setSaveBanner(`Sent daily cadence alert & push notification to ${missedStudent.name}!`);
-              setTimeout(() => setSaveBanner(null), 3500);
-            }}
-            className="px-2.5 py-1 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-[10px] font-bold uppercase tracking-wider text-rose-300 cursor-pointer"
+            onClick={handleBatchNudgeAllDue}
+            className="px-2.5 py-1 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-[10px] font-bold uppercase tracking-wider text-rose-300 cursor-pointer shrink-0"
+            title="Send push & chat cadence nudge to all due/missed students"
           >
-            Alert
+            {missedCount + pendingCount > 1
+              ? `Nudge All (${missedCount + pendingCount})`
+              : 'Alert'}
           </button>
         </div>
       </div>
@@ -474,7 +646,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
           className="flex-1 min-w-0 rounded-lg bg-black border border-white/15 px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-[#09ADEF]"
         >
           {students.map(st => {
-            const unread = st.messages.filter(m => m.senderRole === 'STUDENT' && m.readByCoach === false).length;
+            const unread = rosterSummariesById[st.id]?.unread || 0;
             return (
               <option key={st.id} value={st.id}>
                 {st.name} ({st.company}) · Lesson {st.currentWeek}{unread > 0 ? ` · 💬 ${unread} New` : ''}
@@ -502,11 +674,11 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
 
       {/* Main Split: Left Student Roster (Desktop) + Right Focused Student Admin & Coaching Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left 4 Cols: Sleek Student Roster + Add Student Button (Desktop Only) */}
-        <div className="hidden lg:block lg:col-span-4 glass-panel rounded-2xl p-4 space-y-2.5">
-          <div className="px-2 py-1 flex items-center justify-between">
+        {/* Left 4 Cols: Sleek Sticky Scrollable Student Roster + Search/Filter (Desktop Only) */}
+        <div className="hidden lg:flex lg:flex-col lg:col-span-4 glass-panel rounded-2xl p-4 space-y-2.5 lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)]">
+          <div className="px-1 py-0.5 flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
-              STUDENT ROSTER ({students.length})
+              STUDENT ROSTER ({filteredRosterStudents.length}/{students.length})
             </span>
             <button
               type="button"
@@ -517,94 +689,137 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
             </button>
           </div>
 
-          {students.map(st => {
-            const isSelected = st.id === activeStudent.id;
-            const doneVideos = st.supportingVideos.filter(v => v.status === 'Completed').length;
-            const stUnread = st.messages.filter(m => m.senderRole === 'STUDENT' && m.readByCoach === false).length;
-            const stPendingReviews = buildStudentReviewItems(st).filter(
-              i => i.reviewStatus === 'Pending Review'
-            ).length;
-            const stSubmittedGate = [1, 2, 3, 4, 5].find(
-              p => st.worksheetAnswers[`phase_gate_status_${p}`] === 'SUBMITTED'
-            );
+          {/* Search & Quick Filter Pills */}
+          <div className="space-y-2">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={rosterSearch}
+                onChange={e => setRosterSearch(e.target.value)}
+                placeholder="Search student, company, niche..."
+                className="w-full rounded-xl bg-[#040507] border border-white/10 pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#09ADEF]"
+              />
+            </div>
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-0.5">
+              {(
+                [
+                  { id: 'ALL', label: 'All' },
+                  { id: 'UNREAD', label: 'Unread 💬' },
+                  { id: 'REVIEW', label: 'Review 🎬' },
+                  { id: 'GATE', label: 'Gate ◆' },
+                  { id: 'DUE', label: 'Due/Missed' }
+                ] as const
+              ).map(f => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setRosterFilter(f.id)}
+                  className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider shrink-0 cursor-pointer border transition-all ${
+                    rosterFilter === f.id
+                      ? 'bg-[#09ADEF] text-white border-[#09ADEF]'
+                      : 'bg-[#040507] text-neutral-400 border-white/8 hover:text-white'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-            return (
-              <button
-                key={st.id}
-                type="button"
-                onClick={() => onSelectStudent(st.id)}
-                className={`w-full text-left p-4 rounded-xl border transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-[#09ADEF]/10 border-[#09ADEF] text-white shadow-[0_8px_28px_rgba(9,173,239,0.12)]'
-                    : 'bg-[#040507] border-white/[0.06] hover:border-white/15 text-neutral-200'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative w-10 h-10 rounded-xl bg-[#09ADEF]/15 border border-[#09ADEF]/30 flex items-center justify-center font-bold text-sm text-[#09ADEF] shrink-0">
-                      {st.avatar}
-                      {stUnread > 0 && (
-                        <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center shadow">
-                          {stUnread}
-                        </span>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-white truncate">{st.name}</div>
-                      <div className="text-xs text-neutral-400 truncate">{st.company}</div>
-                    </div>
-                  </div>
+          <div className="space-y-2.5 overflow-y-auto pr-1 flex-1">
+            {filteredRosterStudents.length === 0 ? (
+              <div className="p-4 rounded-xl bg-[#040507] border border-white/8 text-center text-xs text-neutral-400">
+                No students match this filter.
+              </div>
+            ) : (
+              filteredRosterStudents.map(st => {
+                const isSelected = st.id === activeStudent.id;
+                const summary = rosterSummariesById[st.id];
+                const doneVideos = summary?.doneVideos || 0;
+                const stUnread = summary?.unread || 0;
+                const stPendingReviews = summary?.pendingReviews || 0;
+                const stSubmittedGate = summary?.submittedGate;
 
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${
-                      st.todayVideoStatus === 'COMPLETED'
-                        ? 'badge-2mm'
-                        : st.todayVideoStatus === 'PENDING'
-                        ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                        : 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                return (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => onSelectStudent(st.id)}
+                    className={`w-full text-left p-4 rounded-xl border transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#09ADEF]/10 border-[#09ADEF] text-white shadow-[0_8px_28px_rgba(9,173,239,0.12)]'
+                        : 'bg-[#040507] border-white/[0.06] hover:border-white/15 text-neutral-200'
                     }`}
                   >
-                    {st.todayVideoStatus === 'COMPLETED'
-                      ? 'Posted'
-                      : st.todayVideoStatus === 'PENDING'
-                      ? 'Pending'
-                      : 'Missed'}
-                  </span>
-                </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="relative w-10 h-10 rounded-xl bg-[#09ADEF]/15 border border-[#09ADEF]/30 flex items-center justify-center font-bold text-sm text-[#09ADEF] shrink-0">
+                          {st.avatar}
+                          {stUnread > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center shadow">
+                              {stUnread}
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-white truncate">{st.name}</div>
+                          <div className="text-xs text-neutral-400 truncate">{st.company}</div>
+                        </div>
+                      </div>
 
-                {(stUnread > 0 || stPendingReviews > 0 || stSubmittedGate) && (
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
-                    {stUnread > 0 && (
-                      <span className="px-2 py-0.5 rounded-md bg-sky-500/20 border border-sky-400/40 text-[10px] font-bold text-sky-300">
-                        💬 {stUnread} Unread
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${
+                          st.todayVideoStatus === 'COMPLETED'
+                            ? 'badge-2mm'
+                            : st.todayVideoStatus === 'PENDING'
+                            ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                            : 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                        }`}
+                      >
+                        {st.todayVideoStatus === 'COMPLETED'
+                          ? 'Posted'
+                          : st.todayVideoStatus === 'PENDING'
+                          ? 'Pending'
+                          : 'Missed'}
                       </span>
-                    )}
-                    {stPendingReviews > 0 && (
-                      <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/40 text-[10px] font-bold text-amber-300">
-                        🎬 {stPendingReviews} To Review
-                      </span>
-                    )}
-                    {stSubmittedGate && (
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-400/40 text-[10px] font-bold text-emerald-300">
-                        ◆ Gate 0{stSubmittedGate} Ready
-                      </span>
-                    )}
-                  </div>
-                )}
+                    </div>
 
-                <div className="flex items-center justify-between text-xs text-neutral-400 mt-3 pt-2.5 border-t border-white/[0.06]">
-                  <span>Lesson {st.currentWeek} · Phase {st.currentPhase}</span>
-                  <span>{st.streakDays}d Streak</span>
-                  <span className="text-[#09ADEF] font-semibold">
-                    {doneVideos}/{st.supportingVideos.length} Videos
-                  </span>
-                </div>
-              </button>
-            );
-          })}
+                    {(stUnread > 0 || stPendingReviews > 0 || stSubmittedGate) && (
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                        {stUnread > 0 && (
+                          <span className="px-2 py-0.5 rounded-md bg-sky-500/20 border border-sky-400/40 text-[10px] font-bold text-sky-300">
+                            💬 {stUnread} Unread
+                          </span>
+                        )}
+                        {stPendingReviews > 0 && (
+                          <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/40 text-[10px] font-bold text-amber-300">
+                            🎬 {stPendingReviews} To Review
+                          </span>
+                        )}
+                        {stSubmittedGate && (
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-400/40 text-[10px] font-bold text-emerald-300">
+                            ◆ Gate 0{stSubmittedGate} Ready
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between text-xs text-neutral-400 mt-3 pt-2.5 border-t border-white/[0.06]">
+                      <span>Lesson {st.currentWeek} · Phase {st.currentPhase}</span>
+                      <span>{st.streakDays}d Streak</span>
+                      <span className="text-[#09ADEF] font-semibold">
+                        {doneVideos}/{st.supportingVideos.length} Videos
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
         </div>
 
-        {/* Right 8 Cols: Selected Student Workspace with 4 Admin & Coaching Tabs */}
+        {/* Right 8 Cols: Selected Student Workspace with 5 Admin & Coaching Tabs */}
         <div className="lg:col-span-8 glass-panel rounded-2xl p-5 sm:p-7 space-y-5">
           {/* Student Header */}
           <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/[0.07]">
@@ -631,6 +846,16 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                   <span>Preview Student</span>
                 </button>
               )}
+
+              <button
+                type="button"
+                onClick={handleExportCohortCsv}
+                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/12 text-xs font-semibold text-neutral-200 cursor-pointer"
+                title="Download CSV backup of all students and progress"
+              >
+                <Download className="w-3.5 h-3.5 text-[#09ADEF]" />
+                <span>Export CSV</span>
+              </button>
 
               <button
                 type="button"
@@ -664,7 +889,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
             </div>
           </div>
 
-          {/* 4 Clean Workspace Tabs (Single horizontal scroll row on mobile) */}
+          {/* 5 Clean Workspace Tabs (Single horizontal scroll row on mobile) */}
           <div className="flex overflow-x-auto no-scrollbar gap-1.5 p-1 rounded-xl bg-[#07090D] border border-white/[0.08]">
             {[
               { id: 'SETUP' as const, label: 'Student Setup & Specifics', shortLabel: 'Setup', icon: Settings, badge: 0 },
@@ -688,6 +913,13 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                 shortLabel: 'Workbook & Metrics',
                 icon: Activity,
                 badge: submittedGatePhases.length
+              },
+              {
+                id: 'SETTINGS' as const,
+                label: 'Email & Admin Settings',
+                shortLabel: 'Emails & Admin',
+                icon: Mail,
+                badge: 0
               }
             ].map(tab => {
               const Icon = tab.icon;
@@ -948,6 +1180,43 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                     />
                   </div>
                 </div>
+
+                {students.length > 1 && (
+                  <div className="pt-2 border-t border-white/8 flex items-center justify-end">
+                    {!confirmDeleteStudent ? (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteStudent(true)}
+                        className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-rose-400/80 hover:text-rose-300 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Remove {activeStudent.name} from Cohort
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2 bg-rose-500/10 border border-rose-500/30 px-3 py-1.5 rounded-xl">
+                        <span className="text-[11px] font-semibold text-rose-200">
+                          Permanently delete {activeStudent.name}?
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onDeleteStudent(activeStudent.id);
+                            setConfirmDeleteStudent(false);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-rose-500 hover:bg-rose-400 text-slate-950 font-bold text-[10px] uppercase tracking-wider cursor-pointer"
+                        >
+                          Confirm Delete
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteStudent(false)}
+                          className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-slate-300 font-semibold text-[10px] cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Step 3: Add a Custom Video OR Edit Any Existing Video & Hooks Directly in Student's Queue */}
@@ -966,7 +1235,10 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                   </div>
                   <select
                     value={editingVideoId}
-                    onChange={e => handleSelectVideoToEdit(e.target.value)}
+                    onChange={e => {
+                      handleSelectVideoToEdit(e.target.value);
+                      setConfirmDeleteVideo(false);
+                    }}
                     className="rounded-xl bg-[#0B0D14] border border-white/15 px-3 py-2 text-xs font-semibold text-white focus:border-sky-400 focus:outline-none"
                   >
                     <option value="NEW">+ Add New Video to Queue</option>
@@ -1047,15 +1319,43 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-1">
-                  {students.length > 1 ? (
-                    <button
-                      type="button"
-                      onClick={() => onDeleteStudent(activeStudent.id)}
-                      className="inline-flex items-center gap-1.5 text-rose-400 hover:text-rose-300 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> Remove {activeStudent.name}
-                    </button>
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  {editingVideoId !== 'NEW' && onDeleteStudentVideo && activeStudent.supportingVideos.length > 1 ? (
+                    !confirmDeleteVideo ? (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteVideo(true)}
+                        className="inline-flex items-center gap-1.5 text-rose-400 hover:text-rose-300 cursor-pointer font-semibold"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Delete Selected Video
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2 bg-rose-500/10 border border-rose-500/30 px-3 py-1.5 rounded-xl">
+                        <span className="text-[11px] font-semibold text-rose-200">
+                          Delete this daily video & renumber queue?
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onDeleteStudentVideo(activeStudent.id, editingVideoId);
+                            handleSelectVideoToEdit('NEW');
+                            setConfirmDeleteVideo(false);
+                            setSaveBanner('Removed video and renumbered student queue.');
+                            setTimeout(() => setSaveBanner(null), 3500);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-rose-500 hover:bg-rose-400 text-slate-950 font-bold text-[10px] uppercase tracking-wider cursor-pointer"
+                        >
+                          Yes, Delete Video
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteVideo(false)}
+                          className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-slate-300 font-semibold text-[10px] cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )
                   ) : (
                     <span />
                   )}
@@ -1575,23 +1875,39 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                           </div>
                         </div>
 
-                        {!isApproved && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onApproveGate(activeStudent.id, pg.phase);
-                              setSaveBanner(`Approved Phase 0${pg.phase} Gate for ${activeStudent.name}!`);
-                              setTimeout(() => setSaveBanner(null), 3500);
-                            }}
-                            className={`w-full py-1.5 px-2 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer ${
-                              isSubmitted
-                                ? 'bg-amber-400 text-slate-950 hover:bg-amber-300'
-                                : 'bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 border border-white/10'
-                            }`}
-                          >
-                            Approve Gate 0{pg.phase}
-                          </button>
-                        )}
+                        <div className="space-y-1.5">
+                          {!isApproved && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onApproveGate(activeStudent.id, pg.phase);
+                                setSaveBanner(`Approved Phase 0${pg.phase} Gate for ${activeStudent.name}!`);
+                                setTimeout(() => setSaveBanner(null), 3500);
+                              }}
+                              className={`w-full py-1.5 px-2 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer ${
+                                isSubmitted
+                                  ? 'bg-amber-400 text-slate-950 hover:bg-amber-300'
+                                  : 'bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 border border-white/10'
+                              }`}
+                            >
+                              Approve Gate 0{pg.phase}
+                            </button>
+                          )}
+
+                          {(isSubmitted || isApproved) && onRequestGateRevision && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onRequestGateRevision(activeStudent.id, pg.phase);
+                                setSaveBanner(`Reopened Phase 0${pg.phase} Gate for revision (${activeStudent.name}).`);
+                                setTimeout(() => setSaveBanner(null), 3500);
+                              }}
+                              className="w-full py-1.5 px-2 rounded-lg text-[10px] font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/25 cursor-pointer"
+                            >
+                              {isApproved ? 'Reopen / Revoke Gate' : 'Request Revision'}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -1714,7 +2030,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                   <div className="pt-2 border-t border-white/10 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-300">
-                        Lesson {String(inspectedLesson.weekNumber).padStart(2, '0')} Execution Tasks & Rubric
+                        Lesson {String(inspectedLesson.weekNumber).padStart(2, '0')} Execution Tasks & Rubric (Click Task to Toggle)
                       </span>
                       <span className="text-xs font-bold text-[#09ADEF]">
                         {
@@ -1732,12 +2048,20 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                         const key = `${inspectedLesson.weekNumber}-${idx}`;
                         const checked = Boolean(activeStudent.tasksCompleted[key]);
                         return (
-                          <div
+                          <button
                             key={key}
-                            className={`p-3 rounded-xl border text-left text-xs flex items-start gap-2.5 ${
+                            type="button"
+                            onClick={() =>
+                              onToggleStudentTask?.(
+                                activeStudent.id,
+                                inspectedLesson.weekNumber,
+                                idx
+                              )
+                            }
+                            className={`p-3 rounded-xl border text-left text-xs flex items-start gap-2.5 transition-all cursor-pointer ${
                               checked
-                                ? 'bg-emerald-500/10 border-emerald-500/35 text-emerald-200'
-                                : 'bg-black/40 border-white/10 text-zinc-400'
+                                ? 'bg-emerald-500/10 border-emerald-500/35 text-emerald-200 hover:bg-emerald-500/15'
+                                : 'bg-black/40 border-white/10 text-zinc-400 hover:border-white/25 hover:text-zinc-200'
                             }`}
                           >
                             <span
@@ -1750,7 +2074,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                               ✓
                             </span>
                             <span className="leading-snug">{taskText}</span>
-                          </div>
+                          </button>
                         );
                       })}
                     </div>
@@ -1879,6 +2203,275 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* TAB 5: EMAIL TEMPLATES & ADMIN ACCESS SETTINGS */}
+          {coachSubTab === 'SETTINGS' && (
+            <div className="space-y-5 text-xs">
+              {/* Section A: Authorized Admin Emails & Sender Identity */}
+              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8 space-y-4">
+                <div className="flex items-center justify-between border-b border-white/8 pb-3">
+                  <div>
+                    <div className="text-xs font-bold uppercase tracking-wider text-[#09ADEF]">
+                      1. Authorized Admin Coaches & Email Sender Identity
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Manage team emails with Admin access and customize the sender details used in branded emails.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-300 mb-1">Sender Name</label>
+                    <input
+                      type="text"
+                      value={appSettings.senderName}
+                      onChange={e =>
+                        onUpdateAppSettings?.(prev => ({ ...prev, senderName: e.target.value }))
+                      }
+                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-300 mb-1">Sender Email</label>
+                    <input
+                      type="email"
+                      value={appSettings.senderEmail}
+                      onChange={e =>
+                        onUpdateAppSettings?.(prev => ({ ...prev, senderEmail: e.target.value }))
+                      }
+                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-300 mb-1">Reply-To Email</label>
+                    <input
+                      type="email"
+                      value={appSettings.replyToEmail}
+                      onChange={e =>
+                        onUpdateAppSettings?.(prev => ({ ...prev, replyToEmail: e.target.value }))
+                      }
+                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-white/8 space-y-2.5">
+                  <div className="font-semibold text-slate-300">
+                    Authorized Admin Emails ({appSettings.adminEmails.length})
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {appSettings.adminEmails.map(email => (
+                      <span
+                        key={email}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0B0D14] border border-white/12 text-xs text-slate-200"
+                      >
+                        <span>{email}</span>
+                        {appSettings.adminEmails.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onUpdateAppSettings?.(prev => ({
+                                ...prev,
+                                adminEmails: prev.adminEmails.filter(item => item !== email)
+                              }))
+                            }
+                            className="text-rose-400 hover:text-rose-300 cursor-pointer"
+                            title="Remove admin email"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 max-w-md">
+                    <input
+                      type="email"
+                      value={newAdminEmailInput}
+                      onChange={e => setNewAdminEmailInput(e.target.value)}
+                      placeholder="coach@2mmshift.com"
+                      className="flex-1 rounded-xl bg-[#0B0D14] border border-white/15 p-2 text-white focus:border-[#09ADEF] focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const clean = newAdminEmailInput.trim().toLowerCase();
+                        if (!clean || !clean.includes('@')) return;
+                        onUpdateAppSettings?.(prev => ({
+                          ...prev,
+                          adminEmails: Array.from(new Set([...prev.adminEmails, clean]))
+                        }));
+                        setNewAdminEmailInput('');
+                        setSaveBanner(`Added ${clean} to authorized Admin emails.`);
+                        setTimeout(() => setSaveBanner(null), 3500);
+                      }}
+                      className="px-3.5 py-2 rounded-xl btn-2mm text-[10px] font-bold uppercase tracking-wider cursor-pointer"
+                    >
+                      + Add Admin
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section B: 5 Branded HTML Email Templates Editor & Live Hydrated Preview */}
+              {(() => {
+                const currentTemplate =
+                  appSettings.templates.find(t => t.id === selectedTemplateId) ||
+                  appSettings.templates[0];
+                const studentMagicUrl = `${window.location.origin}/student?student=${activeStudent.id}`;
+                const previewHtml = buildBrandedEmailHtml(
+                  currentTemplate,
+                  appSettings.senderName,
+                  appSettings.senderEmail,
+                  {
+                    student_name: activeStudent.name,
+                    access_code: activeStudent.accessCode || 'SHIFT-01',
+                    lesson_number: String(activeStudent.currentWeek).padStart(2, '0'),
+                    video_title:
+                      activeStudent.supportingVideos[0]?.title || 'Day #01: Your Core Belief Shift',
+                    action_url: studentMagicUrl
+                  }
+                );
+
+                const updateCurrentTemplate = (
+                  patch: Partial<typeof currentTemplate>
+                ) => {
+                  onUpdateAppSettings?.(prev => ({
+                    ...prev,
+                    templates: prev.templates.map(t =>
+                      t.id === currentTemplate.id ? { ...t, ...patch } : t
+                    )
+                  }));
+                };
+
+                return (
+                  <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/8 pb-3">
+                      <div>
+                        <div className="text-xs font-bold uppercase tracking-wider text-[#09ADEF]">
+                          2. Branded HTML Email Templates (Hydrated for {activeStudent.name})
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Customize your 5 coaching & Supabase Auth templates and copy the production HTML with 1 click.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={currentTemplate.id}
+                          onChange={e =>
+                            setSelectedTemplateId(e.target.value as EmailTemplateConfig['id'])
+                          }
+                          className="rounded-xl bg-[#0B0D14] border border-white/15 px-3 py-2 text-xs font-semibold text-white focus:border-[#09ADEF] focus:outline-none"
+                        >
+                          {appSettings.templates.map(t => (
+                            <option key={t.id} value={t.id}>
+                              {t.name}
+                            </option>
+                          ))}
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard?.writeText(previewHtml);
+                            setSaveBanner(
+                              `Copied "${currentTemplate.name}" HTML for ${activeStudent.name}!`
+                            );
+                            setTimeout(() => setSaveBanner(null), 3500);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl btn-2mm text-[10px] font-bold uppercase tracking-wider shrink-0 cursor-pointer"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copy HTML</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-semibold text-slate-300 mb-1">
+                          Email Subject Line
+                        </label>
+                        <input
+                          type="text"
+                          value={currentTemplate.subject}
+                          onChange={e => updateCurrentTemplate({ subject: e.target.value })}
+                          className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-slate-300 mb-1">
+                          Headline Banner
+                        </label>
+                        <input
+                          type="text"
+                          value={currentTemplate.heading}
+                          onChange={e => updateCurrentTemplate({ heading: e.target.value })}
+                          className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">
+                        Body Copy (Supports{' '}
+                        <code className="text-[#09ADEF]">{'{{student_name}}'}</code>,{' '}
+                        <code className="text-[#09ADEF]">{'{{access_code}}'}</code>,{' '}
+                        <code className="text-[#09ADEF]">{'{{lesson_number}}'}</code>,{' '}
+                        <code className="text-[#09ADEF]">{'{{video_title}}'}</code>)
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={currentTemplate.body}
+                        onChange={e => updateCurrentTemplate({ body: e.target.value })}
+                        className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-semibold text-slate-300 mb-1">
+                          CTA Button Label
+                        </label>
+                        <input
+                          type="text"
+                          value={currentTemplate.ctaText}
+                          onChange={e => updateCurrentTemplate({ ctaText: e.target.value })}
+                          className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-slate-300 mb-1">
+                          Footer Signature
+                        </label>
+                        <input
+                          type="text"
+                          value={currentTemplate.footerText}
+                          onChange={e => updateCurrentTemplate({ footerText: e.target.value })}
+                          className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
+                        Live Rendered Email Preview ({activeStudent.name} · {activeStudent.email || 'No email set'})
+                      </div>
+                      <div className="rounded-xl overflow-hidden border border-white/12 bg-black">
+                        <iframe
+                          title="Branded Email Preview"
+                          srcDoc={previewHtml}
+                          className="w-full h-[380px] border-0"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>

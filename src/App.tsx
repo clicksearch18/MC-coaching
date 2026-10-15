@@ -38,6 +38,7 @@ import {
   deleteStudentFromSupabase,
   fetchLessonsFromSupabase,
   upsertLessonsToSupabase,
+  upsertSingleLessonToSupabase,
   fetchAppSettingsFromSupabase,
   upsertAppSettingsToSupabase,
   subscribeToStudentsRealtime,
@@ -52,9 +53,20 @@ const AUTH_SESSION_KEY = 'mcm_cam005_auth_session_v1';
 const LEGACY_DEMO_IDS = new Set(['student-marcus', 'student-elena', 'student-devon']);
 
 const getTodayDateISO = () => new Date().toISOString().slice(0, 10);
+const getYesterdayDateISO = () => new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
 const normalizeStudentDailyStatus = (st: StudentProfile): StudentProfile => {
   const todayISO = getTodayDateISO();
+  const yesterdayISO = getYesterdayDateISO();
+
+  if (st.lastCompletedDateISO === todayISO) {
+    return st.todayVideoStatus === 'COMPLETED' ? st : { ...st, todayVideoStatus: 'COMPLETED' };
+  }
+
+  if (st.lastCompletedDateISO && st.lastCompletedDateISO < yesterdayISO) {
+    return st.todayVideoStatus === 'MISSED' ? st : { ...st, todayVideoStatus: 'MISSED' };
+  }
+
   if (
     st.lastCompletedDateISO &&
     st.lastCompletedDateISO !== todayISO &&
@@ -140,7 +152,7 @@ export function App() {
     return { role: 'UNAUTHENTICATED' };
   });
 
-  const [roleMode, setRoleMode] = useState<'STUDENT' | 'COACH'>(() =>
+  const [, setRoleMode] = useState<'STUDENT' | 'COACH'>(() =>
     window.location.pathname.toLowerCase() === '/admin' ? 'COACH' : 'STUDENT'
   );
   const [activeTab, setActiveTab] = useState<'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'COACH'>(() =>
@@ -150,7 +162,9 @@ export function App() {
     const params = new URLSearchParams(window.location.search);
     return params.get('student') || INITIAL_STUDENTS[0].id;
   });
-  const [, setDbSyncStatus] = useState<'CONNECTING' | 'SYNCED' | 'LOCAL'>('CONNECTING');
+  const [dbSyncStatus, setDbSyncStatus] = useState<'CONNECTING' | 'SYNCING' | 'SYNCED' | 'LOCAL'>(
+    isSupabaseConfigured ? 'CONNECTING' : 'LOCAL'
+  );
   const [initialDbLoadDone, setInitialDbLoadDone] = useState(false);
 
   // Deep-link navigation targets (triggered from Chat Action pills)
@@ -222,6 +236,7 @@ export function App() {
   const scheduleSingleStudentSync = useCallback(
     (studentId: string) => {
       if (!isSupabaseConfigured) return;
+      setDbSyncStatus('SYNCING');
       if (dirtyStudentTimersRef.current[studentId]) {
         clearTimeout(dirtyStudentTimersRef.current[studentId]);
       }
@@ -272,21 +287,40 @@ export function App() {
           setStudents(normalizedInitial);
           setDbSyncStatus('SYNCED');
         } else {
+          const dirtyStudentsToUpsert: StudentProfile[] = [];
           const enriched = realRemoteStudents.map(rs => {
             const fallback = INITIAL_STUDENTS.find(i => i.id === rs.id);
             if (rs.id === 'student-josh' && rs.fullListSize === 2840 && fallback) {
-              return normalizeStudentDailyStatus(fallback);
+              const normalizedFallback = normalizeStudentDailyStatus(fallback);
+              dirtyStudentsToUpsert.push(normalizedFallback);
+              return normalizedFallback;
             }
-            return normalizeStudentDailyStatus({
+            const resolvedEmail =
+              rs.id === 'student-josh' ? 'joshbmagic@gmail.com' : rs.email || fallback?.email || '';
+            const resolvedAccessCode =
+              rs.accessCode ||
+              fallback?.accessCode ||
+              `${rs.name.split(' ')[0].toUpperCase()}-01`;
+
+            const normalized = normalizeStudentDailyStatus({
               ...rs,
-              email: rs.id === 'student-josh' ? 'joshbmagic@gmail.com' : rs.email || fallback?.email || '',
-              accessCode:
-                rs.accessCode ||
-                fallback?.accessCode ||
-                `${rs.name.split(' ')[0].toUpperCase()}-01`
+              email: resolvedEmail,
+              accessCode: resolvedAccessCode
             });
+
+            if (
+              normalized.todayVideoStatus !== rs.todayVideoStatus ||
+              normalized.email !== rs.email ||
+              normalized.accessCode !== rs.accessCode
+            ) {
+              dirtyStudentsToUpsert.push(normalized);
+            }
+            return normalized;
           });
-          await upsertStudentsToSupabase(enriched);
+
+          if (dirtyStudentsToUpsert.length > 0) {
+            await upsertStudentsToSupabase(dirtyStudentsToUpsert);
+          }
           setStudents(enriched);
           setDbSyncStatus('SYNCED');
         }
@@ -453,10 +487,7 @@ export function App() {
     } catch {
       // ignore
     }
-    if (initialDbLoadDone && isSupabaseConfigured) {
-      upsertLessonsToSupabase(lessons);
-    }
-  }, [lessons, initialDbLoadDone]);
+  }, [lessons]);
 
   useEffect(() => {
     try {
@@ -545,6 +576,12 @@ export function App() {
 
   const handleUpdateLesson = (lessonNumber: number, updated: WorkbookWeek) => {
     setLessons(prev => prev.map(l => (l.weekNumber === lessonNumber ? updated : l)));
+    if (isSupabaseConfigured) {
+      setDbSyncStatus('SYNCING');
+      upsertSingleLessonToSupabase(updated).then(ok => {
+        if (ok) setDbSyncStatus('SYNCED');
+      });
+    }
     triggerWebPushAndBanner(
       `Lesson ${lessonNumber} Updated`,
       `Your edits to Lesson ${lessonNumber} ("${updated.title}") have been saved to the app curriculum.`,
@@ -555,6 +592,12 @@ export function App() {
   const handleResetLessonsToDefault = () => {
     setLessons(WORKBOOK_WEEKS);
     localStorage.removeItem(LESSONS_STORAGE_KEY);
+    if (isSupabaseConfigured) {
+      setDbSyncStatus('SYNCING');
+      upsertLessonsToSupabase(WORKBOOK_WEEKS).then(ok => {
+        if (ok) setDbSyncStatus('SYNCED');
+      });
+    }
     triggerWebPushAndBanner(
       'Curriculum Reset',
       'All 26 lessons have been restored to the default Market Concussion Workbook curriculum.',
@@ -860,27 +903,20 @@ export function App() {
     );
   };
 
-  const handleToggleTask = (lessonNumber: number, taskIdx: number) => {
-    const key = `${lessonNumber}-${taskIdx}`;
-    updateStudent(currentStudent.id, st => ({
-      ...st,
-      tasksCompleted: {
-        ...st.tasksCompleted,
-        [key]: !st.tasksCompleted[key]
-      }
-    }));
-  };
+  const applyWorksheetUpdatesWithCoreSync = (
+    st: StudentProfile,
+    worksheetUpdates: Record<string, string>
+  ): { worksheetAnswers: Record<string, string>; coreVideos: StudentProfile['coreVideos'] } => {
+    const nextWorksheetAnswers = {
+      ...st.worksheetAnswers,
+      ...worksheetUpdates
+    };
 
-  const handleUpdateField = (fieldId: string, value: string) => {
-    updateStudent(currentStudent.id, st => {
-      const nextWorksheetAnswers = {
-        ...st.worksheetAnswers,
-        [fieldId]: value
-      };
-
-      // Two-way sync Lessons 10-13 worksheet fields (l10_doc, l11_prod, l12_proof, l13_owner) into Core Videos B1-B4
-      const coreMatch = fieldId.match(/^(l10_doc|l11_prod|l12_proof|l13_owner)_m(08_[shift]|12_thumb_cta)$/);
-      let nextCoreVideos = st.coreVideos;
+    let nextCoreVideos = st.coreVideos;
+    for (const [fieldId, value] of Object.entries(worksheetUpdates)) {
+      const coreMatch = fieldId.match(
+        /^(l10_doc|l11_prod|l12_proof|l13_owner)_m(08_[shift]|12_thumb_cta)$/
+      );
       if (coreMatch) {
         const prefix = coreMatch[1];
         const fieldSuffix = coreMatch[2];
@@ -893,7 +929,7 @@ export function App() {
             ? 'core-b3'
             : 'core-b4';
 
-        nextCoreVideos = st.coreVideos.map(cv => {
+        nextCoreVideos = nextCoreVideos.map(cv => {
           if (cv.id !== targetCoreId) return cv;
           if (fieldSuffix === '12_thumb_cta') {
             return {
@@ -914,11 +950,32 @@ export function App() {
           };
         });
       }
+    }
 
+    return {
+      worksheetAnswers: nextWorksheetAnswers,
+      coreVideos: nextCoreVideos
+    };
+  };
+
+  const handleToggleTask = (lessonNumber: number, taskIdx: number, targetStudentId?: string) => {
+    const key = `${lessonNumber}-${taskIdx}`;
+    const studentId = targetStudentId || currentStudent.id;
+    updateStudent(studentId, st => ({
+      ...st,
+      tasksCompleted: {
+        ...st.tasksCompleted,
+        [key]: !st.tasksCompleted[key]
+      }
+    }));
+  };
+
+  const handleUpdateField = (fieldId: string, value: string) => {
+    updateStudent(currentStudent.id, st => {
+      const synced = applyWorksheetUpdatesWithCoreSync(st, { [fieldId]: value });
       return {
         ...st,
-        worksheetAnswers: nextWorksheetAnswers,
-        coreVideos: nextCoreVideos
+        ...synced
       };
     });
   };
@@ -1197,6 +1254,56 @@ export function App() {
     );
   };
 
+  const handleRequestGateRevision = (studentId: string, phaseNum: number, feedback?: string) => {
+    const formattedTime = new Date().toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    const gateLessonNum =
+      phaseNum === 1 ? 4 : phaseNum === 2 ? 8 : phaseNum === 3 ? 18 : phaseNum === 4 ? 22 : 26;
+
+    updateStudent(studentId, st => {
+      const revisionMsg: ChatMessage = {
+        id: `msg-gate-revision-${Date.now()}`,
+        senderRole: 'COACH',
+        senderName: 'Coach Josh Beechraft',
+        text: `↻ PHASE 0${phaseNum} GATE REVISION REQUESTED (Lesson ${String(gateLessonNum).padStart(
+          2,
+          '0'
+        )})${feedback ? ` — "${feedback}"` : '. Please review the rubric items and resubmit when ready.'}`,
+        timestamp: formattedTime,
+        isAlert: true,
+        readByCoach: true,
+        readByStudent: false,
+        actionTarget: {
+          label: `Open Lesson ${String(gateLessonNum).padStart(2, '0')} Gate`,
+          tab: 'WORKBOOK',
+          lessonNumber: gateLessonNum
+        }
+      };
+
+      return {
+        ...st,
+        worksheetAnswers: {
+          ...st.worksheetAnswers,
+          [`phase_gate_status_${phaseNum}`]: 'OPEN'
+        },
+        gateStatus: {
+          ...st.gateStatus,
+          [phaseNum]: 'OPEN'
+        },
+        messages: [...st.messages, revisionMsg]
+      };
+    });
+
+    const target = students.find(s => s.id === studentId);
+    triggerWebPushAndBanner(
+      `Phase 0${phaseNum} Gate Reopened`,
+      `Sent revision request for Phase 0${phaseNum} Gate to ${target?.name || 'Student'}.`,
+      'MISSED_ALERT'
+    );
+  };
+
   const handleSpreadsheetUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1296,13 +1403,17 @@ export function App() {
           .slice(0, 2)
           .map(p => p[0]?.toUpperCase() || '')
           .join('') || st.avatar;
+
+      const syncedWorksheetAndCore = worksheetUpdates
+        ? applyWorksheetUpdatesWithCoreSync(st, worksheetUpdates)
+        : { worksheetAnswers: st.worksheetAnswers, coreVideos: st.coreVideos };
+
       return {
         ...st,
         ...updates,
         avatar: initials,
-        worksheetAnswers: worksheetUpdates
-          ? { ...st.worksheetAnswers, ...worksheetUpdates }
-          : st.worksheetAnswers
+        worksheetAnswers: syncedWorksheetAndCore.worksheetAnswers,
+        coreVideos: updates.coreVideos !== undefined ? updates.coreVideos : syncedWorksheetAndCore.coreVideos
       };
     });
   };
@@ -1329,6 +1440,19 @@ export function App() {
       return {
         ...st,
         supportingVideos: [...st.supportingVideos, newVideo]
+      };
+    });
+  };
+
+  const handleDeleteStudentVideo = (studentId: string, videoId: string) => {
+    updateStudent(studentId, st => {
+      if (st.supportingVideos.length <= 1) return st;
+      const remaining = st.supportingVideos
+        .filter(v => v.id !== videoId)
+        .map((v, idx) => ({ ...v, dayNumber: idx + 1 }));
+      return {
+        ...st,
+        supportingVideos: remaining
       };
     });
   };
@@ -1579,6 +1703,36 @@ export function App() {
 
             {/* Right Minimal Actions */}
             <div className="flex items-center gap-1.5 shrink-0">
+              <span
+                className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-semibold ${
+                  dbSyncStatus === 'SYNCED'
+                    ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
+                    : dbSyncStatus === 'SYNCING' || dbSyncStatus === 'CONNECTING'
+                    ? 'bg-sky-500/10 border-sky-500/25 text-sky-300'
+                    : 'bg-white/[0.04] border-white/10 text-neutral-400'
+                }`}
+                title="Database synchronization status"
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    dbSyncStatus === 'SYNCED'
+                      ? 'bg-emerald-400'
+                      : dbSyncStatus === 'SYNCING' || dbSyncStatus === 'CONNECTING'
+                      ? 'bg-sky-400 animate-pulse'
+                      : 'bg-neutral-500'
+                  }`}
+                />
+                <span>
+                  {dbSyncStatus === 'SYNCED'
+                    ? 'Synced'
+                    : dbSyncStatus === 'SYNCING'
+                    ? 'Saving...'
+                    : dbSyncStatus === 'CONNECTING'
+                    ? 'Connecting...'
+                    : 'Local'}
+                </span>
+              </span>
+
               {isAdminSession && (
                 <button
                   type="button"
@@ -1695,6 +1849,7 @@ export function App() {
               onUpdateStudentSpecifics={handleUpdateStudentSpecifics}
               onAddCustomVideoToStudent={handleAddCustomVideoToStudent}
               onEditStudentVideo={handleEditStudentVideo}
+              onDeleteStudentVideo={handleDeleteStudentVideo}
               onDeleteStudent={handleDeleteStudent}
               onSendMessage={handleSendMessage}
               onMarkMessagesRead={handleMarkMessagesRead}
@@ -1702,6 +1857,10 @@ export function App() {
               onReviewStudentVideo={handleReviewStudentVideo}
               onTriggerMissedAlertPush={handleTriggerMissedAlertPush}
               onApproveGate={handleApproveGate}
+              onRequestGateRevision={handleRequestGateRevision}
+              onToggleStudentTask={(studentId, lessonNumber, taskIdx) =>
+                handleToggleTask(lessonNumber, taskIdx, studentId)
+              }
               onOpenImportModal={() => {
                 setImportStatus(null);
                 setShowImportModal(true);
@@ -1733,6 +1892,15 @@ export function App() {
                   onClick={() => {
                     setRoleMode(item.role);
                     setActiveTab(item.id);
+                    try {
+                      if (item.id === 'COACH') {
+                        window.history.pushState({}, '', '/admin');
+                      } else {
+                        window.history.pushState({}, '', `/student?student=${activeStudentId}`);
+                      }
+                    } catch {
+                      // ignore history errors
+                    }
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                   className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all cursor-pointer ${
