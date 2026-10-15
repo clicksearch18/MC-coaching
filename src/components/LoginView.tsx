@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { ShieldCheck, UserCheck, ArrowRight, KeyRound, Mail } from 'lucide-react';
+import { ShieldCheck, UserCheck, ArrowRight, KeyRound, Mail, CheckCircle2 } from 'lucide-react';
 import { StudentProfile } from '../types';
+import { sendSupabaseMagicLinkEmail } from '../lib/supabase';
 
 interface LoginViewProps {
   students: StudentProfile[];
+  adminEmails?: string[];
   initialMode?: 'STUDENT' | 'ADMIN';
   onLoginStudent: (studentId: string) => void;
   onLoginAdmin: () => void;
@@ -11,19 +13,30 @@ interface LoginViewProps {
 
 export const LoginView: React.FC<LoginViewProps> = ({
   students,
+  adminEmails = ['joshbmagic@gmail.com'],
   initialMode = 'STUDENT',
   onLoginStudent,
   onLoginAdmin
 }) => {
   const [loginTab, setLoginTab] = useState<'STUDENT' | 'ADMIN'>(initialMode);
   const [studentIdentifier, setStudentIdentifier] = useState('');
-  const [adminEmail, setAdminEmail] = useState('');
+  const [adminEmail, setAdminEmail] = useState('joshbmagic@gmail.com');
   const [adminPasscode, setAdminPasscode] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [magicLinkSent, setMagicLinkSent] = useState<string | null>(null);
+  const [sendingLink, setSendingLink] = useState(false);
+
+  const allowedAdmins = new Set([
+    'joshbmagic@gmail.com',
+    'support@2mmshift.me',
+    'josh@marketconcussion.com',
+    ...adminEmails.map(e => e.toLowerCase().trim())
+  ]);
 
   const handleStudentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    setMagicLinkSent(null);
     const query = studentIdentifier.trim().toLowerCase();
     if (!query) {
       setErrorMsg('Enter your email or access code.');
@@ -48,12 +61,53 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const handleAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    setMagicLinkSent(null);
+    const emailClean = adminEmail.trim().toLowerCase();
+    if (emailClean && !allowedAdmins.has(emailClean)) {
+      setErrorMsg('This email is not registered as an Admin.');
+      return;
+    }
+
     const code = adminPasscode.trim().toLowerCase();
-    if (!code || (code !== 'concussion' && code !== 'admin' && code !== 'cam005')) {
+    if (
+      !code ||
+      (code !== 'concussion' &&
+        code !== 'admin' &&
+        code !== 'cam005' &&
+        code !== '2mmshift' &&
+        code !== 'concussionadmin2026!')
+    ) {
       setErrorMsg('Invalid admin passcode.');
       return;
     }
     onLoginAdmin();
+  };
+
+  const handleSendMagicLink = async (mode: 'STUDENT' | 'ADMIN') => {
+    setErrorMsg(null);
+    setMagicLinkSent(null);
+    const targetEmail = (mode === 'ADMIN' ? adminEmail : studentIdentifier).trim().toLowerCase();
+    if (!targetEmail || !targetEmail.includes('@')) {
+      setErrorMsg('Enter a valid email address first to receive a magic sign-in link.');
+      return;
+    }
+    if (mode === 'ADMIN' && !allowedAdmins.has(targetEmail)) {
+      setErrorMsg('This email is not registered as an Admin.');
+      return;
+    }
+
+    setSendingLink(true);
+    const res = await sendSupabaseMagicLinkEmail(
+      targetEmail,
+      mode === 'ADMIN' ? '/admin' : '/student'
+    );
+    setSendingLink(false);
+
+    if (res.ok) {
+      setMagicLinkSent(`Magic sign-in link sent to ${targetEmail} via support@2mmshift.me.`);
+    } else {
+      setErrorMsg(res.error || 'Could not send magic link.');
+    }
   };
 
   return (
@@ -96,6 +150,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
             onClick={() => {
               setLoginTab('STUDENT');
               setErrorMsg(null);
+              setMagicLinkSent(null);
             }}
             className={`py-2 px-3 rounded-lg text-[11px] font-bold uppercase tracking-[0.1em] flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
               loginTab === 'STUDENT'
@@ -112,6 +167,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
             onClick={() => {
               setLoginTab('ADMIN');
               setErrorMsg(null);
+              setMagicLinkSent(null);
             }}
             className={`py-2 px-3 rounded-lg text-[11px] font-bold uppercase tracking-[0.1em] flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
               loginTab === 'ADMIN'
@@ -129,6 +185,13 @@ export const LoginView: React.FC<LoginViewProps> = ({
           {errorMsg && (
             <div className="p-3 rounded-xl bg-rose-500/12 border border-rose-500/25 text-xs text-rose-200">
               {errorMsg}
+            </div>
+          )}
+
+          {magicLinkSent && (
+            <div className="p-3 rounded-xl bg-emerald-500/12 border border-emerald-500/25 text-xs text-emerald-200 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{magicLinkSent}</span>
             </div>
           )}
 
@@ -158,12 +221,21 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 <span>Enter Studio</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
+
+              <button
+                type="button"
+                disabled={sendingLink}
+                onClick={() => handleSendMagicLink('STUDENT')}
+                className="w-full py-2 text-[11px] text-neutral-400 hover:text-[#09ADEF] transition-colors cursor-pointer"
+              >
+                {sendingLink ? 'Sending Magic Sign-In Link...' : 'Or email me a Magic Sign-In Link →'}
+              </button>
             </form>
           ) : (
             <form onSubmit={handleAdminSubmit} className="space-y-4">
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF] mb-2">
-                  Coach Email
+                  Admin Email
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-neutral-500 absolute left-3.5 top-3" />
@@ -171,7 +243,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                     type="email"
                     value={adminEmail}
                     onChange={e => setAdminEmail(e.target.value)}
-                    placeholder="josh@2mmshift.com"
+                    placeholder="joshbmagic@gmail.com"
                     autoComplete="username"
                     className="w-full rounded-lg bg-[#040507] border border-white/10 pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-[#09ADEF] transition-colors"
                   />
@@ -201,6 +273,15 @@ export const LoginView: React.FC<LoginViewProps> = ({
               >
                 <span>Unlock Admin</span>
                 <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                type="button"
+                disabled={sendingLink}
+                onClick={() => handleSendMagicLink('ADMIN')}
+                className="w-full py-2 text-[11px] text-neutral-400 hover:text-[#09ADEF] transition-colors cursor-pointer"
+              >
+                {sendingLink ? 'Sending Magic Sign-In Link...' : 'Or send Magic Sign-In Link to Admin Email →'}
               </button>
             </form>
           )}

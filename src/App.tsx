@@ -12,9 +12,17 @@ import {
   LogOut,
   ShieldCheck
 } from 'lucide-react';
-import { INITIAL_STUDENTS, createNewStudentProfile } from './data/initialStudents';
+import { INITIAL_STUDENTS, createNewStudentProfile, DEFAULT_APP_SETTINGS } from './data/initialStudents';
 import { WORKBOOK_WEEKS } from './data/workbookData';
-import { StudentProfile, SupportingVideoItem, ShiftMagnet, WorkbookWeek, PlaybookPillar, CoachReviewStatus } from './types';
+import {
+  StudentProfile,
+  SupportingVideoItem,
+  ShiftMagnet,
+  WorkbookWeek,
+  PlaybookPillar,
+  CoachReviewStatus,
+  AppEmailAndAdminSettings
+} from './types';
 import { DailyCadenceView } from './components/DailyCadenceView';
 import { WorkbookView } from './components/WorkbookView';
 import { ShiftMagnetsView } from './components/ShiftMagnetsView';
@@ -28,11 +36,14 @@ import {
   deleteStudentFromSupabase,
   fetchLessonsFromSupabase,
   upsertLessonsToSupabase,
+  fetchAppSettingsFromSupabase,
+  upsertAppSettingsToSupabase,
   isSupabaseConfigured
 } from './lib/supabase';
 
-const STORAGE_KEY = 'mcm_cam005_students_v4_clean';
+const STORAGE_KEY = 'mcm_cam005_students_v5_clean';
 const LESSONS_STORAGE_KEY = 'mcm_cam005_lessons_v2';
+const SETTINGS_STORAGE_KEY = 'mcm_cam005_settings_v1';
 const AUTH_SESSION_KEY = 'mcm_cam005_auth_session_v1';
 const LEGACY_DEMO_IDS = new Set(['student-marcus', 'student-elena', 'student-devon']);
 
@@ -67,6 +78,16 @@ export function App() {
       // ignore
     }
     return WORKBOOK_WEEKS;
+  });
+
+  const [appSettings, setAppSettings] = useState<AppEmailAndAdminSettings>(() => {
+    try {
+      const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return DEFAULT_APP_SETTINGS;
   });
 
   const [authSession, setAuthSession] = useState<AuthSession>(() => {
@@ -128,9 +149,10 @@ export function App() {
 
     let cancelled = false;
     (async () => {
-      const [remoteStudents, remoteLessons] = await Promise.all([
+      const [remoteStudents, remoteLessons, remoteSettings] = await Promise.all([
         fetchStudentsFromSupabase(),
-        fetchLessonsFromSupabase()
+        fetchLessonsFromSupabase(),
+        fetchAppSettingsFromSupabase()
       ]);
       if (cancelled) return;
 
@@ -152,13 +174,12 @@ export function App() {
         } else {
           const enriched = realRemoteStudents.map(rs => {
             const fallback = INITIAL_STUDENTS.find(i => i.id === rs.id);
-            // If student-josh still has old demo stats (2840 fullListSize / 165 minutes), reset to clean INITIAL_STUDENTS[0]
             if (rs.id === 'student-josh' && rs.fullListSize === 2840 && fallback) {
               return fallback;
             }
             return {
               ...rs,
-              email: rs.email || fallback?.email || '',
+              email: rs.id === 'student-josh' ? 'joshbmagic@gmail.com' : rs.email || fallback?.email || '',
               accessCode:
                 rs.accessCode ||
                 fallback?.accessCode ||
@@ -175,6 +196,20 @@ export function App() {
         setLessons(remoteLessons);
       } else if (remoteLessons !== null) {
         await upsertLessonsToSupabase(WORKBOOK_WEEKS);
+      }
+
+      if (remoteSettings) {
+        const mergedAdmins = Array.from(
+          new Set(['joshbmagic@gmail.com', ...(remoteSettings.adminEmails || [])])
+        );
+        setAppSettings({
+          ...DEFAULT_APP_SETTINGS,
+          ...remoteSettings,
+          adminEmails: mergedAdmins,
+          senderEmail: remoteSettings.senderEmail || 'support@2mmshift.me'
+        });
+      } else {
+        await upsertAppSettingsToSupabase(DEFAULT_APP_SETTINGS);
       }
 
       setInitialDbLoadDone(true);
@@ -208,6 +243,17 @@ export function App() {
       upsertLessonsToSupabase(lessons);
     }
   }, [lessons, initialDbLoadDone]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(appSettings));
+    } catch {
+      // ignore
+    }
+    if (initialDbLoadDone && isSupabaseConfigured) {
+      upsertAppSettingsToSupabase(appSettings);
+    }
+  }, [appSettings, initialDbLoadDone]);
 
   const currentStudent = students.find(s => s.id === activeStudentId) || students[0];
 
@@ -680,6 +726,7 @@ export function App() {
     return (
       <LoginView
         students={students}
+        adminEmails={appSettings.adminEmails}
         initialMode={initialMode}
         onLoginStudent={handleLoginStudent}
         onLoginAdmin={handleLoginAdmin}
@@ -954,6 +1001,8 @@ export function App() {
               students={students}
               selectedStudentId={activeStudentId}
               onSelectStudent={setActiveStudentId}
+              appSettings={appSettings}
+              onUpdateAppSettings={setAppSettings}
               onAddStudent={handleAddStudent}
               onUpdateStudentSpecifics={handleUpdateStudentSpecifics}
               onAddCustomVideoToStudent={handleAddCustomVideoToStudent}

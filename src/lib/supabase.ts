@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { StudentProfile, WorkbookWeek } from '../types';
+import { StudentProfile, WorkbookWeek, AppEmailAndAdminSettings } from '../types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseKey =
@@ -73,6 +73,7 @@ export async function fetchLessonsFromSupabase(): Promise<WorkbookWeek[] | null>
     const { data, error } = await supabase
       .from('mc_lessons')
       .select('week_number, lesson')
+      .gte('week_number', 1)
       .order('week_number', { ascending: true });
 
     if (error) {
@@ -106,5 +107,68 @@ export async function upsertLessonsToSupabase(lessons: WorkbookWeek[]): Promise<
     return !error;
   } catch {
     return false;
+  }
+}
+
+export async function fetchAppSettingsFromSupabase(): Promise<AppEmailAndAdminSettings | null> {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from('mc_lessons')
+      .select('lesson')
+      .eq('week_number', 0)
+      .maybeSingle();
+
+    if (error || !data || !data.lesson) {
+      return null;
+    }
+    const raw = data.lesson as Partial<AppEmailAndAdminSettings>;
+    if (!raw.senderEmail || !Array.isArray(raw.templates)) {
+      return null;
+    }
+    return raw as AppEmailAndAdminSettings;
+  } catch {
+    return null;
+  }
+}
+
+export async function upsertAppSettingsToSupabase(settings: AppEmailAndAdminSettings): Promise<boolean> {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase.from('mc_lessons').upsert(
+      {
+        week_number: 0,
+        lesson: settings,
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: 'week_number' }
+    );
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function sendSupabaseMagicLinkEmail(
+  email: string,
+  redirectPath = '/student'
+): Promise<{ ok: boolean; error?: string }> {
+  if (!supabase) {
+    return { ok: false, error: 'Supabase is not configured.' };
+  }
+  try {
+    const redirectTo = `${window.location.origin}${redirectPath}`;
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: {
+        emailRedirectTo: redirectTo
+      }
+    });
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Failed to send magic link' };
   }
 }

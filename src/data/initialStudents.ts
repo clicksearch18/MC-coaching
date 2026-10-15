@@ -1,6 +1,13 @@
 import initialPlanJson from './initial_content_plan.json';
 import { CORE_BRAND_VIDEOS_TEMPLATE } from './workbookData';
-import { StudentProfile, SupportingVideoItem, PlaybookPillar, ShiftMagnet } from '../types';
+import {
+  StudentProfile,
+  SupportingVideoItem,
+  PlaybookPillar,
+  ShiftMagnet,
+  AppEmailAndAdminSettings,
+  EmailTemplateConfig
+} from '../types';
 
 const defaultShiftMagnets: ShiftMagnet[] = [
   {
@@ -73,7 +80,7 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
   {
     id: 'student-josh',
     name: 'Josh Beechraft',
-    email: 'josh@marketconcussion.com',
+    email: 'joshbmagic@gmail.com',
     accessCode: 'JOSH-01',
     company: '2mmShift / Market Concussion',
     avatar: 'JB',
@@ -108,6 +115,158 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     messages: []
   }
 ];
+
+export const DEFAULT_APP_SETTINGS: AppEmailAndAdminSettings = {
+  adminEmails: ['joshbmagic@gmail.com'],
+  senderEmail: 'support@2mmshift.me',
+  senderName: 'Josh Beechraft · 2mmShift',
+  replyToEmail: 'support@2mmshift.me',
+  smtpHost: 'smtp.resend.com',
+  smtpPort: '465',
+  smtpUser: 'support@2mmshift.me',
+  templates: [
+    {
+      id: 'WELCOME_INVITE',
+      name: '1. Student Onboarding & Studio Invite',
+      supabaseType: 'Supabase Auth · Invite User Template',
+      subject: 'Welcome to Market Concussion — Your 2mmShift Studio Access',
+      heading: 'WELCOME TO THE MACHINE, {{student_name}}.',
+      body: 'Your personalized 50-Item Concussion Content plan, 15 Core Playbook Pillars, and Lesson {{lesson_number}} Workbook are live.\n\nUse your Access Code ({{access_code}}) or click below to enter your Studio and film Day #01 in under 10 minutes.',
+      ctaText: 'ENTER YOUR STUDIO →',
+      footerText: 'Sent by Josh Beechraft · 2mmShift Architect (support@2mmshift.me)'
+    },
+    {
+      id: 'MAGIC_LINK',
+      name: '2. Magic Link Sign-In',
+      supabaseType: 'Supabase Auth · Magic Link Template',
+      subject: 'Your 2mmShift Studio Sign-In Link',
+      heading: 'UNLOCK YOUR 2MMSHIFT STUDIO.',
+      body: 'Click the button below to sign directly into your Market Concussion Studio. No password required.',
+      ctaText: 'SIGN IN TO STUDIO →',
+      footerText: 'Sent by Josh Beechraft · 2mmShift Architect (support@2mmshift.me)'
+    },
+    {
+      id: 'VIDEO_REVIEW',
+      name: '3. Coach Video Review & Feedback Notes',
+      supabaseType: 'Coaching Notification · Video Review Queue',
+      subject: 'Coach Review [{{review_status}}]: {{video_title}}',
+      heading: 'COACH JOSH REVIEWED YOUR VIDEO.',
+      body: 'Video Reviewed: {{video_title}}\nDecision: {{review_status}}\n\nTHE SHIFT · COACH NOTES:\n"{{coach_notes}}"',
+      ctaText: 'VIEW NOTES IN STUDIO →',
+      footerText: 'Sent by Josh Beechraft · 2mmShift Architect (support@2mmshift.me)'
+    },
+    {
+      id: 'DAILY_PROMPT',
+      name: '4. Daily <10-Minute Concussion Content Prompt',
+      supabaseType: 'Coaching Notification · Daily Studio Cadence',
+      subject: 'Today’s <10-Min Video: {{video_title}}',
+      heading: 'TODAY’S CONCUSSION CONTENT IS QUEUED.',
+      body: 'Your next daily video ("{{video_title}}") is ready in your Studio with 3 pre-written hooks.\n\nPick Hook 1, 2, or 3, shoot in 5 takes (<10 mins), and paste your verified link.',
+      ctaText: 'OPEN 10-MINUTE STUDIO →',
+      footerText: 'Sent by Josh Beechraft · 2mmShift Architect (support@2mmshift.me)'
+    },
+    {
+      id: 'MISSED_NUDGE',
+      name: '5. Missed Video Accountability Nudge',
+      supabaseType: 'Coaching Notification · Cadence Alert',
+      subject: 'Quick Check-In: Let’s Protect Your Daily Cadence',
+      heading: 'DON’T LET THE MACHINE COOL DOWN.',
+      body: 'Hey {{student_name}} — noticed we haven’t logged your daily video link today. Remember: consistency beats perfection, and the 5-Takes Guide gets it done in under 10 minutes. Need help with the hook?',
+      ctaText: 'RESUME DAILY CADENCE →',
+      footerText: 'Sent by Josh Beechraft · 2mmShift Architect (support@2mmshift.me)'
+    }
+  ]
+};
+
+export function buildBrandedEmailHtml(
+  template: EmailTemplateConfig,
+  senderName: string,
+  senderEmail: string,
+  variables?: Record<string, string>
+): string {
+  const replaceVars = (str: string) => {
+    let out = str;
+    const defaults: Record<string, string> = {
+      student_name: 'Operator',
+      access_code: 'SHIFT-01',
+      lesson_number: '01',
+      video_title: 'Day #01: Your Core Belief Shift',
+      review_status: '✓ APPROVED',
+      coach_notes: 'Strong hook and clear delivery — approved for your $5/day ad sequence!',
+      action_url: '{{ .ConfirmationURL }}',
+      ...variables
+    };
+    for (const [k, v] of Object.entries(defaults)) {
+      out = out.replace(new RegExp(`\\{\\{\\s*${k}\\s*\\}\\}`, 'g'), v);
+    }
+    return out;
+  };
+
+  const resolvedHeading = replaceVars(template.heading);
+  const resolvedBody = replaceVars(template.body).replace(/\n/g, '<br/>');
+  const resolvedCta = replaceVars(template.ctaText);
+  const resolvedFooter = replaceVars(template.footerText);
+  const actionUrl = variables?.action_url || '{{ .ConfirmationURL }}';
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${replaceVars(template.subject)}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#000000;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;color:#FFFFFF;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#000000;padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#040507;border:1px solid rgba(255,255,255,0.09);border-radius:16px;padding:36px 32px;">
+          <tr>
+            <td style="padding-bottom:24px;border-bottom:1px solid rgba(255,255,255,0.07);">
+              <div style="font-size:22px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;">
+                <span style="color:#09ADEF;">JOSH</span> <span style="color:#FFFFFF;">BEECHRAFT</span>
+              </div>
+              <div style="font-size:10px;font-weight:700;letter-spacing:0.22em;color:#8E95A5;text-transform:uppercase;margin-top:4px;">
+                2MMSHIFT ARCHITECT · ${senderEmail}
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding-top:28px;padding-bottom:16px;">
+              <div style="font-size:10px;font-weight:700;letter-spacing:0.2em;color:#09ADEF;text-transform:uppercase;margin-bottom:8px;">
+                MARKET CONCUSSION STUDIO
+              </div>
+              <h1 style="margin:0;font-size:28px;font-weight:800;letter-spacing:0.02em;text-transform:uppercase;color:#FFFFFF;line-height:1.15;">
+                ${resolvedHeading}
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding-bottom:28px;">
+              <div style="border-left:2px solid #09ADEF;padding-left:16px;font-size:14px;line-height:1.65;color:#E4E4E7;">
+                ${resolvedBody}
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding-bottom:32px;">
+              <a href="${actionUrl}" style="display:inline-block;background-color:#09ADEF;color:#FFFFFF;font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;text-decoration:none;padding:14px 28px;border-radius:8px;">
+                ${resolvedCta}
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding-top:20px;border-top:1px solid rgba(255,255,255,0.07);font-size:11px;color:#71717A;line-height:1.5;">
+              ${resolvedFooter}<br/>
+              From: ${senderName} &lt;${senderEmail}&gt;
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
 
 export function createNewStudentProfile(params: {
   name: string;
@@ -183,3 +342,4 @@ export function createNewStudentProfile(params: {
     messages: []
   };
 }
+

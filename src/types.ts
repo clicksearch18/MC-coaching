@@ -174,3 +174,26 @@ export interface StudentProfile {
   shiftMagnets: ShiftMagnet[];
   messages: ChatMessage[];
 }
+
+export interface EmailTemplateConfig {
+  id: 'WELCOME_INVITE' | 'MAGIC_LINK' | 'VIDEO_REVIEW' | 'DAILY_PROMPT' | 'MISSED_NUDGE';
+  name: string;
+  supabaseType: string;
+  subject: string;
+  heading: string;
+  body: string;
+  ctaText: string;
+  footerText: string;
+}
+
+export interface AppEmailAndAdminSettings {
+  adminEmails: string[];
+  senderEmail: string;
+  senderName: string;
+  replyToEmail: string;
+  smtpHost: string;
+  smtpPort: string;
+  smtpUser: string;
+  templates: EmailTemplateConfig[];
+}
+
