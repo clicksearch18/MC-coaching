@@ -20,6 +20,7 @@ export interface PlaybookPillar {
 export interface SupportingVideoItem {
   id: string;
   dayNumber: number;
+  pillarId?: string;
   pillarStage: string;
   title: string;
   hook1: string;

@@ -12,7 +12,10 @@ import {
   Pencil,
   Plus,
   Trash2,
-  RotateCcw
+  RotateCcw,
+  Magnet,
+  Sparkles,
+  Layers
 } from 'lucide-react';
 import { WorkbookWeek, StudentProfile } from '../types';
 import { ModalDialog } from './ModalDialog';
@@ -28,6 +31,7 @@ interface WorkbookViewProps {
   onUpdateRubric: (key: string, score: 'WEAK' | 'ACCEPTABLE' | 'STRONG') => void;
   onSubmitPhaseGate: (phaseNumber: number, nextLesson: number) => void;
   onCompleteLesson?: (lessonNumber: number, nextLesson: number) => void;
+  onSyncShiftMagnetFromLesson21?: () => void;
   requestedLessonNumber?: number | null;
   onClearRequestedLesson?: () => void;
 }
@@ -51,6 +55,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
   onUpdateRubric,
   onSubmitPhaseGate,
   onCompleteLesson,
+  onSyncShiftMagnetFromLesson21,
   requestedLessonNumber,
   onClearRequestedLesson
 }) => {
@@ -60,12 +65,17 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
   const [worksheetSlideIdx, setWorksheetSlideIdx] = useState<number>(0);
   const [figureSlideIdx, setFigureSlideIdx] = useState<number>(0);
+  const [showAllFieldsOnOnePage, setShowAllFieldsOnOnePage] = useState<boolean>(false);
+  const [confirmResetCurriculum, setConfirmResetCurriculum] = useState<boolean>(false);
+  const [confirmIncompleteAdvance, setConfirmIncompleteAdvance] = useState<boolean>(false);
+  const [magnetSyncSaved, setMagnetSyncSaved] = useState<boolean>(false);
 
   React.useEffect(() => {
     if (requestedLessonNumber && requestedLessonNumber >= 1 && requestedLessonNumber <= 26) {
       setSelectedLessonNum(requestedLessonNumber);
       setWorksheetSlideIdx(0);
       setFigureSlideIdx(0);
+      setConfirmIncompleteAdvance(false);
       setActivePanel('LESSON');
       onClearRequestedLesson?.();
     }
@@ -74,8 +84,12 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
   const activeLesson = lessons.find(w => w.weekNumber === selectedLessonNum) || lessons[0];
   const lessonsInCurrentPhase = lessons.filter(w => w.phase === activeLesson.phase);
 
-  // Build 1-Panel Worksheet Slides (each section is 1 panel; if a section has >5 fields, chunk by 5)
+  // Build Worksheet Slides (each section is 1 panel; chunk threshold raised to 10 so 9-field S.H.I.F.T. Script Sheets stay together; or 1-page mode)
   const worksheetSlides = React.useMemo(() => {
+    if (showAllFieldsOnOnePage) {
+      return [{ title: `${activeLesson.moduleTitle} · All Fields`, fields: activeLesson.fields }];
+    }
+
     const rawSections = Array.from(
       new Set(activeLesson.fields.map(f => f.section || 'Worksheet Prompts'))
     );
@@ -85,10 +99,10 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
       const secFields = activeLesson.fields.filter(
         f => (f.section || 'Worksheet Prompts') === secName
       );
-      if (secFields.length <= 5) {
+      const chunkSize = 10;
+      if (secFields.length <= chunkSize) {
         slides.push({ title: secName, fields: secFields });
       } else {
-        const chunkSize = 5;
         const totalParts = Math.ceil(secFields.length / chunkSize);
         for (let i = 0; i < secFields.length; i += chunkSize) {
           const partNum = Math.floor(i / chunkSize) + 1;
@@ -103,7 +117,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
     return slides.length > 0
       ? slides
       : [{ title: 'Worksheet Prompts', fields: activeLesson.fields }];
-  }, [activeLesson.fields]);
+  }, [activeLesson.fields, activeLesson.moduleTitle, showAllFieldsOnOnePage]);
 
   const safeSlideIdx = Math.min(worksheetSlideIdx, Math.max(0, worksheetSlides.length - 1));
   const currentWorksheetSlide = worksheetSlides[safeSlideIdx] || worksheetSlides[0];
@@ -117,6 +131,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
 
   const openEditor = () => {
     setDraftLesson(JSON.parse(JSON.stringify(activeLesson)));
+    setConfirmResetCurriculum(false);
     setShowEditModal(true);
   };
 
@@ -137,6 +152,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
     setSelectedLessonNum(num);
     setWorksheetSlideIdx(0);
     setFigureSlideIdx(0);
+    setConfirmIncompleteAdvance(false);
     setActivePanel('LESSON');
   };
 
@@ -582,29 +598,75 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
             </div>
           )}
 
-          {/* SEQUENTIAL PANEL 2: 1-PANEL WORKSHEET SLIDER (NO LONG VERTICAL SCROLLS) */}
+          {/* SEQUENTIAL PANEL 2: WORKSHEET SLIDER OR 1-PAGE VIEW */}
           {activePanel === 'WORKSHEET' && currentWorksheetSlide && (
             <div className="glass-panel rounded-2xl p-5 sm:p-7 space-y-5">
               {/* Top Header */}
               <div className="flex flex-wrap items-center justify-between gap-2.5 pb-4 border-b border-white/[0.07]">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
-                    LESSON {activeLesson.weekNumber} WORKSHEET · {lessonFieldsFilledCount}/{activeLesson.fields.length} FIELDS COMPLETED
-                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                      LESSON {activeLesson.weekNumber} WORKSHEET · {lessonFieldsFilledCount}/{activeLesson.fields.length} FIELDS COMPLETED
+                    </span>
+                    {[10, 11, 12, 13].includes(activeLesson.weekNumber) && (
+                      <span className="px-2 py-0.5 rounded bg-[#09ADEF]/10 border border-[#09ADEF]/30 text-[10px] font-semibold text-[#09ADEF]">
+                        ⇄ Two-Way Synced with Core Video B{activeLesson.weekNumber - 9} in Video Studio
+                      </span>
+                    )}
+                  </div>
                   <h2 className="font-display text-2xl sm:text-3xl text-white mt-0.5 tracking-wide">
                     {activeLesson.moduleTitle}
                   </h2>
                 </div>
 
-                {activeLesson.workedExample && (
-                  <button
-                    type="button"
-                    onClick={() => setShowWorkedExample(v => !v)}
-                    className="badge-2mm px-3 py-1.5 rounded-full text-[10px] cursor-pointer"
-                  >
-                    {showWorkedExample ? 'Hide Example' : 'Worked Example'}
-                  </button>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  {activeLesson.fields.length > 5 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAllFieldsOnOnePage(v => !v);
+                        setWorksheetSlideIdx(0);
+                      }}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wider cursor-pointer transition ${
+                        showAllFieldsOnOnePage
+                          ? 'bg-[#09ADEF]/20 border-[#09ADEF] text-white'
+                          : 'bg-[#040507] border-white/15 text-neutral-300 hover:text-white'
+                      }`}
+                    >
+                      <Layers className="w-3 h-3 text-[#09ADEF]" />
+                      <span>{showAllFieldsOnOnePage ? 'Slider View' : 'All on 1 Page'}</span>
+                    </button>
+                  )}
+
+                  {activeLesson.weekNumber === 21 && onSyncShiftMagnetFromLesson21 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSyncShiftMagnetFromLesson21();
+                        setMagnetSyncSaved(true);
+                        setTimeout(() => setMagnetSyncSaved(false), 3500);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold uppercase tracking-wider cursor-pointer"
+                    >
+                      <Magnet className="w-3 h-3" />
+                      <span>
+                        {magnetSyncSaved
+                          ? '✓ Synced to Studio CTA!'
+                          : 'Sync to Shift Magnets & Studio CTA'}
+                      </span>
+                    </button>
+                  )}
+
+                  {activeLesson.workedExample && (
+                    <button
+                      type="button"
+                      onClick={() => setShowWorkedExample(v => !v)}
+                      className="badge-2mm px-3 py-1.5 rounded-full text-[10px] cursor-pointer"
+                    >
+                      {showWorkedExample ? 'Hide Example' : 'Worked Example'}
+                    </button>
+                  )}
+                </div>
               </div>
 
               {activeLesson.workedExample && showWorkedExample && (
@@ -622,6 +684,89 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* Collapsible Foundation & Story Bank Reference Bar for Scripting & VSL Lessons (8, 10–18) */}
+              {[8, 10, 11, 12, 13, 14, 15, 16, 17, 18].includes(activeLesson.weekNumber) && (
+                <details className="group rounded-xl bg-[#040507] border border-white/[0.08] p-3.5">
+                  <summary className="text-xs font-semibold text-neutral-200 cursor-pointer flex items-center justify-between list-none">
+                    <span className="flex items-center gap-2">
+                      <Sparkles className="w-3.5 h-3.5 text-[#09ADEF]" />
+                      <span>
+                        Your Foundation Messaging & Top 8 Story Bank Reference (Lessons 2–6)
+                      </span>
+                    </span>
+                    <span className="text-[#09ADEF] text-[11px] group-open:rotate-90 transition-transform">▸</span>
+                  </summary>
+                  <div className="mt-3 pt-3 border-t border-white/[0.07] space-y-3 text-xs">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                      <div className="p-2.5 rounded-lg bg-black border border-white/10">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF]">
+                          Q1 · Core Transformation
+                        </div>
+                        <p className="text-neutral-200 mt-1 leading-relaxed">
+                          {student.worksheetAnswers['m02_q1_transformation'] ||
+                            'Not yet filled in Lesson 2'}
+                        </p>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-black border border-white/10">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF]">
+                          Q4 · Core Belief Statement
+                        </div>
+                        <p className="text-neutral-200 mt-1 leading-relaxed">
+                          {student.worksheetAnswers['m02_q4_belief'] ||
+                            'Not yet filled in Lesson 2'}
+                        </p>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-black border border-white/10">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF]">
+                          Q7 · Unique Mechanism & Proof
+                        </div>
+                        <p className="text-neutral-200 mt-1 leading-relaxed">
+                          {student.worksheetAnswers['m02_q7_mechanism'] ||
+                            student.worksheetAnswers['m03_proof'] ||
+                            'Not yet filled in Lesson 4'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                        Top 8 Story Bank (Lesson 6):
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                        {[
+                          {
+                            num: 1,
+                            title: student.worksheetAnswers['m05_title'],
+                            snippet:
+                              student.worksheetAnswers['m05_20s'] ||
+                              student.worksheetAnswers['m05_90s']
+                          },
+                          ...[2, 3, 4, 5, 6, 7, 8].map(n => ({
+                            num: n,
+                            title: student.worksheetAnswers[`m05_s${n}_header`],
+                            snippet: student.worksheetAnswers[`m05_s${n}_lengths`]
+                          }))
+                        ].map(st => (
+                          <div
+                            key={st.num}
+                            className="p-2 rounded-lg bg-black border border-white/10 text-[11px]"
+                          >
+                            <div className="font-semibold text-white truncate">
+                              #{st.num}: {st.title || 'Untitled Story'}
+                            </div>
+                            {st.snippet && (
+                              <div className="text-neutral-400 line-clamp-2 mt-0.5">
+                                {st.snippet}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </details>
               )}
 
               {/* 1-Panel Slider Controls when there are multiple worksheet panels */}
@@ -701,7 +846,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 </div>
               )}
 
-              {/* SINGLE ACTIVE WORKSHEET PANEL (Max 5 fields on screen at once) */}
+              {/* ACTIVE WORKSHEET PANEL */}
               <div className="p-4 sm:p-6 rounded-2xl bg-[#040507] border border-white/[0.08] space-y-4">
                 <div className="flex items-center justify-between border-b border-white/[0.07] pb-3">
                   <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
@@ -720,11 +865,53 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 <div className="space-y-4">
                   {currentWorksheetSlide.fields.map(field => {
                     const val = student.worksheetAnswers[field.id] || '';
+                    // Detect Lessons 14-17 Expert Demo script fields (l14_v01_script .. l17_v20_script) and link to Lesson 7 Matrix cell
+                    const demoMatch = field.id.match(/^l1[4-7]_v(\d{2})_script$/);
+                    const matrixCellNum = demoMatch ? demoMatch[1] : null;
+                    const linkedMatrixTitle = matrixCellNum
+                      ? student.worksheetAnswers[`m06_cell_${matrixCellNum}`]?.trim()
+                      : null;
+                    const topicIndex = matrixCellNum ? Math.ceil(Number(matrixCellNum) / 4) : null;
+                    const linkedTopicName = topicIndex
+                      ? student.worksheetAnswers[`m06_topic${topicIndex}`]?.trim()
+                      : null;
+
                     return (
                       <div key={field.id} className="space-y-1.5">
-                        <label htmlFor={field.id} className="block text-xs font-semibold text-neutral-200">
-                          {field.label}
-                        </label>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <label htmlFor={field.id} className="block text-xs font-semibold text-neutral-200">
+                            {field.label}
+                          </label>
+                          {matrixCellNum && (
+                            <div className="flex flex-wrap items-center gap-2">
+                              {linkedMatrixTitle ? (
+                                <span className="px-2 py-0.5 rounded bg-[#09ADEF]/10 border border-[#09ADEF]/30 text-[10px] font-medium text-[#09ADEF]">
+                                  Lesson 7 Title: “{linkedMatrixTitle}”
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-neutral-500">
+                                  (Lesson 7 Cell #{matrixCellNum} not yet titled)
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const headerLine = linkedMatrixTitle
+                                    ? `WORKING TITLE: ${linkedMatrixTitle}${linkedTopicName ? ` (${linkedTopicName})` : ''}`
+                                    : `DEMO VIDEO #${matrixCellNum}`;
+                                  const template = `${headerLine}\n• S (Signal Hook): \n• H (Humanize + Keyword): \n• I (Illuminate Old Belief): \n• F (Formulate 2mm Shift): \n• T (Transfer CTA): \n• Published URL: `;
+                                  onUpdateField(
+                                    field.id,
+                                    val.trim() ? `${headerLine}\n${val}` : template
+                                  );
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-[#09ADEF]/20 border border-white/15 hover:border-[#09ADEF]/40 text-[10px] font-bold uppercase tracking-wider text-white cursor-pointer transition"
+                              >
+                                + Insert S.H.I.F.T. Template
+                              </button>
+                            </div>
+                          )}
+                        </div>
                         {field.multiline ? (
                           <textarea
                             id={field.id}
@@ -967,6 +1154,33 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 </div>
               )}
 
+              {/* Readiness Warning when Worksheet fields are incomplete */}
+              {confirmIncompleteAdvance && lessonFieldsFilledCount < activeLesson.fields.length && (
+                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/35 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold uppercase tracking-wider text-amber-300">
+                        Worksheet Incomplete ({lessonFieldsFilledCount} of {activeLesson.fields.length} fields filled)
+                      </div>
+                      <p className="text-neutral-200 mt-0.5">
+                        You still have blank worksheet prompts in Lesson {activeLesson.weekNumber}. Click the button again to advance anyway, or return to the Worksheet to finish.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmIncompleteAdvance(false);
+                      setActivePanel('WORKSHEET');
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-200 font-bold uppercase tracking-wider shrink-0 cursor-pointer"
+                  >
+                    Fill Worksheet
+                  </button>
+                </div>
+              )}
+
               <div className="pt-4 border-t border-white/8 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <button
                   type="button"
@@ -980,6 +1194,14 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                   <button
                     type="button"
                     onClick={() => {
+                      if (
+                        lessonFieldsFilledCount < activeLesson.fields.length &&
+                        !confirmIncompleteAdvance
+                      ) {
+                        setConfirmIncompleteAdvance(true);
+                        return;
+                      }
+                      setConfirmIncompleteAdvance(false);
                       const nextNum = Math.min(26, activeLesson.weekNumber + 1);
                       onSubmitPhaseGate(activeLesson.phase, nextNum);
                       setSelectedLessonNum(nextNum);
@@ -988,8 +1210,10 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                     className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-semibold text-sm cursor-pointer shadow-lg shadow-amber-500/20"
                   >
                     <span>
-                      {student.gateStatus?.[activeLesson.phase] === 'SUBMITTED' ||
-                      student.gateStatus?.[activeLesson.phase] === 'APPROVED'
+                      {confirmIncompleteAdvance
+                        ? `Confirm & Submit Phase 0${activeLesson.phase} Gate Anyway`
+                        : student.gateStatus?.[activeLesson.phase] === 'SUBMITTED' ||
+                          student.gateStatus?.[activeLesson.phase] === 'APPROVED'
                         ? `◆ Resubmit Phase 0${activeLesson.phase} Gate & Open Lesson ${Math.min(26, activeLesson.weekNumber + 1)}`
                         : `◆ Submit Phase 0${activeLesson.phase} Gate for Coach Sign-Off`}
                     </span>
@@ -999,6 +1223,17 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                   <button
                     type="button"
                     onClick={() => {
+                      if (
+                        lessonFieldsFilledCount < activeLesson.fields.length &&
+                        !confirmIncompleteAdvance
+                      ) {
+                        setConfirmIncompleteAdvance(true);
+                        return;
+                      }
+                      setConfirmIncompleteAdvance(false);
+                      if (activeLesson.weekNumber === 21 && onSyncShiftMagnetFromLesson21) {
+                        onSyncShiftMagnetFromLesson21();
+                      }
                       const nextNum = Math.min(26, activeLesson.weekNumber + 1);
                       onCompleteLesson?.(activeLesson.weekNumber, nextNum);
                       setSelectedLessonNum(nextNum);
@@ -1007,8 +1242,9 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                     className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-semibold text-sm cursor-pointer shadow-lg shadow-emerald-500/20"
                   >
                     <span>
-                      Complete Lesson {activeLesson.weekNumber} & Advance to Lesson{' '}
-                      {Math.min(26, activeLesson.weekNumber + 1)}
+                      {confirmIncompleteAdvance
+                        ? `Confirm & Advance to Lesson ${Math.min(26, activeLesson.weekNumber + 1)} Anyway`
+                        : `Complete Lesson ${activeLesson.weekNumber} & Advance to Lesson ${Math.min(26, activeLesson.weekNumber + 1)}`}
                     </span>
                     <ChevronRight className="w-4 h-4" />
                   </button>
@@ -1258,16 +1494,36 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
           </div>
 
           <div className="pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                onResetLessonsToDefault();
-                setShowEditModal(false);
-              }}
-              className="inline-flex items-center gap-1.5 text-slate-400 hover:text-white cursor-pointer"
-            >
-              <RotateCcw className="w-3.5 h-3.5" /> Reset All 26 Lessons to Default
-            </button>
+            {confirmResetCurriculum ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onResetLessonsToDefault();
+                    setConfirmResetCurriculum(false);
+                    setShowEditModal(false);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  Confirm Reset All 26 Lessons
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmResetCurriculum(false)}
+                  className="text-slate-400 hover:text-white cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmResetCurriculum(true)}
+                className="inline-flex items-center gap-1.5 text-slate-400 hover:text-rose-300 cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> Reset All 26 Lessons to Default
+              </button>
+            )}
 
             <div className="flex items-center gap-2">
               <button

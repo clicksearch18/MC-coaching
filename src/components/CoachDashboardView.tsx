@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   CheckCircle2,
   ExternalLink,
@@ -7,25 +7,29 @@ import {
   Send,
   Activity,
   Link2,
-  UserPlus,
   Settings,
   Upload,
   Plus,
   Trash2,
-  Save
+  BookOpen,
+  Award,
+  Sparkles
 } from 'lucide-react';
 import {
   StudentProfile,
   PlaybookPillar,
   SupportingVideoItem,
   CoachReviewStatus,
-  AppEmailAndAdminSettings
+  AppEmailAndAdminSettings,
+  WorkbookWeek,
+  ChatMessageActionTarget
 } from '../types';
 import { ModalDialog } from './ModalDialog';
-import { parseStudentSpreadsheet } from '../utils/excelParser';
+import { parseStudentSpreadsheet, resolveMatchingPillar } from '../utils/excelParser';
 
 interface CoachDashboardViewProps {
   students: StudentProfile[];
+  lessons: WorkbookWeek[];
   selectedStudentId: string;
   onSelectStudent: (id: string) => void;
   onPreviewStudentDashboard?: (studentId: string) => void;
@@ -48,10 +52,24 @@ interface CoachDashboardViewProps {
   ) => void;
   onAddCustomVideoToStudent: (
     studentId: string,
-    video: { pillarStage: string; title: string; hook1: string; hook2: string; hook3: string }
+    video: {
+      pillarId?: string;
+      pillarStage: string;
+      title: string;
+      hook1: string;
+      hook2: string;
+      hook3: string;
+    }
+  ) => void;
+  onEditStudentVideo?: (
+    studentId: string,
+    videoId: string,
+    updates: Partial<SupportingVideoItem>
   ) => void;
   onDeleteStudent: (studentId: string) => void;
   onSendMessage: (studentId: string, text: string, triggerPush?: boolean) => void;
+  onMarkMessagesRead?: (studentId: string) => void;
+  onNavigateFromChatAction?: (studentId: string, target: ChatMessageActionTarget) => void;
   onReviewStudentVideo: (
     studentId: string,
     videoType: 'SUPPORTING' | 'CORE',
@@ -82,14 +100,18 @@ const QUICK_REVIEW_NOTES = [
 
 export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
   students,
+  lessons,
   selectedStudentId,
   onSelectStudent,
   onPreviewStudentDashboard,
   onAddStudent,
   onUpdateStudentSpecifics,
   onAddCustomVideoToStudent,
+  onEditStudentVideo,
   onDeleteStudent,
   onSendMessage,
+  onMarkMessagesRead,
+  onNavigateFromChatAction,
   onReviewStudentVideo,
   onTriggerMissedAlertPush,
   onApproveGate,
@@ -117,15 +139,56 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
   const [newParsedSupporting, setNewParsedSupporting] = useState<SupportingVideoItem[] | undefined>(undefined);
   const [newUploadStatus, setNewUploadStatus] = useState<string | null>(null);
 
-  // Add Single Custom Video State
+  const activeStudent = students.find(s => s.id === selectedStudentId) || students[0];
+  const defaultFirstPillar = activeStudent?.playbook?.[0];
+  const defaultStageLabel = defaultFirstPillar
+    ? `${defaultFirstPillar.stage.split('—')[0].trim()} (${defaultFirstPillar.pillar})`
+    : '1. Unaware Stage (Content)';
+
+  // Add or Edit Single Custom Video State
+  const [editingVideoId, setEditingVideoId] = useState<string>('NEW');
   const [customVideoTitle, setCustomVideoTitle] = useState('');
-  const [customVideoStage, setCustomVideoStage] = useState('Pillar 1 · Problem Awareness');
+  const [customVideoPillarId, setCustomVideoPillarId] = useState<string>(
+    defaultFirstPillar?.id || 'pillar-1'
+  );
+  const [customVideoStage, setCustomVideoStage] = useState(defaultStageLabel);
   const [customHook1, setCustomHook1] = useState('');
   const [customHook2, setCustomHook2] = useState('');
   const [customHook3, setCustomHook3] = useState('');
   const [saveBanner, setSaveBanner] = useState<string | null>(null);
 
-  const activeStudent = students.find(s => s.id === selectedStudentId) || students[0];
+  // Workbook Lesson Inspector State (in TELEMETRY tab)
+  const [inspectLessonNum, setInspectLessonNum] = useState<number>(activeStudent?.currentWeek || 1);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setInspectLessonNum(activeStudent?.currentWeek || 1);
+    setEditingVideoId('NEW');
+    setCustomVideoTitle('');
+    const firstP = activeStudent?.playbook?.[0];
+    setCustomVideoPillarId(firstP?.id || 'pillar-1');
+    setCustomVideoStage(
+      firstP ? `${firstP.stage.split('—')[0].trim()} (${firstP.pillar})` : '1. Unaware Stage (Content)'
+    );
+    setCustomHook1('');
+    setCustomHook2('');
+    setCustomHook3('');
+  }, [activeStudent?.id]);
+
+  // Auto-mark student messages as read when Coach views MESSAGE tab, and scroll to bottom
+  useEffect(() => {
+    if (coachSubTab === 'MESSAGE' && activeStudent) {
+      const hasUnreadFromStudent = activeStudent.messages.some(
+        m => m.senderRole === 'STUDENT' && m.readByCoach === false
+      );
+      if (hasUnreadFromStudent && onMarkMessagesRead) {
+        onMarkMessagesRead(activeStudent.id);
+      }
+      setTimeout(() => {
+        chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 60);
+    }
+  }, [coachSubTab, activeStudent?.id, activeStudent?.messages.length, onMarkMessagesRead]);
 
   const onCadenceCount = students.filter(s => s.todayVideoStatus === 'COMPLETED').length;
   const pendingCount = students.filter(s => s.todayVideoStatus === 'PENDING').length;
@@ -183,10 +246,52 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
     setShowAddStudentModal(false);
   };
 
-  const handleAddCustomVideo = (e: React.FormEvent) => {
+  const handleSelectVideoToEdit = (videoId: string) => {
+    setEditingVideoId(videoId);
+    if (videoId === 'NEW') {
+      setCustomVideoTitle('');
+      const firstP = activeStudent.playbook[0];
+      setCustomVideoPillarId(firstP?.id || 'pillar-1');
+      setCustomVideoStage(
+        firstP ? `${firstP.stage.split('—')[0].trim()} (${firstP.pillar})` : '1. Unaware Stage (Content)'
+      );
+      setCustomHook1('');
+      setCustomHook2('');
+      setCustomHook3('');
+      return;
+    }
+    const existing = activeStudent.supportingVideos.find(v => v.id === videoId);
+    if (existing) {
+      setCustomVideoTitle(existing.title);
+      const matchedPillar = resolveMatchingPillar(existing, activeStudent.playbook);
+      setCustomVideoPillarId(existing.pillarId || matchedPillar?.id || 'pillar-1');
+      setCustomVideoStage(existing.pillarStage);
+      setCustomHook1(existing.hook1);
+      setCustomHook2(existing.hook2);
+      setCustomHook3(existing.hook3);
+    }
+  };
+
+  const handleAddOrUpdateCustomVideo = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customVideoTitle.trim() || !customHook1.trim()) return;
+
+    if (editingVideoId !== 'NEW' && onEditStudentVideo) {
+      onEditStudentVideo(activeStudent.id, editingVideoId, {
+        pillarId: customVideoPillarId,
+        pillarStage: customVideoStage,
+        title: customVideoTitle.trim(),
+        hook1: customHook1.trim(),
+        hook2: customHook2.trim() || customHook1.trim(),
+        hook3: customHook3.trim() || customHook1.trim()
+      });
+      setSaveBanner(`Updated daily video & hooks for ${activeStudent.name}!`);
+      setTimeout(() => setSaveBanner(null), 3500);
+      return;
+    }
+
     onAddCustomVideoToStudent(activeStudent.id, {
+      pillarId: customVideoPillarId,
       pillarStage: customVideoStage,
       title: customVideoTitle.trim(),
       hook1: customHook1.trim(),
@@ -254,12 +359,46 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
   const scopedReviewItems = reviewScope === 'ALL' ? allCohortReviewItems : activeStudentReviewItems;
   const pendingReviewTotal = allCohortReviewItems.filter(i => i.reviewStatus === 'Pending Review').length;
 
+  const activeUnreadMessagesCount = activeStudent.messages.filter(
+    m => m.senderRole === 'STUDENT' && m.readByCoach === false
+  ).length;
+
+  const submittedGatePhases = [1, 2, 3, 4, 5].filter(
+    p =>
+      activeStudent.gateStatus?.[p] === 'SUBMITTED' ||
+      activeStudent.worksheetAnswers[`phase_gate_status_${p}`] === 'SUBMITTED'
+  );
+  const targetPhaseToApprove = submittedGatePhases[0] || activeStudent.currentPhase;
+
   const filteredReviewItems = scopedReviewItems.filter(item => {
     if (reviewFilter === 'PENDING') return item.reviewStatus === 'Pending Review';
     if (reviewFilter === 'APPROVED') return item.reviewStatus === 'Approved';
     if (reviewFilter === 'REVISION') return item.reviewStatus === 'Needs Revision';
     return true;
   });
+
+  const inspectedLesson =
+    lessons.find(l => l.weekNumber === inspectLessonNum) || lessons[0];
+
+  const handleChatActionClick = (target: ChatMessageActionTarget) => {
+    if (target.videoId || target.coreVideoId) {
+      setCoachSubTab('LINKS');
+      setReviewScope('STUDENT');
+      const key = target.videoId
+        ? `${activeStudent.id}-SUPPORTING-${target.videoId}`
+        : `${activeStudent.id}-CORE-${target.coreVideoId}`;
+      setExpandedReviewKey(key);
+      return;
+    }
+    if (target.lessonNumber) {
+      setInspectLessonNum(target.lessonNumber);
+      setCoachSubTab('TELEMETRY');
+      return;
+    }
+    if (onNavigateFromChatAction) {
+      onNavigateFromChatAction(activeStudent.id, target);
+    }
+  };
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -309,8 +448,15 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
           <button
             type="button"
             onClick={() => {
-              const missedStudent = students.find(s => s.todayVideoStatus === 'MISSED') || activeStudent;
+              const missedStudent =
+                students.find(s => s.todayVideoStatus === 'MISSED') ||
+                students.find(s => s.todayVideoStatus === 'PENDING') ||
+                activeStudent;
+              onSelectStudent(missedStudent.id);
               onTriggerMissedAlertPush(missedStudent);
+              setCoachSubTab('MESSAGE');
+              setSaveBanner(`Sent daily cadence alert & push notification to ${missedStudent.name}!`);
+              setTimeout(() => setSaveBanner(null), 3500);
             }}
             className="px-2.5 py-1 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-[10px] font-bold uppercase tracking-wider text-rose-300 cursor-pointer"
           >
@@ -327,11 +473,14 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
           onChange={e => onSelectStudent(e.target.value)}
           className="flex-1 min-w-0 rounded-lg bg-black border border-white/15 px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-[#09ADEF]"
         >
-          {students.map(st => (
-            <option key={st.id} value={st.id}>
-              {st.name} ({st.company}) · Lesson {st.currentWeek}
-            </option>
-          ))}
+          {students.map(st => {
+            const unread = st.messages.filter(m => m.senderRole === 'STUDENT' && m.readByCoach === false).length;
+            return (
+              <option key={st.id} value={st.id}>
+                {st.name} ({st.company}) · Lesson {st.currentWeek}{unread > 0 ? ` · 💬 ${unread} New` : ''}
+              </option>
+            );
+          })}
         </select>
         <button
           type="button"
@@ -371,6 +520,13 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
           {students.map(st => {
             const isSelected = st.id === activeStudent.id;
             const doneVideos = st.supportingVideos.filter(v => v.status === 'Completed').length;
+            const stUnread = st.messages.filter(m => m.senderRole === 'STUDENT' && m.readByCoach === false).length;
+            const stPendingReviews = buildStudentReviewItems(st).filter(
+              i => i.reviewStatus === 'Pending Review'
+            ).length;
+            const stSubmittedGate = [1, 2, 3, 4, 5].find(
+              p => st.worksheetAnswers[`phase_gate_status_${p}`] === 'SUBMITTED'
+            );
 
             return (
               <button
@@ -385,8 +541,13 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-[#09ADEF]/15 border border-[#09ADEF]/30 flex items-center justify-center font-bold text-sm text-[#09ADEF] shrink-0">
+                    <div className="relative w-10 h-10 rounded-xl bg-[#09ADEF]/15 border border-[#09ADEF]/30 flex items-center justify-center font-bold text-sm text-[#09ADEF] shrink-0">
                       {st.avatar}
+                      {stUnread > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center shadow">
+                          {stUnread}
+                        </span>
+                      )}
                     </div>
                     <div className="min-w-0">
                       <div className="text-sm font-semibold text-white truncate">{st.name}</div>
@@ -410,6 +571,26 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                       : 'Missed'}
                   </span>
                 </div>
+
+                {(stUnread > 0 || stPendingReviews > 0 || stSubmittedGate) && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                    {stUnread > 0 && (
+                      <span className="px-2 py-0.5 rounded-md bg-sky-500/20 border border-sky-400/40 text-[10px] font-bold text-sky-300">
+                        💬 {stUnread} Unread
+                      </span>
+                    )}
+                    {stPendingReviews > 0 && (
+                      <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/40 text-[10px] font-bold text-amber-300">
+                        🎬 {stPendingReviews} To Review
+                      </span>
+                    )}
+                    {stSubmittedGate && (
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-400/40 text-[10px] font-bold text-emerald-300">
+                        ◆ Gate 0{stSubmittedGate} Ready
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between text-xs text-neutral-400 mt-3 pt-2.5 border-t border-white/[0.06]">
                   <span>Lesson {st.currentWeek} · Phase {st.currentPhase}</span>
@@ -462,11 +643,23 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
 
               <button
                 type="button"
-                onClick={() => onApproveGate(activeStudent.id, activeStudent.currentPhase)}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg btn-2mm text-[10px] cursor-pointer"
+                onClick={() => {
+                  onApproveGate(activeStudent.id, targetPhaseToApprove);
+                  setSaveBanner(`Approved Phase 0${targetPhaseToApprove} Gate for ${activeStudent.name}!`);
+                  setTimeout(() => setSaveBanner(null), 3500);
+                }}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer ${
+                  submittedGatePhases.length > 0
+                    ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/25 hover:bg-emerald-400'
+                    : 'btn-2mm'
+                }`}
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Approve Phase {activeStudent.currentPhase}</span>
+                <span>
+                  {submittedGatePhases.length > 0
+                    ? `Approve Submitted Gate 0${targetPhaseToApprove}`
+                    : `Approve Phase 0${targetPhaseToApprove}`}
+                </span>
               </button>
             </div>
           </div>
@@ -474,15 +667,28 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
           {/* 4 Clean Workspace Tabs (Single horizontal scroll row on mobile) */}
           <div className="flex overflow-x-auto no-scrollbar gap-1.5 p-1 rounded-xl bg-[#07090D] border border-white/[0.08]">
             {[
-              { id: 'SETUP' as const, label: 'Student Setup & Specifics', shortLabel: 'Setup', icon: Settings },
+              { id: 'SETUP' as const, label: 'Student Setup & Specifics', shortLabel: 'Setup', icon: Settings, badge: 0 },
               {
                 id: 'LINKS' as const,
                 label: `Video Review Queue (${allCohortReviewItems.length})`,
                 shortLabel: `Review (${allCohortReviewItems.length})`,
-                icon: Link2
+                icon: Link2,
+                badge: pendingReviewTotal
               },
-              { id: 'MESSAGE' as const, label: 'Direct Chat & Push Nudge', shortLabel: 'Chat & Push', icon: MessageSquare },
-              { id: 'TELEMETRY' as const, label: '7-Hour Metrics & Workbook', shortLabel: 'Metrics', icon: Activity }
+              {
+                id: 'MESSAGE' as const,
+                label: 'Direct Chat & Push Nudge',
+                shortLabel: 'Chat & Push',
+                icon: MessageSquare,
+                badge: activeUnreadMessagesCount
+              },
+              {
+                id: 'TELEMETRY' as const,
+                label: '7-Hour Metrics & Workbook',
+                shortLabel: 'Workbook & Metrics',
+                icon: Activity,
+                badge: submittedGatePhases.length
+              }
             ].map(tab => {
               const Icon = tab.icon;
               const active = coachSubTab === tab.id;
@@ -500,6 +706,15 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                   <Icon className="w-3.5 h-3.5 shrink-0" />
                   <span className="sm:hidden">{tab.shortLabel}</span>
                   <span className="hidden sm:inline">{tab.label}</span>
+                  {tab.badge > 0 && (
+                    <span
+                      className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
+                        active ? 'bg-black/30 text-white' : 'bg-rose-500 text-white'
+                      }`}
+                    >
+                      {tab.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -533,7 +748,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                     <span className="text-white font-semibold">
                       {activeStudent.supportingVideos.length} Daily Concussion Content Videos
                     </span>
-                    .
+                    . Re-uploading preserves completed links & coach reviews.
                   </p>
                 </div>
                 <button
@@ -554,20 +769,13 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                       2. Student Profile, Login Access & Positioning Specifics
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      Changes auto-save immediately to Supabase & {activeStudent.name}’s student dashboard.
+                      Changes auto-save live to Supabase & {activeStudent.name}’s student dashboard.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSaveBanner(`Saved ${activeStudent.name}'s profile & specifics!`);
-                      setTimeout(() => setSaveBanner(null), 3000);
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-xs font-semibold cursor-pointer"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>Saved Live</span>
-                  </button>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 text-[11px] font-semibold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>Auto-Synced Live</span>
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
@@ -742,14 +950,34 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                 </div>
               </div>
 
-              {/* Step 3: Add a Custom Video & Hooks Directly to Student's Queue */}
+              {/* Step 3: Add a Custom Video OR Edit Any Existing Video & Hooks Directly in Student's Queue */}
               <form
-                onSubmit={handleAddCustomVideo}
+                onSubmit={handleAddOrUpdateCustomVideo}
                 className="p-5 rounded-2xl bg-white/[0.02] border border-white/8 space-y-4 text-xs"
               >
-                <div className="text-xs font-bold uppercase tracking-wider text-sky-400">
-                  3. Add Custom Video & Hooks to {activeStudent.name.split(' ')[0]}’s Daily Queue
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/8 pb-3">
+                  <div>
+                    <div className="text-xs font-bold uppercase tracking-wider text-sky-400">
+                      3. Add or Edit Daily Video & Hooks in {activeStudent.name.split(' ')[0]}’s Queue
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Add a new daily video or pick any existing Day (#01–#{activeStudent.supportingVideos.length}) to edit its topic and hooks live.
+                    </p>
+                  </div>
+                  <select
+                    value={editingVideoId}
+                    onChange={e => handleSelectVideoToEdit(e.target.value)}
+                    className="rounded-xl bg-[#0B0D14] border border-white/15 px-3 py-2 text-xs font-semibold text-white focus:border-sky-400 focus:outline-none"
+                  >
+                    <option value="NEW">+ Add New Video to Queue</option>
+                    {activeStudent.supportingVideos.map(v => (
+                      <option key={v.id} value={v.id}>
+                        Edit Day #{String(v.dayNumber).padStart(2, '0')} — {v.title.slice(0, 38)}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block font-semibold text-slate-300 mb-1">Video Title / Topic</label>
@@ -763,13 +991,25 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Pillar / Funnel Stage</label>
-                    <input
-                      type="text"
-                      value={customVideoStage}
-                      onChange={e => setCustomVideoStage(e.target.value)}
+                    <label className="block font-semibold text-slate-300 mb-1">Playbook Pillar & Funnel Stage</label>
+                    <select
+                      value={customVideoPillarId}
+                      onChange={e => {
+                        const nextPillarId = e.target.value;
+                        setCustomVideoPillarId(nextPillarId);
+                        const found = activeStudent.playbook.find(p => p.id === nextPillarId);
+                        if (found) {
+                          setCustomVideoStage(`${found.stage} (${found.pillar})`);
+                        }
+                      }}
                       className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
-                    />
+                    >
+                      {activeStudent.playbook.map((p, idx) => (
+                        <option key={p.id} value={p.id}>
+                          #{idx + 1} · {p.stage} — {p.pillar}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -825,7 +1065,11 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                     className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 text-sky-300 font-semibold cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>Add Video to Student Queue</span>
+                    <span>
+                      {editingVideoId === 'NEW'
+                        ? 'Add Video to Student Queue'
+                        : 'Save Changes to Selected Video'}
+                    </span>
                   </button>
                 </div>
               </form>
@@ -854,7 +1098,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
               </div>
 
               {/* Message History */}
-              <div className="rounded-2xl bg-[#0B0D14] border border-white/8 p-4 space-y-3 max-h-72 overflow-y-auto">
+              <div className="rounded-2xl bg-[#0B0D14] border border-white/8 p-4 space-y-3 max-h-80 overflow-y-auto">
                 {activeStudent.messages.length === 0 ? (
                   <div className="py-6 text-center text-xs text-slate-500">
                     No messages yet.
@@ -872,13 +1116,40 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                       }`}
                     >
                       <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
-                        <span className="font-semibold text-sky-400">{m.senderName}</span>
-                        <span>{m.timestamp}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sky-400">{m.senderName}</span>
+                          {m.senderRole === 'STUDENT' && m.readByCoach === false && (
+                            <span className="px-1.5 py-0.5 rounded bg-rose-500 text-white text-[9px] font-bold uppercase">
+                              New
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span>{m.timestamp}</span>
+                          {m.senderRole === 'COACH' && (
+                            <span className="text-[10px] text-slate-500">
+                              {m.readByStudent ? '✓ Read' : 'Sent'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <p className="leading-relaxed text-sm">{m.text}</p>
+                      {m.actionTarget && (
+                        <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleChatActionClick(m.actionTarget!)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#09ADEF]/20 hover:bg-[#09ADEF]/30 border border-[#09ADEF]/40 text-[11px] font-bold text-[#09ADEF] cursor-pointer"
+                          >
+                            <span>{m.actionTarget.label}</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))
                 )}
+                <div ref={chatBottomRef} />
               </div>
 
               {/* Send Input */}
@@ -1205,9 +1476,10 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
             </div>
           )}
 
-          {/* TAB 3: ATTENTION METRICS & WORKBOOK SNAPSHOT */}
+          {/* TAB 3: ATTENTION METRICS, PHASE GATES & FULL WORKBOOK INSPECTOR */}
           {coachSubTab === 'TELEMETRY' && (
-            <div className="space-y-5">
+            <div className="space-y-6">
+              {/* Top 4 KPI Tiles */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-4 rounded-xl bg-white/[0.02] border border-white/8">
                   <div className="text-xs text-slate-400">Time on Brand</div>
@@ -1241,18 +1513,371 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                 </div>
               </div>
 
-              <div className="p-5 rounded-xl bg-white/[0.02] border border-white/8 space-y-3">
-                <div className="text-xs font-semibold uppercase tracking-wider text-sky-400">
-                  Core Messaging Snapshot (From Module 02)
+              {/* Phase Gate Sign-Off Strip (Phases 01–05) */}
+              <div className="p-5 rounded-2xl bg-[#040507] border border-white/10 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Award className="w-4 h-4 text-[#09ADEF]" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-white">
+                      Phase Gate Sign-Off & Progression (Phases 01–05)
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-zinc-400">
+                    Current Phase: <strong className="text-[#09ADEF]">Phase 0{activeStudent.currentPhase}</strong>
+                  </span>
                 </div>
-                <div className="text-sm text-slate-200">
-                  <strong className="text-white">Core Transformation (Q1):</strong>{' '}
-                  {activeStudent.worksheetAnswers.m02_q1_transformation || 'Not entered yet'}
+
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
+                  {[
+                    { phase: 1, name: 'Positioning', gateLesson: 4 },
+                    { phase: 2, name: 'Core Brand 5', gateLesson: 8 },
+                    { phase: 3, name: 'Daily Cadence', gateLesson: 18 },
+                    { phase: 4, name: 'Paid + Magnets', gateLesson: 22 },
+                    { phase: 5, name: 'Monthly Events', gateLesson: 26 }
+                  ].map(pg => {
+                    const status =
+                      activeStudent.gateStatus?.[pg.phase] ||
+                      activeStudent.worksheetAnswers[`phase_gate_status_${pg.phase}`];
+                    const isApproved = status === 'APPROVED' || activeStudent.currentPhase > pg.phase;
+                    const isSubmitted = status === 'SUBMITTED';
+
+                    return (
+                      <div
+                        key={pg.phase}
+                        className={`p-3 rounded-xl border flex flex-col justify-between gap-2 ${
+                          isSubmitted
+                            ? 'bg-amber-500/10 border-amber-400/50'
+                            : isApproved
+                            ? 'bg-emerald-500/10 border-emerald-500/30'
+                            : 'bg-black/40 border-white/10'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider">
+                            <span className="text-zinc-400">Phase 0{pg.phase}</span>
+                            <button
+                              type="button"
+                              onClick={() => setInspectLessonNum(pg.gateLesson)}
+                              className="text-[#09ADEF] hover:underline cursor-pointer"
+                            >
+                              Lesson {pg.gateLesson}
+                            </button>
+                          </div>
+                          <div className="text-xs font-bold text-white mt-0.5">{pg.name}</div>
+                          <div className="text-[10px] mt-1">
+                            {isApproved ? (
+                              <span className="text-emerald-300 font-semibold">✓ Approved</span>
+                            ) : isSubmitted ? (
+                              <span className="text-amber-300 font-semibold">⏳ Submitted for Review</span>
+                            ) : (
+                              <span className="text-zinc-500">In Progress</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {!isApproved && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onApproveGate(activeStudent.id, pg.phase);
+                              setSaveBanner(`Approved Phase 0${pg.phase} Gate for ${activeStudent.name}!`);
+                              setTimeout(() => setSaveBanner(null), 3500);
+                            }}
+                            className={`w-full py-1.5 px-2 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer ${
+                              isSubmitted
+                                ? 'bg-amber-400 text-slate-950 hover:bg-amber-300'
+                                : 'bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 border border-white/10'
+                            }`}
+                          >
+                            Approve Gate 0{pg.phase}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="text-sm text-slate-200">
-                  <strong className="text-white">Core Belief (Q4):</strong>{' '}
-                  {activeStudent.worksheetAnswers.m02_q4_belief || 'Not entered yet'}
+              </div>
+
+              {/* Interactive Lesson 1–26 Worksheet & Rubric Inspector */}
+              {inspectedLesson && (
+                <div className="p-5 rounded-2xl bg-[#040507] border border-[#09ADEF]/30 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-[#09ADEF]" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-[#09ADEF]">
+                          Interactive Workbook & Rubric Inspector (Lessons 01–26)
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">
+                        Inspect or co-edit {activeStudent.name}’s worksheet answers and verify their Phase Gate rubric items.
+                      </p>
+                    </div>
+
+                    <select
+                      value={inspectLessonNum}
+                      onChange={e => setInspectLessonNum(Number(e.target.value))}
+                      className="rounded-xl bg-[#0B0D14] border border-white/15 px-3 py-2 text-xs font-semibold text-white focus:border-[#09ADEF] focus:outline-none"
+                    >
+                      {lessons.map(l => {
+                        const answeredCount = l.fields.filter(
+                          q => (activeStudent.worksheetAnswers[q.id] || '').trim().length > 0
+                        ).length;
+                        return (
+                          <option key={l.weekNumber} value={l.weekNumber}>
+                            Lesson {String(l.weekNumber).padStart(2, '0')}: {l.title} ({answeredCount}/{l.fields.length} answered)
+                            {l.isPhaseGate ? ' ◆ GATE' : ''}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                  {/* Quick Jump Pills for Answered / Active Lessons */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                    {lessons.map(l => {
+                      const hasAnswers = l.fields.some(
+                        q => (activeStudent.worksheetAnswers[q.id] || '').trim().length > 0
+                      );
+                      const isCurrent = l.weekNumber === activeStudent.currentWeek;
+                      const isSelected = l.weekNumber === inspectLessonNum;
+                      return (
+                        <button
+                          key={l.weekNumber}
+                          type="button"
+                          onClick={() => setInspectLessonNum(l.weekNumber)}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider shrink-0 cursor-pointer border transition-all ${
+                            isSelected
+                              ? 'bg-[#09ADEF] text-white border-[#09ADEF]'
+                              : isCurrent
+                              ? 'bg-[#09ADEF]/15 text-[#09ADEF] border-[#09ADEF]/40'
+                              : hasAnswers
+                              ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                              : 'bg-black/40 text-zinc-500 border-white/8 hover:text-zinc-300'
+                          }`}
+                        >
+                          L{String(l.weekNumber).padStart(2, '0')}
+                          {l.isPhaseGate ? ' ◆' : ''}
+                          {hasAnswers ? ' •' : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Worksheet Questions & Answers for Selected Lesson */}
+                  <div className="space-y-3">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-300">
+                      Lesson {String(inspectedLesson.weekNumber).padStart(2, '0')} Worksheet Responses — {inspectedLesson.title}
+                    </div>
+                    <div className="grid grid-cols-1 gap-3">
+                      {inspectedLesson.fields.map(q => {
+                        const val = activeStudent.worksheetAnswers[q.id] || '';
+                        return (
+                          <div
+                            key={q.id}
+                            className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-1.5"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <label className="text-xs font-semibold text-white">
+                                {q.label}
+                              </label>
+                              <span
+                                className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                                  val.trim()
+                                    ? 'bg-emerald-500/15 text-emerald-300'
+                                    : 'bg-zinc-800 text-zinc-400'
+                                }`}
+                              >
+                                {val.trim() ? 'Saved' : 'Blank'}
+                              </span>
+                            </div>
+                            <textarea
+                              rows={2}
+                              value={val}
+                              onChange={e =>
+                                onUpdateStudentSpecifics(
+                                  activeStudent.id,
+                                  {},
+                                  { [q.id]: e.target.value }
+                                )
+                              }
+                              placeholder={q.placeholder || 'Student has not filled this prompt yet (Coach can type here to co-edit)...'}
+                              className="w-full rounded-lg bg-[#0B0D14] border border-white/12 p-2.5 text-xs text-white placeholder:text-zinc-600 focus:border-[#09ADEF] focus:outline-none"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Tasks & Self-Score Rubric for Selected Lesson */}
+                  <div className="pt-2 border-t border-white/10 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-300">
+                        Lesson {String(inspectedLesson.weekNumber).padStart(2, '0')} Execution Tasks & Rubric
+                      </span>
+                      <span className="text-xs font-bold text-[#09ADEF]">
+                        {
+                          inspectedLesson.tasks.filter(
+                            (_, idx) =>
+                              activeStudent.tasksCompleted[`${inspectedLesson.weekNumber}-${idx}`]
+                          ).length
+                        }
+                        /{inspectedLesson.tasks.length} Tasks Done
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {inspectedLesson.tasks.map((taskText, idx) => {
+                        const key = `${inspectedLesson.weekNumber}-${idx}`;
+                        const checked = Boolean(activeStudent.tasksCompleted[key]);
+                        return (
+                          <div
+                            key={key}
+                            className={`p-3 rounded-xl border text-left text-xs flex items-start gap-2.5 ${
+                              checked
+                                ? 'bg-emerald-500/10 border-emerald-500/35 text-emerald-200'
+                                : 'bg-black/40 border-white/10 text-zinc-400'
+                            }`}
+                          >
+                            <span
+                              className={`w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 ${
+                                checked
+                                  ? 'bg-emerald-500 text-slate-950'
+                                  : 'border border-white/25 text-transparent'
+                              }`}
+                            >
+                              ✓
+                            </span>
+                            <span className="leading-snug">{taskText}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {inspectedLesson.rubric && inspectedLesson.rubric.length > 0 && (
+                      <div className="pt-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                            Rubric Evaluation (Student Self-Score & Coach Override)
+                          </div>
+                          <span className="text-[10px] text-zinc-500">Click a grade to set or override</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {inspectedLesson.rubric.map((r, idx) => {
+                            const criterionKey = `${inspectedLesson.weekNumber}-${r.criterion}`;
+                            const legacyIdxKey = `${inspectedLesson.weekNumber}-${idx}`;
+                            const score =
+                              activeStudent.rubricScores[criterionKey] ||
+                              activeStudent.rubricScores[legacyIdxKey];
+                            return (
+                              <div
+                                key={criterionKey}
+                                className="p-3 rounded-xl bg-black/50 border border-white/10 flex flex-col justify-between gap-2 text-xs"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-zinc-200 font-medium">{r.criterion}</span>
+                                  <span
+                                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                      score === 'STRONG'
+                                        ? 'bg-emerald-500/20 text-emerald-300'
+                                        : score === 'ACCEPTABLE'
+                                        ? 'bg-amber-500/20 text-amber-300'
+                                        : score === 'WEAK'
+                                        ? 'bg-rose-500/20 text-rose-300'
+                                        : 'bg-zinc-800 text-zinc-500'
+                                    }`}
+                                  >
+                                    {score || 'Unscored'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5 pt-1 border-t border-white/5">
+                                  {(['WEAK', 'ACCEPTABLE', 'STRONG'] as const).map(level => {
+                                    const isActive = score === level;
+                                    return (
+                                      <button
+                                        key={level}
+                                        type="button"
+                                        onClick={() => {
+                                          const nextScores = {
+                                            ...activeStudent.rubricScores,
+                                            [criterionKey]: level
+                                          };
+                                          onUpdateStudentSpecifics(activeStudent.id, {
+                                            rubricScores: nextScores
+                                          });
+                                        }}
+                                        className={`flex-1 py-1 rounded text-[9px] font-bold uppercase tracking-wider border transition ${
+                                          isActive
+                                            ? level === 'STRONG'
+                                              ? 'bg-emerald-500/25 border-emerald-500/50 text-emerald-200'
+                                              : level === 'ACCEPTABLE'
+                                              ? 'bg-amber-500/25 border-amber-500/50 text-amber-200'
+                                              : 'bg-rose-500/25 border-rose-500/50 text-rose-200'
+                                            : 'bg-white/[0.03] border-white/10 text-zinc-400 hover:text-white hover:border-white/25'
+                                        }`}
+                                      >
+                                        {level}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
+              )}
+
+              {/* Student Shift Magnets Overview */}
+              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
+                      Student Shift Magnets & DM Handoff Scripts ({activeStudent.shiftMagnets.length})
+                    </span>
+                  </div>
+                </div>
+
+                {activeStudent.shiftMagnets.length === 0 ? (
+                  <p className="text-xs text-slate-400">No Shift Magnets built yet.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {activeStudent.shiftMagnets.map(sm => (
+                      <div
+                        key={sm.id}
+                        className="p-4 rounded-xl bg-[#0B0D14] border border-white/10 space-y-2 text-xs"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono text-[10px] font-bold">
+                            KEYWORD: “{sm.keywordTrigger}”
+                          </span>
+                          <span className="text-[11px] text-emerald-400 font-semibold">
+                            {sm.status} · {sm.deliveryFormat}
+                          </span>
+                        </div>
+                        <div className="font-bold text-white text-sm">{sm.workingTitle}</div>
+                        <div className="text-[11px] text-slate-400">
+                          Audience: <span className="text-slate-200">{sm.specificAudience}</span>
+                        </div>
+                        {sm.promiseOneSentence && (
+                          <div className="text-[11px] text-slate-300">
+                            <strong className="text-sky-400">Promise:</strong> {sm.promiseOneSentence}
+                          </div>
+                        )}
+                        {sm.dmHandoffScript && (
+                          <div className="pt-2 border-t border-white/8 text-[11px] text-slate-300">
+                            <strong className="text-sky-400">DM Handoff:</strong> {sm.dmHandoffScript}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

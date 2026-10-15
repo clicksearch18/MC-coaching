@@ -1,5 +1,6 @@
 import initialPlanJson from './initial_content_plan.json';
 import { CORE_BRAND_VIDEOS_TEMPLATE } from './workbookData';
+import { inferPillarIdForVideo } from '../utils/excelParser';
 import {
   StudentProfile,
   SupportingVideoItem,
@@ -57,23 +58,27 @@ const defaultShiftMagnets: ShiftMagnet[] = [
   }
 ];
 
-function buildSupportingVideos(): SupportingVideoItem[] {
-  return (initialPlanJson.supporting as SupportingVideoItem[]).map((item, idx) => ({
-    ...item,
-    dayNumber: idx + 1,
-    selectedHook: 1,
-    status: 'Not Started',
-    attachedMagnetId: idx % 3 === 0 ? 'mag-1' : idx % 3 === 1 ? 'mag-2' : 'mag-3',
-    videoUrl: undefined,
-    completedAt: undefined
-  }));
-}
-
 function buildPlaybook(): PlaybookPillar[] {
   return (initialPlanJson.playbook as PlaybookPillar[]).map(p => ({
     ...p,
     status: 'Not Started'
   }));
+}
+
+function buildSupportingVideos(playbook = buildPlaybook()): SupportingVideoItem[] {
+  return (initialPlanJson.supporting as SupportingVideoItem[]).map((item, idx) => {
+    const dayNum = idx + 1;
+    return {
+      ...item,
+      dayNumber: dayNum,
+      pillarId: item.pillarId || inferPillarIdForVideo(item.pillarStage, dayNum, playbook),
+      selectedHook: 1,
+      status: 'Not Started',
+      attachedMagnetId: idx % 3 === 0 ? 'mag-1' : idx % 3 === 1 ? 'mag-2' : 'mag-3',
+      videoUrl: undefined,
+      completedAt: undefined
+    };
+  });
 }
 
 export const INITIAL_STUDENTS: StudentProfile[] = [

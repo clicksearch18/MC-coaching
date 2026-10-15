@@ -1,16 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Video,
   BookOpen,
   Magnet,
-  Bell,
   MessageSquare,
   Upload,
   Send,
   Smartphone,
   UserCheck,
   LogOut,
-  ShieldCheck
+  ExternalLink
 } from 'lucide-react';
 import { INITIAL_STUDENTS, createNewStudentProfile, DEFAULT_APP_SETTINGS } from './data/initialStudents';
 import { WORKBOOK_WEEKS } from './data/workbookData';
@@ -21,7 +20,9 @@ import {
   WorkbookWeek,
   PlaybookPillar,
   CoachReviewStatus,
-  AppEmailAndAdminSettings
+  AppEmailAndAdminSettings,
+  ChatMessage,
+  ChatMessageActionTarget
 } from './types';
 import { DailyCadenceView } from './components/DailyCadenceView';
 import { WorkbookView } from './components/WorkbookView';
@@ -33,11 +34,14 @@ import { parseStudentSpreadsheet } from './utils/excelParser';
 import {
   fetchStudentsFromSupabase,
   upsertStudentsToSupabase,
+  upsertSingleStudentToSupabase,
   deleteStudentFromSupabase,
   fetchLessonsFromSupabase,
   upsertLessonsToSupabase,
   fetchAppSettingsFromSupabase,
   upsertAppSettingsToSupabase,
+  subscribeToStudentsRealtime,
+  subscribeToSupabaseAuth,
   isSupabaseConfigured
 } from './lib/supabase';
 
@@ -46,6 +50,23 @@ const LESSONS_STORAGE_KEY = 'mcm_cam005_lessons_v2';
 const SETTINGS_STORAGE_KEY = 'mcm_cam005_settings_v1';
 const AUTH_SESSION_KEY = 'mcm_cam005_auth_session_v1';
 const LEGACY_DEMO_IDS = new Set(['student-marcus', 'student-elena', 'student-devon']);
+
+const getTodayDateISO = () => new Date().toISOString().slice(0, 10);
+
+const normalizeStudentDailyStatus = (st: StudentProfile): StudentProfile => {
+  const todayISO = getTodayDateISO();
+  if (
+    st.lastCompletedDateISO &&
+    st.lastCompletedDateISO !== todayISO &&
+    st.todayVideoStatus === 'COMPLETED'
+  ) {
+    return {
+      ...st,
+      todayVideoStatus: 'PENDING'
+    };
+  }
+  return st;
+};
 
 interface AuthSession {
   role: 'UNAUTHENTICATED' | 'STUDENT' | 'ADMIN';
@@ -63,11 +84,14 @@ export function App() {
   const [students, setStudents] = useState<StudentProfile[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved) as StudentProfile[];
+        return parsed.map(normalizeStudentDailyStatus);
+      }
     } catch {
       // ignore storage errors
     }
-    return INITIAL_STUDENTS;
+    return INITIAL_STUDENTS.map(normalizeStudentDailyStatus);
   });
 
   const [lessons, setLessons] = useState<WorkbookWeek[]>(() => {
@@ -126,8 +150,16 @@ export function App() {
     const params = new URLSearchParams(window.location.search);
     return params.get('student') || INITIAL_STUDENTS[0].id;
   });
-  const [dbSyncStatus, setDbSyncStatus] = useState<'CONNECTING' | 'SYNCED' | 'LOCAL'>('CONNECTING');
+  const [, setDbSyncStatus] = useState<'CONNECTING' | 'SYNCED' | 'LOCAL'>('CONNECTING');
   const [initialDbLoadDone, setInitialDbLoadDone] = useState(false);
+
+  // Deep-link navigation targets (triggered from Chat Action pills)
+  const [requestedCadenceSubTab, setRequestedCadenceSubTab] = useState<
+    'STUDIO' | 'QUEUE' | 'CORE5' | 'PLAYBOOK' | undefined
+  >(undefined);
+  const [requestedVideoId, setRequestedVideoId] = useState<string | undefined>(undefined);
+  const [requestedCoreVideoId, setRequestedCoreVideoId] = useState<string | undefined>(undefined);
+  const [requestedLessonNumber, setRequestedLessonNumber] = useState<number | undefined>(undefined);
 
   // Modals & Push Banners
   const [showImportModal, setShowImportModal] = useState(false);
@@ -135,8 +167,75 @@ export function App() {
   const [studentReplyInput, setStudentReplyInput] = useState('');
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [pushBanners, setPushBanners] = useState<PushBanner[]>([]);
-  const [notificationPermission, setNotificationPermission] = useState<string>(
+  const [, setNotificationPermission] = useState<string>(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  );
+
+  const inboxBottomRef = useRef<HTMLDivElement>(null);
+  const dirtyStudentTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const lastLocalEditTimestampRef = useRef<Record<string, number>>({});
+  const localStorageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestStudentsRef = useRef<StudentProfile[]>(students);
+  latestStudentsRef.current = students;
+
+  const triggerWebPushAndBanner = useCallback(
+    async (
+      title: string,
+      body: string,
+      type: PushBanner['type'] = 'DAILY_LESSON'
+    ) => {
+      const newBanner: PushBanner = {
+        id: `push-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        title,
+        body,
+        type
+      };
+      setPushBanners(prev => [newBanner, ...prev.slice(0, 2)]);
+
+      if (typeof Notification !== 'undefined') {
+        if (Notification.permission === 'default') {
+          const perm = await Notification.requestPermission();
+          setNotificationPermission(perm);
+        }
+        if (Notification.permission === 'granted') {
+          try {
+            if ('serviceWorker' in navigator) {
+              const reg = await navigator.serviceWorker.ready;
+              await reg.showNotification(title, {
+                body,
+                icon: '/icon.svg',
+                badge: '/icon.svg'
+              });
+            } else {
+              new Notification(title, { body, icon: '/icon.svg' });
+            }
+          } catch {
+            new Notification(title, { body });
+          }
+        }
+      }
+    },
+    []
+  );
+
+  // Schedule a debounced single-student Supabase upsert
+  const scheduleSingleStudentSync = useCallback(
+    (studentId: string) => {
+      if (!isSupabaseConfigured) return;
+      if (dirtyStudentTimersRef.current[studentId]) {
+        clearTimeout(dirtyStudentTimersRef.current[studentId]);
+      }
+      dirtyStudentTimersRef.current[studentId] = setTimeout(() => {
+        const target = latestStudentsRef.current.find(s => s.id === studentId);
+        if (target) {
+          upsertSingleStudentToSupabase(target).then(ok => {
+            if (ok) setDbSyncStatus('SYNCED');
+          });
+        }
+        delete dirtyStudentTimersRef.current[studentId];
+      }, 350);
+    },
+    []
   );
 
   // Initial load & seed with Supabase DB
@@ -168,23 +267,24 @@ export function App() {
         const realRemoteStudents = remoteStudents.filter(rs => !LEGACY_DEMO_IDS.has(rs.id));
 
         if (realRemoteStudents.length === 0) {
-          await upsertStudentsToSupabase(INITIAL_STUDENTS);
-          setStudents(INITIAL_STUDENTS);
+          const normalizedInitial = INITIAL_STUDENTS.map(normalizeStudentDailyStatus);
+          await upsertStudentsToSupabase(normalizedInitial);
+          setStudents(normalizedInitial);
           setDbSyncStatus('SYNCED');
         } else {
           const enriched = realRemoteStudents.map(rs => {
             const fallback = INITIAL_STUDENTS.find(i => i.id === rs.id);
             if (rs.id === 'student-josh' && rs.fullListSize === 2840 && fallback) {
-              return fallback;
+              return normalizeStudentDailyStatus(fallback);
             }
-            return {
+            return normalizeStudentDailyStatus({
               ...rs,
               email: rs.id === 'student-josh' ? 'joshbmagic@gmail.com' : rs.email || fallback?.email || '',
               accessCode:
                 rs.accessCode ||
                 fallback?.accessCode ||
                 `${rs.name.split(' ')[0].toUpperCase()}-01`
-            };
+            });
           });
           await upsertStudentsToSupabase(enriched);
           setStudents(enriched);
@@ -220,18 +320,132 @@ export function App() {
     };
   }, []);
 
+  // Persist students to localStorage with a 250ms debounce to avoid blocking fast typing
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(students));
-    } catch {
-      // ignore
+    if (localStorageTimerRef.current) {
+      clearTimeout(localStorageTimerRef.current);
     }
-    if (initialDbLoadDone && isSupabaseConfigured) {
-      upsertStudentsToSupabase(students).then(ok => {
-        if (ok) setDbSyncStatus('SYNCED');
-      });
-    }
-  }, [students, initialDbLoadDone]);
+    localStorageTimerRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(students));
+      } catch {
+        // ignore
+      }
+    }, 250);
+    return () => {
+      if (localStorageTimerRef.current) {
+        clearTimeout(localStorageTimerRef.current);
+      }
+    };
+  }, [students]);
+
+  // Realtime subscription to mc_students so Coach & Student see live updates + push alerts
+  useEffect(() => {
+    if (!initialDbLoadDone || !isSupabaseConfigured) return;
+
+    const unsubscribe = subscribeToStudentsRealtime(
+      incomingStudent => {
+        if (LEGACY_DEMO_IDS.has(incomingStudent.id)) return;
+        const normalizedIncoming = normalizeStudentDailyStatus(incomingStudent);
+
+        setStudents(prev => {
+          const existing = prev.find(s => s.id === normalizedIncoming.id);
+          if (!existing) {
+            return [normalizedIncoming, ...prev];
+          }
+
+          // Detect newly arrived message from the opposite role to fire a recipient-side push banner
+          if (normalizedIncoming.messages.length > existing.messages.length) {
+            const newestMsg = normalizedIncoming.messages[normalizedIncoming.messages.length - 1];
+            const isViewerAdmin = authSession.role === 'ADMIN';
+            if (isViewerAdmin && newestMsg.senderRole === 'STUDENT') {
+              triggerWebPushAndBanner(
+                `New Activity from ${normalizedIncoming.name}`,
+                newestMsg.text,
+                'COACH_NUDGE'
+              );
+            } else if (
+              !isViewerAdmin &&
+              newestMsg.senderRole === 'COACH' &&
+              normalizedIncoming.id === activeStudentId
+            ) {
+              triggerWebPushAndBanner(
+                `Message from ${newestMsg.senderName}`,
+                newestMsg.text,
+                newestMsg.isAlert ? 'MISSED_ALERT' : 'COACH_NUDGE'
+              );
+            }
+          }
+
+          // Guard against stale Realtime echo overwriting active local typing
+          const lastLocalEdit = lastLocalEditTimestampRef.current[normalizedIncoming.id] || 0;
+          const isActivelyEditingLocally =
+            Boolean(dirtyStudentTimersRef.current[normalizedIncoming.id]) ||
+            Date.now() - lastLocalEdit < 1500;
+
+          if (isActivelyEditingLocally) {
+            // Preserve local worksheet/video edits while merging any newly arrived messages
+            if (normalizedIncoming.messages.length > existing.messages.length) {
+              return prev.map(s =>
+                s.id === normalizedIncoming.id
+                  ? { ...s, messages: normalizedIncoming.messages }
+                  : s
+              );
+            }
+            return prev;
+          }
+
+          return prev.map(s => (s.id === normalizedIncoming.id ? normalizedIncoming : s));
+        });
+      },
+      deletedId => {
+        setStudents(prev => prev.filter(s => s.id !== deletedId));
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [initialDbLoadDone, authSession.role, activeStudentId, triggerWebPushAndBanner]);
+
+  // Supabase Magic Link Auth Handshake
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    const unsubscribe = subscribeToSupabaseAuth(email => {
+      const normalizedEmail = email.trim().toLowerCase();
+      if (!normalizedEmail) return;
+
+      const isAdminEmail = appSettings.adminEmails.some(
+        a => a.trim().toLowerCase() === normalizedEmail
+      );
+      const matchedStudent = latestStudentsRef.current.find(
+        s => (s.email || '').trim().toLowerCase() === normalizedEmail
+      );
+
+      // If user is on /admin or matches an admin email without a specific ?student= param
+      const params = new URLSearchParams(window.location.search);
+      const requestedStudentParam = params.get('student');
+
+      if (requestedStudentParam) {
+        const paramStudent = latestStudentsRef.current.find(s => s.id === requestedStudentParam);
+        if (paramStudent) {
+          handleLoginStudent(paramStudent.id);
+          return;
+        }
+      }
+
+      if (window.location.pathname.toLowerCase() === '/admin' && isAdminEmail) {
+        handleLoginAdmin();
+      } else if (matchedStudent && authSession.role === 'UNAUTHENTICATED') {
+        handleLoginStudent(matchedStudent.id);
+      } else if (isAdminEmail && authSession.role === 'UNAUTHENTICATED') {
+        handleLoginAdmin();
+      }
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [appSettings.adminEmails, authSession.role]);
 
   useEffect(() => {
     try {
@@ -256,59 +470,77 @@ export function App() {
   }, [appSettings, initialDbLoadDone]);
 
   const currentStudent = students.find(s => s.id === activeStudentId) || students[0];
+  const isAdminSession = authSession.role === 'ADMIN';
 
-  const triggerWebPushAndBanner = async (
-    title: string,
-    body: string,
-    type: PushBanner['type'] = 'DAILY_LESSON'
-  ) => {
-    const newBanner: PushBanner = {
-      id: `push-${Date.now()}`,
-      title,
-      body,
-      type
-    };
-    setPushBanners(prev => [newBanner, ...prev.slice(0, 2)]);
-
-    if (typeof Notification !== 'undefined') {
-      if (Notification.permission === 'default') {
-        const perm = await Notification.requestPermission();
-        setNotificationPermission(perm);
-      }
-      if (Notification.permission === 'granted') {
-        try {
-          if ('serviceWorker' in navigator) {
-            const reg = await navigator.serviceWorker.ready;
-            await reg.showNotification(title, {
-              body,
-              icon: '/icon.svg',
-              badge: '/icon.svg'
-            });
-          } else {
-            new Notification(title, { body, icon: '/icon.svg' });
-          }
-        } catch {
-          new Notification(title, { body });
-        }
-      }
-    }
-  };
-
-  const enablePushNotifications = async () => {
-    if (typeof Notification === 'undefined') return;
-    const perm = await Notification.requestPermission();
-    setNotificationPermission(perm);
-    if (perm === 'granted') {
-      triggerWebPushAndBanner(
-        'PWA Push Notifications Enabled',
-        'You will now receive daily <10-minute video prompts & coach check-ins.',
-        'DAILY_LESSON'
+  const updateStudent = useCallback(
+    (studentId: string, updater: (st: StudentProfile) => StudentProfile) => {
+      lastLocalEditTimestampRef.current[studentId] = Date.now();
+      setStudents(prev =>
+        prev.map(s => {
+          if (s.id !== studentId) return s;
+          return updater(s);
+        })
       );
-    }
-  };
+      scheduleSingleStudentSync(studentId);
+    },
+    [scheduleSingleStudentSync]
+  );
 
-  const updateStudent = (studentId: string, updater: (st: StudentProfile) => StudentProfile) => {
-    setStudents(prev => prev.map(s => (s.id === studentId ? updater(s) : s)));
+  const handleMarkMessagesRead = useCallback(
+    (studentId: string) => {
+      const isCoachViewer = authSession.role === 'ADMIN';
+      updateStudent(studentId, st => {
+        const needsUpdate = st.messages.some(m =>
+          isCoachViewer
+            ? m.senderRole === 'STUDENT' && m.readByCoach === false
+            : m.senderRole === 'COACH' && m.readByStudent === false
+        );
+        if (!needsUpdate) return st;
+        return {
+          ...st,
+          messages: st.messages.map(m =>
+            isCoachViewer
+              ? m.senderRole === 'STUDENT'
+                ? { ...m, readByCoach: true }
+                : m
+              : m.senderRole === 'COACH'
+              ? { ...m, readByStudent: true }
+              : m
+          )
+        };
+      });
+    },
+    [authSession.role, updateStudent]
+  );
+
+  // Auto-mark messages read when the Student/Header Inbox modal is opened
+  useEffect(() => {
+    if (showStudentInboxModal && currentStudent) {
+      handleMarkMessagesRead(currentStudent.id);
+      setTimeout(() => {
+        inboxBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 60);
+    }
+  }, [showStudentInboxModal, currentStudent?.id, currentStudent?.messages.length, handleMarkMessagesRead]);
+
+  const handleNavigateFromChatAction = (studentId: string, target: ChatMessageActionTarget) => {
+    setActiveStudentId(studentId);
+    setShowStudentInboxModal(false);
+
+    if (target.tab === 'CADENCE') {
+      setRoleMode('STUDENT');
+      setActiveTab('CADENCE');
+      if (target.subTab) setRequestedCadenceSubTab(target.subTab);
+      if (target.videoId) setRequestedVideoId(target.videoId);
+      if (target.coreVideoId) setRequestedCoreVideoId(target.coreVideoId);
+    } else if (target.tab === 'WORKBOOK') {
+      setRoleMode('STUDENT');
+      setActiveTab('WORKBOOK');
+      if (target.lessonNumber) setRequestedLessonNumber(target.lessonNumber);
+    } else if (target.tab === 'MAGNETS') {
+      setRoleMode('STUDENT');
+      setActiveTab('MAGNETS');
+    }
   };
 
   const handleUpdateLesson = (lessonNumber: number, updated: WorkbookWeek) => {
@@ -337,32 +569,87 @@ export function App() {
     }));
   };
 
+  const handleEditStudentVideo = (
+    studentId: string,
+    videoId: string,
+    updates: Partial<SupportingVideoItem>
+  ) => {
+    updateStudent(studentId, st => ({
+      ...st,
+      supportingVideos: st.supportingVideos.map(v => (v.id === videoId ? { ...v, ...updates } : v))
+    }));
+  };
+
   const handleMarkVideoDone = (videoId: string, videoUrl: string) => {
+    const todayISO = getTodayDateISO();
+    const formattedTime = new Date().toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+
+    let wasResubmission = false;
+    let nextStreak = currentStudent.streakDays;
+
     updateStudent(currentStudent.id, st => {
       const targetVideo = st.supportingVideos.find(v => v.id === videoId);
       const wasAlreadyDone = targetVideo?.status === 'Completed';
+      wasResubmission = wasAlreadyDone;
+      const alreadyPostedToday = st.lastCompletedDateISO === todayISO;
+      const updatedStreak = wasAlreadyDone || alreadyPostedToday ? st.streakDays : st.streakDays + 1;
+      nextStreak = updatedStreak;
+
+      const videoLabel = targetVideo
+        ? `Day #${String(targetVideo.dayNumber).padStart(2, '0')}: ${targetVideo.title}`
+        : 'Daily Video';
+
+      const submissionMsg: ChatMessage = {
+        id: `msg-video-${Date.now()}`,
+        senderRole: 'STUDENT',
+        senderName: st.name,
+        text: wasAlreadyDone
+          ? `↻ Resubmitted updated link for ${videoLabel} — ${videoUrl}`
+          : `🎬 Submitted verified link for ${videoLabel} — ${videoUrl}`,
+        timestamp: formattedTime,
+        relatedVideoTitle: videoLabel,
+        readByStudent: true,
+        readByCoach: false,
+        actionTarget: {
+          label: 'Review Video',
+          tab: 'CADENCE',
+          subTab: 'STUDIO',
+          videoId
+        }
+      };
+
       return {
         ...st,
-        streakDays: wasAlreadyDone ? st.streakDays : st.streakDays + 1,
+        streakDays: updatedStreak,
         todayVideoStatus: 'COMPLETED',
-        minutesAvailableCurrent: wasAlreadyDone ? st.minutesAvailableCurrent : st.minutesAvailableCurrent + 3,
+        lastCompletedDateISO: todayISO,
+        minutesAvailableCurrent: wasAlreadyDone
+          ? st.minutesAvailableCurrent
+          : st.minutesAvailableCurrent + 3,
         supportingVideos: st.supportingVideos.map(v =>
           v.id === videoId
             ? {
                 ...v,
                 status: 'Completed',
                 videoUrl,
-                completedAt: 'Today · Verified Link',
+                completedAt: wasAlreadyDone ? `Updated · ${formattedTime}` : `Verified · ${formattedTime}`,
+                completedDateISO: todayISO,
                 coachReviewStatus: 'Pending Review'
               }
             : v
-        )
+        ),
+        messages: [...st.messages, submissionMsg]
       };
     });
 
     triggerWebPushAndBanner(
-      'Daily Video Link Verified!',
-      `Your social link (${videoUrl}) has been queued for Coach Review and your streak is now ${currentStudent.streakDays + 1} days.`,
+      wasResubmission ? 'Revised Video Link Sent to Coach!' : 'Daily Video Link Verified!',
+      wasResubmission
+        ? `Your updated link (${videoUrl}) is back in Coach Josh's Review Queue.`
+        : `Your social link (${videoUrl}) has been queued for Coach Review and your streak is now ${nextStreak} days.`,
       'DAILY_LESSON'
     );
   };
@@ -374,24 +661,112 @@ export function App() {
     }));
   };
 
+  const CORE_TO_WORKBOOK_PREFIX: Record<string, string> = {
+    'core-b1': 'l10_doc',
+    'core-b2': 'l11_prod',
+    'core-b3': 'l12_proof',
+    'core-b4': 'l13_owner'
+  };
+
   const handleUpdateCoreVideoStatus = (
     coreId: string,
     status: 'Not Started' | 'In Progress' | 'Completed',
-    url?: string
+    url?: string,
+    scriptDraft?: { S: string; H: string; I: string; F: string; T: string }
   ) => {
-    updateStudent(currentStudent.id, st => ({
-      ...st,
-      coreVideos: st.coreVideos.map(c =>
-        c.id === coreId
-          ? {
-              ...c,
-              status,
-              videoUrl: url !== undefined ? url : c.videoUrl,
-              coachReviewStatus: status === 'Completed' ? c.coachReviewStatus || 'Pending Review' : c.coachReviewStatus
-            }
-          : c
-      )
-    }));
+    const formattedTime = new Date().toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+
+    updateStudent(currentStudent.id, st => {
+      const existingCore = st.coreVideos.find(c => c.id === coreId);
+      const wasCompleted = existingCore?.status === 'Completed';
+      const isNewlyCompleted = status === 'Completed' && !wasCompleted;
+      const isResubmittingCompleted =
+        status === 'Completed' &&
+        wasCompleted &&
+        url !== undefined &&
+        (url !== existingCore?.videoUrl || existingCore?.coachReviewStatus === 'Needs Revision');
+
+      // Accurately parse runtime (including B5's "~15 min each (5h total)" -> 300 mins)
+      const runtimeMatch = existingCore?.runtimeTarget.match(/(\d+)/);
+      const parsedMins =
+        existingCore?.code === 'B5'
+          ? 300
+          : runtimeMatch
+          ? parseInt(runtimeMatch[1], 10)
+          : 15;
+
+      // Two-way sync Core Video B1-B4 script drafts & URLs back into Workbook Lessons 10-13
+      const wbPrefix = CORE_TO_WORKBOOK_PREFIX[coreId];
+      const nextWorksheetAnswers = { ...st.worksheetAnswers };
+      if (wbPrefix) {
+        if (scriptDraft) {
+          nextWorksheetAnswers[`${wbPrefix}_m08_s`] = scriptDraft.S || '';
+          nextWorksheetAnswers[`${wbPrefix}_m08_h`] = scriptDraft.H || '';
+          nextWorksheetAnswers[`${wbPrefix}_m08_i`] = scriptDraft.I || '';
+          nextWorksheetAnswers[`${wbPrefix}_m08_f`] = scriptDraft.F || '';
+          nextWorksheetAnswers[`${wbPrefix}_m08_t`] = scriptDraft.T || '';
+        }
+        if (url !== undefined) {
+          nextWorksheetAnswers[`${wbPrefix}_m12_thumb_cta`] = url;
+        }
+      }
+
+      let updatedMessages = st.messages;
+      if ((isNewlyCompleted || isResubmittingCompleted) && existingCore && url) {
+        const coreLabel = `Core ${existingCore.code}: ${existingCore.name}`;
+        const coreMsg: ChatMessage = {
+          id: `msg-core-${Date.now()}`,
+          senderRole: 'STUDENT',
+          senderName: st.name,
+          text: isResubmittingCompleted
+            ? `↻ Resubmitted Core Brand Video ${coreLabel} — ${url}`
+            : `★ Completed Core Brand Video ${coreLabel} (+${parsedMins}m Time on Brand) — ${url}`,
+          timestamp: formattedTime,
+          relatedVideoTitle: coreLabel,
+          readByStudent: true,
+          readByCoach: false,
+          actionTarget: {
+            label: `Open Core ${existingCore.code}`,
+            tab: 'CADENCE',
+            subTab: 'CORE5',
+            coreVideoId: coreId
+          }
+        };
+        updatedMessages = [...st.messages, coreMsg];
+      }
+
+      return {
+        ...st,
+        minutesAvailableCurrent: isNewlyCompleted
+          ? st.minutesAvailableCurrent + parsedMins
+          : st.minutesAvailableCurrent,
+        worksheetAnswers: nextWorksheetAnswers,
+        coreVideos: st.coreVideos.map(c =>
+          c.id === coreId
+            ? {
+                ...c,
+                status,
+                videoUrl: url !== undefined ? url : c.videoUrl,
+                scriptDraft: scriptDraft !== undefined ? scriptDraft : c.scriptDraft,
+                coachReviewStatus:
+                  status === 'Completed' ? 'Pending Review' : c.coachReviewStatus
+              }
+            : c
+        ),
+        messages: updatedMessages
+      };
+    });
+
+    if (status === 'Completed' && url) {
+      triggerWebPushAndBanner(
+        'Core Brand Video Submitted!',
+        `Your Core Brand Video link (${url}) has been queued for Coach Review.`,
+        'DAILY_LESSON'
+      );
+    }
   };
 
   const handleReviewStudentVideo = (
@@ -443,14 +818,30 @@ export function App() {
           : st.coreVideos;
 
       const statusPrefix = reviewStatus === 'Approved' ? '✓ APPROVED' : '↻ REVISION REQUESTED';
-      const noteMsg = {
+      const noteMsg: ChatMessage = {
         id: `msg-review-${Date.now()}`,
-        senderRole: 'COACH' as const,
+        senderRole: 'COACH',
         senderName: 'Coach Josh Beechraft',
         text: `[${statusPrefix}] ${videoLabel}${feedback ? ` — "${feedback}"` : ''}`,
         timestamp: reviewedTime,
         relatedVideoTitle: videoLabel,
-        isAlert: reviewStatus === 'Needs Revision'
+        isAlert: reviewStatus === 'Needs Revision',
+        readByCoach: true,
+        readByStudent: false,
+        actionTarget:
+          videoType === 'SUPPORTING'
+            ? {
+                label: reviewStatus === 'Needs Revision' ? 'Fix & Resubmit Video' : 'View Video in Studio',
+                tab: 'CADENCE',
+                subTab: 'STUDIO',
+                videoId
+              }
+            : {
+                label: reviewStatus === 'Needs Revision' ? 'Update Core Video' : 'View Core Video',
+                tab: 'CADENCE',
+                subTab: 'CORE5',
+                coreVideoId: videoId
+              }
       };
 
       return {
@@ -481,13 +872,112 @@ export function App() {
   };
 
   const handleUpdateField = (fieldId: string, value: string) => {
-    updateStudent(currentStudent.id, st => ({
-      ...st,
-      worksheetAnswers: {
+    updateStudent(currentStudent.id, st => {
+      const nextWorksheetAnswers = {
         ...st.worksheetAnswers,
         [fieldId]: value
+      };
+
+      // Two-way sync Lessons 10-13 worksheet fields (l10_doc, l11_prod, l12_proof, l13_owner) into Core Videos B1-B4
+      const coreMatch = fieldId.match(/^(l10_doc|l11_prod|l12_proof|l13_owner)_m(08_[shift]|12_thumb_cta)$/);
+      let nextCoreVideos = st.coreVideos;
+      if (coreMatch) {
+        const prefix = coreMatch[1];
+        const fieldSuffix = coreMatch[2];
+        const targetCoreId =
+          prefix === 'l10_doc'
+            ? 'core-b1'
+            : prefix === 'l11_prod'
+            ? 'core-b2'
+            : prefix === 'l12_proof'
+            ? 'core-b3'
+            : 'core-b4';
+
+        nextCoreVideos = st.coreVideos.map(cv => {
+          if (cv.id !== targetCoreId) return cv;
+          if (fieldSuffix === '12_thumb_cta') {
+            return {
+              ...cv,
+              videoUrl: value,
+              status: cv.status === 'Not Started' && value.trim() ? 'In Progress' : cv.status
+            };
+          }
+          const stageLetter = fieldSuffix.slice(-1).toUpperCase() as 'S' | 'H' | 'I' | 'F' | 'T';
+          const currentDraft = cv.scriptDraft || { S: '', H: '', I: '', F: '', T: '' };
+          return {
+            ...cv,
+            status: cv.status === 'Not Started' && value.trim() ? 'In Progress' : cv.status,
+            scriptDraft: {
+              ...currentDraft,
+              [stageLetter]: value
+            }
+          };
+        });
       }
-    }));
+
+      return {
+        ...st,
+        worksheetAnswers: nextWorksheetAnswers,
+        coreVideos: nextCoreVideos
+      };
+    });
+  };
+
+  const handleSyncShiftMagnetFromLesson21 = () => {
+    updateStudent(currentStudent.id, st => {
+      const ans = st.worksheetAnswers;
+      const workingTitle = (ans['m16_magnet_title'] || '').trim() || 'Custom Shift Magnet';
+      const keywordRaw = (ans['m16_version'] || 'SHIFT').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+      const keywordTrigger = keywordRaw.length >= 2 && keywordRaw.length <= 16 ? keywordRaw : 'SHIFT';
+
+      const formatVal = (ans['m16_format'] || '').toLowerCase();
+      const deliveryFormat: ShiftMagnet['deliveryFormat'] = formatVal.includes('check')
+        ? 'Checklist'
+        : formatVal.includes('video') || formatVal.includes('loom')
+        ? 'Video'
+        : formatVal.includes('gpt')
+        ? 'Custom GPT'
+        : formatVal.includes('class')
+        ? 'Class'
+        : formatVal.includes('pdf')
+        ? 'PDF'
+        : 'Audit';
+
+      const syncedMagnet: ShiftMagnet = {
+        id: 'magnet-lesson21',
+        workingTitle,
+        version: ans['m16_version'] || 'v1.0',
+        specificAudience: ans['m16_audience'] || st.niche,
+        triggeringProblem: ans['m16_problem'] || 'Solves the immediate bottleneck blocking the 2mm Shift',
+        promiseOneSentence:
+          ans['m16_promise'] || ans['m02_q1_transformation'] || 'Achieve the next step in under 10 minutes',
+        beliefItShifts: ans['m16_belief'] || ans['m02_q4_belief'] || 'Results over rhetoric',
+        completionTime: ans['m16_time'] || '7 minutes',
+        deliveryFormat,
+        keywordTrigger,
+        trackingLink: ans['m16_link'] || ans['m16_hosted'] || '',
+        dmHandoffScript:
+          ans['m16_thankyou'] ||
+          `Here is the ${workingTitle} (${ans['m16_link'] || 'link'}) — let me know which item stood out most!`,
+        status: (ans['m16_link'] || '').trim() ? 'Live' : 'Draft'
+      };
+
+      const exists = st.shiftMagnets.some(m => m.id === 'magnet-lesson21');
+      const nextMagnets = exists
+        ? st.shiftMagnets.map(m => (m.id === 'magnet-lesson21' ? syncedMagnet : m))
+        : [syncedMagnet, ...st.shiftMagnets];
+
+      return {
+        ...st,
+        shiftMagnets: nextMagnets
+      };
+    });
+
+    triggerWebPushAndBanner(
+      'Shift Magnet Synced to Studio!',
+      'Your Lesson 21 Shift Magnet is now live in the Shift Magnets tab and Studio Step 2 CTA dropdown.',
+      'DAILY_LESSON'
+    );
   };
 
   const handleUpdateRubric = (key: string, score: 'WEAK' | 'ACCEPTABLE' | 'STRONG') => {
@@ -500,17 +990,63 @@ export function App() {
     }));
   };
 
+  const handleCompleteLesson = (lessonNumber: number, nextLesson: number) => {
+    updateStudent(currentStudent.id, st => {
+      const targetWeek = Math.max(st.currentWeek, nextLesson);
+      const nextPhase =
+        targetWeek <= 4 ? 1 : targetWeek <= 8 ? 2 : targetWeek <= 18 ? 3 : targetWeek <= 22 ? 4 : 5;
+      return {
+        ...st,
+        currentWeek: targetWeek,
+        currentPhase: Math.max(st.currentPhase, nextPhase)
+      };
+    });
+    triggerWebPushAndBanner(
+      `Lesson ${String(lessonNumber).padStart(2, '0')} Completed`,
+      `Progress saved! Advancing to Lesson ${String(nextLesson).padStart(2, '0')}.`,
+      'DAILY_LESSON'
+    );
+  };
+
   const handleSubmitPhaseGate = (phaseNumber: number, nextLesson: number) => {
-    updateStudent(currentStudent.id, st => ({
-      ...st,
-      currentWeek: nextLesson,
-      currentPhase: Math.min(5, phaseNumber + 1),
-      gateStatus: {
-        ...st.gateStatus,
-        [phaseNumber]: 'SUBMITTED',
-        [phaseNumber + 1]: 'OPEN'
-      }
-    }));
+    const formattedTime = new Date().toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    const gateLessonNum =
+      phaseNumber === 1 ? 4 : phaseNumber === 2 ? 8 : phaseNumber === 3 ? 18 : phaseNumber === 4 ? 22 : 26;
+
+    updateStudent(currentStudent.id, st => {
+      const gateMsg: ChatMessage = {
+        id: `msg-gate-submit-${Date.now()}`,
+        senderRole: 'STUDENT',
+        senderName: st.name,
+        text: `◆ Submitted Phase 0${phaseNumber} Gate (Lesson ${String(gateLessonNum).padStart(2, '0')}) for Coach Sign-Off.`,
+        timestamp: formattedTime,
+        readByStudent: true,
+        readByCoach: false,
+        actionTarget: {
+          label: `Inspect Phase 0${phaseNumber} Gate`,
+          tab: 'WORKBOOK',
+          lessonNumber: gateLessonNum
+        }
+      };
+
+      return {
+        ...st,
+        currentWeek: Math.max(st.currentWeek, nextLesson),
+        worksheetAnswers: {
+          ...st.worksheetAnswers,
+          [`phase_gate_status_${phaseNumber}`]: 'SUBMITTED'
+        },
+        gateStatus: {
+          ...st.gateStatus,
+          [phaseNumber]: 'SUBMITTED'
+        },
+        messages: [...st.messages, gateMsg]
+      };
+    });
+
     triggerWebPushAndBanner(
       `Phase 0${phaseNumber} Gate Submitted`,
       `Your Phase 0${phaseNumber} deliverables and rubric have been sent to Coach Josh for sign-off.`,
@@ -533,14 +1069,24 @@ export function App() {
   };
 
   const handleSendMessage = (studentId: string, text: string, triggerPush = false) => {
-    const senderRole = roleMode;
-    const senderName = roleMode === 'COACH' ? 'Coach Josh Beechraft' : currentStudent.name;
-    const newMsg = {
+    // Always determine sender identity from authenticated session role so Admin Preview never spoofs the student
+    const isCoachSender = authSession.role === 'ADMIN';
+    const senderRole: 'COACH' | 'STUDENT' = isCoachSender ? 'COACH' : 'STUDENT';
+    const targetStudent = students.find(s => s.id === studentId) || currentStudent;
+    const senderName = isCoachSender ? 'Coach Josh Beechraft' : targetStudent.name;
+    const formattedTime = new Date().toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+
+    const newMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
       senderRole,
       senderName,
       text,
-      timestamp: 'Just now'
+      timestamp: formattedTime,
+      readByCoach: isCoachSender,
+      readByStudent: !isCoachSender
     };
 
     updateStudent(studentId, st => ({
@@ -549,36 +1095,104 @@ export function App() {
     }));
 
     if (triggerPush) {
-      const recipient = students.find(s => s.id === studentId);
       triggerWebPushAndBanner(
-        `New Message from ${senderName}`,
-        `To ${recipient?.name || 'Student'}: "${text}"`,
+        isCoachSender
+          ? `Message Sent to ${targetStudent.name}`
+          : `Message Sent to Coach Josh`,
+        `"${text}"`,
         'COACH_NUDGE'
       );
     }
   };
 
   const handleTriggerMissedAlertPush = (missedStudent: StudentProfile) => {
+    const formattedTime = new Date().toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    const nextPendingVideo =
+      missedStudent.supportingVideos.find(v => v.status !== 'Completed') ||
+      missedStudent.supportingVideos[0];
+
+    const alertMsg: ChatMessage = {
+      id: `msg-alert-${Date.now()}`,
+      senderRole: 'COACH',
+      senderName: 'Coach Josh Beechraft',
+      text: `⚡ Daily Cadence Check-In: Your <10-minute Concussion Content video (${
+        nextPendingVideo ? `Day #${String(nextPendingVideo.dayNumber).padStart(2, '0')}: "${nextPendingVideo.title}"` : 'Today’s Video'
+      }) is due today. Jump into Studio to shoot and verify your link!`,
+      timestamp: formattedTime,
+      isAlert: true,
+      readByCoach: true,
+      readByStudent: false,
+      actionTarget: {
+        label: 'Open Studio & Shoot Now',
+        tab: 'CADENCE',
+        subTab: 'STUDIO',
+        videoId: nextPendingVideo?.id
+      }
+    };
+
+    updateStudent(missedStudent.id, st => ({
+      ...st,
+      messages: [...st.messages, alertMsg]
+    }));
+
     triggerWebPushAndBanner(
-      `Coach Alert: ${missedStudent.name} Missed Daily Video`,
-      `${missedStudent.name} (${missedStudent.company}) has not posted their daily video link today. Tap to send a follow-up message.`,
+      `Coach Alert Sent to ${missedStudent.name}`,
+      `Delivered daily cadence nudge into ${missedStudent.name}’s inbox and push stream.`,
       'MISSED_ALERT'
     );
   };
 
   const handleApproveGate = (studentId: string, phaseNum: number) => {
-    updateStudent(studentId, st => ({
-      ...st,
-      gateStatus: {
-        ...st.gateStatus,
-        [phaseNum]: 'APPROVED',
-        [phaseNum + 1]: 'OPEN'
-      }
-    }));
+    const formattedTime = new Date().toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    const nextPhase = Math.min(5, phaseNum + 1);
+    const nextPhaseStartLesson =
+      phaseNum === 1 ? 5 : phaseNum === 2 ? 9 : phaseNum === 3 ? 19 : phaseNum === 4 ? 23 : 26;
+
+    updateStudent(studentId, st => {
+      const approvalMsg: ChatMessage = {
+        id: `msg-gate-approve-${Date.now()}`,
+        senderRole: 'COACH',
+        senderName: 'Coach Josh Beechraft',
+        text: `✓ PHASE 0${phaseNum} GATE APPROVED! Great execution — you are officially cleared for Phase 0${nextPhase} (starting at Lesson ${String(
+          nextPhaseStartLesson
+        ).padStart(2, '0')}).`,
+        timestamp: formattedTime,
+        readByCoach: true,
+        readByStudent: false,
+        actionTarget: {
+          label: `Open Lesson ${String(nextPhaseStartLesson).padStart(2, '0')}`,
+          tab: 'WORKBOOK',
+          lessonNumber: nextPhaseStartLesson
+        }
+      };
+
+      return {
+        ...st,
+        currentPhase: Math.max(st.currentPhase, nextPhase),
+        currentWeek: Math.max(st.currentWeek, nextPhaseStartLesson),
+        worksheetAnswers: {
+          ...st.worksheetAnswers,
+          [`phase_gate_status_${phaseNum}`]: 'APPROVED'
+        },
+        gateStatus: {
+          ...st.gateStatus,
+          [phaseNum]: 'APPROVED',
+          [nextPhase]: 'OPEN'
+        },
+        messages: [...st.messages, approvalMsg]
+      };
+    });
+
     const target = students.find(s => s.id === studentId);
     triggerWebPushAndBanner(
       `Phase 0${phaseNum} Gate Approved`,
-      `${target?.name} is now cleared to advance to Phase 0${Math.min(5, phaseNum + 1)}.`,
+      `${target?.name} is now cleared to advance to Phase 0${nextPhase}.`,
       'DAILY_LESSON'
     );
   };
@@ -589,13 +1203,54 @@ export function App() {
     try {
       setImportStatus('Parsing .xlsx workbook...');
       const parsed = await parseStudentSpreadsheet(file);
-      updateStudent(currentStudent.id, st => ({
-        ...st,
-        playbook: parsed.playbook.length > 0 ? parsed.playbook : st.playbook,
-        supportingVideos: parsed.supporting.length > 0 ? parsed.supporting : st.supportingVideos
-      }));
+      updateStudent(currentStudent.id, st => {
+        // Non-destructively merge Playbook Pillars (preserve status by id or pillar title)
+        const mergedPlaybook =
+          parsed.playbook.length > 0
+            ? parsed.playbook.map(incomingPillar => {
+                const existingPillar = st.playbook.find(
+                  p => p.id === incomingPillar.id || p.pillar === incomingPillar.pillar
+                );
+                return existingPillar
+                  ? { ...incomingPillar, status: existingPillar.status }
+                  : incomingPillar;
+              })
+            : st.playbook;
+
+        // Non-destructively merge Supporting Videos (preserve completed links, coach reviews, custom hooks, notes by dayNumber)
+        const mergedSupporting =
+          parsed.supporting.length > 0
+            ? parsed.supporting.map(incomingVideo => {
+                const existingVideo = st.supportingVideos.find(
+                  v => v.dayNumber === incomingVideo.dayNumber || v.id === incomingVideo.id
+                );
+                if (!existingVideo) return incomingVideo;
+                return {
+                  ...incomingVideo,
+                  id: existingVideo.id,
+                  status: existingVideo.status,
+                  videoUrl: existingVideo.videoUrl,
+                  completedAt: existingVideo.completedAt,
+                  completedDateISO: existingVideo.completedDateISO,
+                  coachReviewStatus: existingVideo.coachReviewStatus,
+                  coachFeedback: existingVideo.coachFeedback,
+                  coachReviewedAt: existingVideo.coachReviewedAt,
+                  selectedHook: existingVideo.selectedHook,
+                  customHook: existingVideo.customHook,
+                  notes: existingVideo.notes,
+                  attachedMagnetId: existingVideo.attachedMagnetId || incomingVideo.attachedMagnetId
+                };
+              })
+            : st.supportingVideos;
+
+        return {
+          ...st,
+          playbook: mergedPlaybook,
+          supportingVideos: mergedSupporting
+        };
+      });
       setImportStatus(
-        `Successfully ingested ${parsed.playbook.length} Core Playbook Pillars and ${parsed.supporting.length} Daily Supporting Videos for ${currentStudent.name}!`
+        `Successfully merged ${parsed.playbook.length} Core Playbook Pillars and ${parsed.supporting.length} Daily Supporting Videos for ${currentStudent.name} (all completed links & coach reviews preserved)!`
       );
     } catch (err) {
       setImportStatus(`Error parsing file: ${err instanceof Error ? err.message : 'Invalid format'}`);
@@ -604,6 +1259,8 @@ export function App() {
 
   const handleAddStudent = (params: {
     name: string;
+    email?: string;
+    accessCode?: string;
     company: string;
     niche: string;
     startingLesson: number;
@@ -615,6 +1272,9 @@ export function App() {
     const created = createNewStudentProfile(params);
     setStudents(prev => [created, ...prev]);
     setActiveStudentId(created.id);
+    if (isSupabaseConfigured) {
+      upsertSingleStudentToSupabase(created);
+    }
     triggerWebPushAndBanner(
       `Student Onboarded: ${created.name}`,
       `${created.company} (${created.supportingVideos.length} Daily Concussion Content videos) is now live on Lesson ${created.currentWeek}.`,
@@ -649,13 +1309,14 @@ export function App() {
 
   const handleAddCustomVideoToStudent = (
     studentId: string,
-    video: { pillarStage: string; title: string; hook1: string; hook2: string; hook3: string }
+    video: { pillarId?: string; pillarStage: string; title: string; hook1: string; hook2: string; hook3: string }
   ) => {
     updateStudent(studentId, st => {
       const nextDayNum = st.supportingVideos.length + 1;
       const newVideo: SupportingVideoItem = {
         id: `supp-custom-${Date.now()}`,
         dayNumber: nextDayNum,
+        pillarId: video.pillarId,
         pillarStage: video.pillarStage,
         title: video.title,
         hook1: video.hook1,
@@ -734,7 +1395,9 @@ export function App() {
     );
   }
 
-  const isAdminSession = authSession.role === 'ADMIN';
+  const unreadMessagesForCurrentViewer = isAdminSession
+    ? currentStudent.messages.filter(m => m.senderRole === 'STUDENT' && m.readByCoach === false).length
+    : currentStudent.messages.filter(m => m.senderRole === 'COACH' && m.readByStudent === false).length;
 
   const allNavItems = [
     { id: 'CADENCE' as const, label: 'Studio', shortLabel: 'Studio', icon: Video, role: 'STUDENT' as const },
@@ -872,7 +1535,7 @@ export function App() {
         {isAdminSession && activeTab !== 'COACH' && (
           <div className="bg-[#09ADEF]/12 border-b border-[#09ADEF]/25 px-3.5 sm:px-8 py-1.5 flex items-center justify-between gap-2 text-xs">
             <span className="text-neutral-200 truncate">
-              Viewing <strong className="text-white">{currentStudent.name}</strong>
+              Coach Preview Mode: Viewing <strong className="text-white">{currentStudent.name}</strong> (Messages still send as Coach Josh)
             </span>
             <button
               type="button"
@@ -937,14 +1600,24 @@ export function App() {
               <button
                 type="button"
                 onClick={() => setShowStudentInboxModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-neutral-200 transition-colors cursor-pointer"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors cursor-pointer ${
+                  unreadMessagesForCurrentViewer > 0
+                    ? 'bg-[#09ADEF]/15 border-[#09ADEF] text-white shadow-[0_0_16px_rgba(9,173,239,0.25)]'
+                    : 'bg-[#0A0C10] hover:bg-white/[0.08] border-white/10 text-neutral-200'
+                }`}
               >
                 <MessageSquare className="w-3.5 h-3.5 text-[#09ADEF]" />
                 <span className="hidden sm:inline">Messages</span>
-                {currentStudent.messages.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-[#09ADEF]/20 text-[#09ADEF] text-[10px] font-bold">
-                    {currentStudent.messages.length}
+                {unreadMessagesForCurrentViewer > 0 ? (
+                  <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold">
+                    {unreadMessagesForCurrentViewer} New
                   </span>
+                ) : (
+                  currentStudent.messages.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-[#09ADEF]/20 text-[#09ADEF] text-[10px] font-bold">
+                      {currentStudent.messages.length}
+                    </span>
+                  )
                 )}
               </button>
 
@@ -969,6 +1642,14 @@ export function App() {
               onMarkVideoDone={handleMarkVideoDone}
               onUpdatePillarStatus={handleUpdatePillarStatus}
               onUpdateCoreVideoStatus={handleUpdateCoreVideoStatus}
+              requestedSubTab={requestedCadenceSubTab}
+              requestedVideoId={requestedVideoId}
+              requestedCoreVideoId={requestedCoreVideoId}
+              onClearRequestedNavigation={() => {
+                setRequestedCadenceSubTab(undefined);
+                setRequestedVideoId(undefined);
+                setRequestedCoreVideoId(undefined);
+              }}
               onOpenImportModal={() => {
                 setImportStatus(null);
                 setShowImportModal(true);
@@ -986,7 +1667,11 @@ export function App() {
               onToggleTask={handleToggleTask}
               onUpdateField={handleUpdateField}
               onUpdateRubric={handleUpdateRubric}
+              onCompleteLesson={handleCompleteLesson}
               onSubmitPhaseGate={handleSubmitPhaseGate}
+              onSyncShiftMagnetFromLesson21={handleSyncShiftMagnetFromLesson21}
+              requestedLessonNumber={requestedLessonNumber}
+              onClearRequestedLesson={() => setRequestedLessonNumber(undefined)}
             />
           )}
 
@@ -1001,6 +1686,7 @@ export function App() {
           {activeTab === 'COACH' && isAdminSession && (
             <CoachDashboardView
               students={students}
+              lessons={lessons}
               selectedStudentId={activeStudentId}
               onSelectStudent={setActiveStudentId}
               appSettings={appSettings}
@@ -1008,8 +1694,11 @@ export function App() {
               onAddStudent={handleAddStudent}
               onUpdateStudentSpecifics={handleUpdateStudentSpecifics}
               onAddCustomVideoToStudent={handleAddCustomVideoToStudent}
+              onEditStudentVideo={handleEditStudentVideo}
               onDeleteStudent={handleDeleteStudent}
               onSendMessage={handleSendMessage}
+              onMarkMessagesRead={handleMarkMessagesRead}
+              onNavigateFromChatAction={handleNavigateFromChatAction}
               onReviewStudentVideo={handleReviewStudentVideo}
               onTriggerMissedAlertPush={handleTriggerMissedAlertPush}
               onApproveGate={handleApproveGate}
@@ -1071,14 +1760,14 @@ export function App() {
         <div className="space-y-4 text-xs">
           <p className="text-neutral-300 leading-relaxed">
             Upload a student’s strategy spreadsheet (such as{' '}
-            <code className="text-[#09ADEF]">josh_content_tracking-v2.xlsx</code>) to automatically populate:
+            <code className="text-[#09ADEF]">josh_content_tracking-v2.xlsx</code>) to automatically populate or update:
           </p>
           <ul className="space-y-1.5 text-neutral-300 list-disc pl-5">
             <li>
               <strong>Content Playbook:</strong> 15 Core Pillars, Old/New Beliefs, Must-Hit Beats, and 4 Teaching Angles.
             </li>
             <li>
-              <strong>Concussion Content:</strong> 50 Daily Micro-Topics with Hooks 1, 2, and 3.
+              <strong>Concussion Content:</strong> 50 Daily Micro-Topics with Hooks 1, 2, and 3 (preserving any completed video links and coach reviews).
             </li>
           </ul>
 
@@ -1109,12 +1798,12 @@ export function App() {
         </div>
       </ModalDialog>
 
-      {/* Modal 2: Student In-App Coach Chat Inbox */}
+      {/* Modal 2: Student & Coach In-App Chat Inbox */}
       <ModalDialog
         isOpen={showStudentInboxModal}
         onClose={() => setShowStudentInboxModal(false)}
         title={`Coach & Student Messages (${currentStudent.name})`}
-        subtitle="Direct In-App Accountability"
+        subtitle="Direct In-App Accountability & Action Links"
       >
         <div className="space-y-4">
           <div className="rounded-2xl bg-[#05070A] border border-white/[0.07] p-4 space-y-3 max-h-80 overflow-y-auto">
@@ -1123,25 +1812,44 @@ export function App() {
                 No messages yet.
               </div>
             ) : (
-              currentStudent.messages.map(m => (
-                <div
-                  key={m.id}
-                  className={`p-3.5 rounded-xl border text-xs ${
-                    m.isAlert
-                      ? 'border-rose-500/30 bg-rose-500/10 text-rose-200'
-                      : m.senderRole === 'COACH'
-                      ? 'border-[#09ADEF]/30 bg-[#09ADEF]/10 text-white mr-6'
-                      : 'border-emerald-500/30 bg-emerald-500/10 text-white ml-6'
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-[11px] text-neutral-400 mb-1">
-                    <span className="text-[#09ADEF] font-semibold">{m.senderName}</span>
-                    <span>{m.timestamp}</span>
+              currentStudent.messages.map(m => {
+                const isOwnMessage = isAdminSession
+                  ? m.senderRole === 'COACH'
+                  : m.senderRole === 'STUDENT';
+
+                return (
+                  <div
+                    key={m.id}
+                    className={`p-3.5 rounded-xl border text-xs ${
+                      m.isAlert
+                        ? 'border-rose-500/30 bg-rose-500/10 text-rose-200'
+                        : isOwnMessage
+                        ? 'border-[#09ADEF]/35 bg-[#09ADEF]/12 text-white ml-6'
+                        : 'border-white/12 bg-white/[0.04] text-neutral-100 mr-6'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-[11px] text-neutral-400 mb-1">
+                      <span className="text-[#09ADEF] font-semibold">{m.senderName}</span>
+                      <span>{m.timestamp}</span>
+                    </div>
+                    <p className="leading-relaxed text-sm">{m.text}</p>
+                    {m.actionTarget && (
+                      <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-end">
+                        <button
+                          type="button"
+                          onClick={() => handleNavigateFromChatAction(currentStudent.id, m.actionTarget!)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#09ADEF]/20 hover:bg-[#09ADEF]/30 border border-[#09ADEF]/40 text-[11px] font-bold text-[#09ADEF] cursor-pointer"
+                        >
+                          <span>{m.actionTarget.label}</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <p className="leading-relaxed text-sm">{m.text}</p>
-                </div>
-              ))
+                );
+              })
             )}
+            <div ref={inboxBottomRef} />
           </div>
 
           <form
@@ -1158,8 +1866,8 @@ export function App() {
               value={studentReplyInput}
               onChange={e => setStudentReplyInput(e.target.value)}
               placeholder={
-                roleMode === 'COACH'
-                  ? `Message ${currentStudent.name}...`
+                isAdminSession
+                  ? `Message ${currentStudent.name} as Coach Josh...`
                   : 'Reply to Coach Josh...'
               }
               className="flex-1 rounded-lg bg-[#05070A] border border-white/15 px-4 py-3 text-sm text-white focus:outline-none focus:border-[#09ADEF]"

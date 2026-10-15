@@ -18,10 +18,14 @@ import {
   ListVideo,
   Layers,
   Award,
-  Play
+  Play,
+  BookOpen,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { StudentProfile, SupportingVideoItem, PlaybookPillar } from '../types';
 import { ModalDialog } from './ModalDialog';
+import { resolveMatchingPillar } from '../utils/excelParser';
 
 interface DailyCadenceViewProps {
   student: StudentProfile;
@@ -83,6 +87,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
   const [coreUrlDrafts, setCoreUrlDrafts] = useState<Record<string, string>>({});
   const [coreUrlError, setCoreUrlError] = useState<string | null>(null);
   const [showQueueDrawer, setShowQueueDrawer] = useState(false);
+  const [teleprompterLargeText, setTeleprompterLargeText] = useState(false);
 
   // Handle deep-link navigation from chat messages or review links
   useEffect(() => {
@@ -123,10 +128,24 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
 
   const currentVideo = student.supportingVideos[selectedIndex] || student.supportingVideos[0];
 
+  // Sync link input when video or its saved URL changes
   useEffect(() => {
     setVideoLinkInput(currentVideo?.videoUrl || '');
     setLinkError(null);
   }, [currentVideo?.id, currentVideo?.videoUrl]);
+
+  // Auto-reset timer when switching to a different video
+  useEffect(() => {
+    setTimerRunning(false);
+    setTimerSeconds(0);
+  }, [currentVideo?.id]);
+
+  // Auto-start timer when entering Step 3 (Teleprompter)
+  useEffect(() => {
+    if (activeStep === 3) {
+      setTimerRunning(true);
+    }
+  }, [activeStep]);
 
   const completedSupportingCount = student.supportingVideos.filter(v => v.status === 'Completed').length;
   const completedCoreCount = student.coreVideos.filter(v => v.status === 'Completed').length;
@@ -139,10 +158,9 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
     c => c.coachReviewStatus === 'Needs Revision'
   );
 
-  const matchingPillar: PlaybookPillar | undefined =
-    student.playbook.find(
-      p => p.stage.slice(0, 10).toLowerCase() === currentVideo?.pillarStage.slice(0, 10).toLowerCase()
-    ) || student.playbook[0];
+  const matchingPillar: PlaybookPillar | undefined = currentVideo
+    ? resolveMatchingPillar(currentVideo, student.playbook)
+    : student.playbook[0];
 
   const selectedHookNum = currentVideo?.selectedHook || 1;
   const activeHookText =
@@ -297,11 +315,16 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
           {/* Clean Current Day Header + 4-Step Segmented Bar */}
           <div className="glass-panel rounded-2xl p-5 sm:p-7">
             <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <span className="w-5 h-[1.5px] bg-[#09ADEF]" />
                 <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#09ADEF]">
                   DAY #{currentVideo.dayNumber} · {shiftDay.day} · {shiftDay.stage}
                 </span>
+                {matchingPillar && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] font-semibold text-zinc-300">
+                    {matchingPillar.stage} · {matchingPillar.pillar}
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-1">
@@ -497,6 +520,92 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   </div>
                 </div>
 
+                {/* Collapsible Foundation & Story Bank Reference (Lessons 2–6 Bridge) */}
+                <details className="group rounded-xl bg-[#040507] border border-white/[0.08] p-3.5">
+                  <summary className="text-xs font-semibold text-neutral-300 cursor-pointer flex items-center justify-between list-none">
+                    <span className="flex items-center gap-2">
+                      <BookOpen className="w-3.5 h-3.5 text-[#09ADEF]" />
+                      <span>Workbook Foundation & Top 8 Story Bank Reference (Click to insert story beat)</span>
+                    </span>
+                    <span className="text-[#09ADEF] text-[11px] group-open:rotate-90 transition-transform">▸</span>
+                  </summary>
+                  <div className="mt-3 pt-3 border-t border-white/[0.07] space-y-3 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div className="p-2.5 rounded-lg bg-black border border-white/10">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF]">
+                          Q1 · Core Transformation
+                        </div>
+                        <p className="text-neutral-200 mt-1 leading-relaxed">
+                          {student.worksheetAnswers['m02_q1_transformation'] || 'Not yet filled in Lesson 2'}
+                        </p>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-black border border-white/10">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF]">
+                          Q4 · Core Belief Statement
+                        </div>
+                        <p className="text-neutral-200 mt-1 leading-relaxed">
+                          {student.worksheetAnswers['m02_q4_belief'] || 'Not yet filled in Lesson 2'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                        Top 8 Stories (Lesson 6 Story Bank) — Click any story to load into your Story Beat Note:
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {[
+                          {
+                            num: 1,
+                            title: student.worksheetAnswers['m05_title'],
+                            snippet: student.worksheetAnswers['m05_20s'] || student.worksheetAnswers['m05_90s']
+                          },
+                          ...[2, 3, 4, 5, 6, 7, 8].map(n => ({
+                            num: n,
+                            title: student.worksheetAnswers[`m05_s${n}_header`],
+                            snippet: student.worksheetAnswers[`m05_s${n}_lengths`]
+                          }))
+                        ].map(story => {
+                          const hasContent = Boolean(story.title?.trim() || story.snippet?.trim());
+                          const label = story.title?.trim() || `Story #${story.num} (Lesson 6)`;
+                          const notePayload = [story.title?.trim(), story.snippet?.trim()].filter(Boolean).join(' — ');
+                          return (
+                            <button
+                              key={story.num}
+                              type="button"
+                              disabled={!hasContent}
+                              onClick={() => {
+                                if (notePayload) {
+                                  onUpdateVideo(currentVideo.id, { notes: notePayload });
+                                }
+                              }}
+                              className={`text-left p-2.5 rounded-lg border transition ${
+                                hasContent
+                                  ? 'bg-black border-white/12 hover:border-[#09ADEF] text-neutral-200 cursor-pointer'
+                                  : 'bg-black/40 border-white/5 text-neutral-600 cursor-not-allowed'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-semibold text-[11px] text-white truncate">
+                                  #{story.num}: {label}
+                                </span>
+                                {hasContent && (
+                                  <span className="text-[9px] font-bold uppercase tracking-wider text-[#09ADEF] shrink-0">
+                                    + Use Story
+                                  </span>
+                                )}
+                              </div>
+                              {story.snippet && (
+                                <p className="text-[11px] text-neutral-400 truncate mt-0.5">{story.snippet}</p>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </details>
+
                 <div className="pt-4 border-t border-white/[0.07] flex items-center justify-end">
                   <button
                     type="button"
@@ -513,8 +622,15 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
             {/* PANEL 2: BELIEF SHIFT & SHIFT MAGNET CTA (Matches Results Over Rhetoric card layout) */}
             {activeStep === 2 && (
               <div className="space-y-5">
-                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
-                  STEP 2 · THE 2MM BELIEF SHIFT & CTA
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                    STEP 2 · THE 2MM BELIEF SHIFT & CTA
+                  </div>
+                  {matchingPillar && (
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+                      Pillar: {matchingPillar.pillar}
+                    </span>
+                  )}
                 </div>
 
                 {matchingPillar && (
@@ -609,83 +725,176 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     STEP 3 · TELEPROMPTER & 5-TAKE SHOOT
                   </div>
 
-                  {/* Sleek Pill Timer */}
-                  <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#040507] border border-white/12">
-                    <Clock className="w-3.5 h-3.5 text-[#09ADEF]" />
-                    <span className="font-mono-tech text-xs font-semibold text-white">
-                      {formatTimer(timerSeconds)}
-                    </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Large Text Toggle */}
                     <button
                       type="button"
-                      onClick={() => setTimerRunning(r => !r)}
-                      className="text-[11px] font-bold uppercase tracking-wider text-[#09ADEF] cursor-pointer"
+                      onClick={() => setTeleprompterLargeText(v => !v)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
+                        teleprompterLargeText
+                          ? 'bg-[#09ADEF]/20 border-[#09ADEF] text-white'
+                          : 'bg-[#040507] border-white/12 text-neutral-300 hover:text-white'
+                      }`}
                     >
-                      {timerRunning ? 'Pause' : 'Start'}
+                      {teleprompterLargeText ? (
+                        <Minimize2 className="w-3 h-3 text-[#09ADEF]" />
+                      ) : (
+                        <Maximize2 className="w-3 h-3 text-[#09ADEF]" />
+                      )}
+                      <span>{teleprompterLargeText ? 'Standard Text' : 'Large Studio Font'}</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTimerRunning(false);
-                        setTimerSeconds(0);
-                      }}
-                      className="text-neutral-400 hover:text-white cursor-pointer"
-                      title="Reset timer"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                    </button>
+
+                    {/* Sleek Pill Timer */}
+                    <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#040507] border border-white/12">
+                      <Clock className="w-3.5 h-3.5 text-[#09ADEF]" />
+                      <span className="font-mono-tech text-xs font-semibold text-white">
+                        {formatTimer(timerSeconds)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setTimerRunning(r => !r)}
+                        className="text-[11px] font-bold uppercase tracking-wider text-[#09ADEF] cursor-pointer"
+                      >
+                        {timerRunning ? 'Pause' : 'Start'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTimerRunning(false);
+                          setTimerSeconds(0);
+                        }}
+                        className="text-neutral-400 hover:text-white cursor-pointer"
+                        title="Reset timer"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Large Readable Teleprompter Card */}
-                <div className="p-5 sm:p-6 rounded-2xl bg-[#040507] border border-[#09ADEF]/30 space-y-4">
+                {/* Large Readable 5-Take Teleprompter Card */}
+                <div className="p-5 sm:p-6 rounded-2xl bg-[#040507] border border-[#09ADEF]/30 space-y-5">
+                  {/* TAKE 1: SIGNAL */}
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF] block mb-1">
-                      1. SIGNAL HOOK (0:00–0:15)
-                    </span>
-                    <p className="text-lg sm:text-2xl font-semibold text-white leading-relaxed">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                        TAKE 1 · SIGNAL HOOK (0:00–0:15)
+                      </span>
+                      <span className="text-[10px] text-neutral-500">Tight & direct close-up</span>
+                    </div>
+                    <p
+                      className={`${
+                        teleprompterLargeText ? 'text-xl sm:text-3xl' : 'text-lg sm:text-2xl'
+                      } font-semibold text-white leading-relaxed`}
+                    >
                       “{activeHookText}”
                     </p>
                   </div>
 
+                  {/* TAKE 2: HUMANIZE */}
+                  <div className="pt-4 border-t border-white/[0.07]">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                        TAKE 2 · HUMANIZE & KEYWORD SETUP (0:15–0:30)
+                      </span>
+                      <span className="text-[10px] text-neutral-500">Shift camera 30° / medium shot</span>
+                    </div>
+                    <p
+                      className={`${
+                        teleprompterLargeText ? 'text-base sm:text-xl' : 'text-xs sm:text-sm'
+                      } text-neutral-200 leading-relaxed`}
+                    >
+                      {attachedMagnet
+                        ? `“If we haven't met, I help ${student.niche.toLowerCase()} ${
+                            (student.worksheetAnswers['m02_q1_transformation'] || 'install the 2mm Shift').toLowerCase()
+                          }. By the way — if you want my ${attachedMagnet.workingTitle}, comment ‘${
+                            attachedMagnet.keywordTrigger
+                          }’ below and I’ll send it right over.”`
+                        : `“If we haven't met, I help ${student.niche.toLowerCase()} ${
+                            (student.worksheetAnswers['m02_q1_transformation'] || 'install the 2mm Shift').toLowerCase()
+                          }.”`}
+                    </p>
+                  </div>
+
+                  {/* TAKE 3 & 4: ILLUMINATE & FORMULATE */}
                   {matchingPillar && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-white/[0.07]">
                       <div>
-                        <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400 block mb-1">
-                          2. ILLUMINATE (OLD BELIEF)
-                        </span>
-                        <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
+                            TAKE 3 · ILLUMINATE OLD BELIEF (0:30–1:45)
+                          </span>
+                        </div>
+                        <p
+                          className={`${
+                            teleprompterLargeText ? 'text-base sm:text-xl' : 'text-xs sm:text-sm'
+                          } text-neutral-300 leading-relaxed`}
+                        >
                           {matchingPillar.breaksBelief}
                         </p>
+                        {currentVideo.notes?.trim() && (
+                          <div className="mt-2.5 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/25">
+                            <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-amber-300 block mb-0.5">
+                              STORY / EXAMPLE BEAT TO DROP IN TAKE 3:
+                            </span>
+                            <p
+                              className={`${
+                                teleprompterLargeText ? 'text-sm sm:text-lg' : 'text-xs'
+                              } text-amber-100 leading-relaxed`}
+                            >
+                              {currentVideo.notes}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      <div className="border-l-2 border-[#09ADEF]/50 pl-3.5">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF] block mb-1">
-                          3. FORMULATE (THE 2MM SHIFT)
-                        </span>
-                        <p className="text-xs sm:text-sm text-white leading-relaxed">
-                          {matchingPillar.installsBelief}
-                        </p>
+
+                      <div className="border-l-2 border-[#09ADEF]/50 pl-3.5 space-y-2.5">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF] block mb-1">
+                            TAKE 4 · FORMULATE THE 2MM SHIFT (1:45–3:00)
+                          </span>
+                          <p
+                            className={`${
+                              teleprompterLargeText ? 'text-base sm:text-xl' : 'text-xs sm:text-sm'
+                            } text-white leading-relaxed font-medium`}
+                          >
+                            {matchingPillar.installsBelief}
+                          </p>
+                        </div>
+
+                        {matchingPillar.mustHitBeats && (
+                          <div className="p-2.5 rounded-lg bg-[#09ADEF]/10 border border-[#09ADEF]/25">
+                            <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#09ADEF] block mb-0.5">
+                              MUST-HIT TEACHING BEATS:
+                            </span>
+                            <p
+                              className={`${
+                                teleprompterLargeText ? 'text-sm sm:text-lg' : 'text-xs'
+                              } text-zinc-100 font-semibold leading-relaxed`}
+                            >
+                              {matchingPillar.mustHitBeats}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
 
-                  {currentVideo.notes?.trim() && (
-                    <div className="pt-3 border-t border-white/[0.07]">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-300 block mb-1">
-                        PERSONAL STORY / TALKING NOTE
-                      </span>
-                      <p className="text-xs sm:text-sm text-neutral-200 leading-relaxed">
-                        {currentVideo.notes}
-                      </p>
-                    </div>
-                  )}
-
+                  {/* TAKE 5: TRANSFER CTA */}
                   {attachedMagnet && (
                     <div className="pt-4 border-t border-white/[0.07]">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF] block mb-1">
-                        4. TRANSFER CTA (3:00–3:10)
-                      </span>
-                      <p className="text-sm sm:text-base font-medium text-white">
-                        “Comment <span className="text-[#09ADEF] font-bold">‘{attachedMagnet.keywordTrigger}’</span> below and I’ll DM you the {attachedMagnet.workingTitle}.”
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                          TAKE 5 · TRANSFER CTA (3:00–3:10)
+                        </span>
+                        <span className="text-[10px] text-neutral-500">Urgent punch-in close-up</span>
+                      </div>
+                      <p
+                        className={`${
+                          teleprompterLargeText ? 'text-lg sm:text-2xl' : 'text-sm sm:text-base'
+                        } font-medium text-white leading-relaxed`}
+                      >
+                        “Comment <span className="text-[#09ADEF] font-bold">‘{attachedMagnet.keywordTrigger}’</span> below and I’ll DM you the {attachedMagnet.workingTitle} ({attachedMagnet.completionTime}).”
                       </p>
                     </div>
                   )}
@@ -1065,11 +1274,22 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
               <div key={core.id} className="p-5 sm:p-6 rounded-xl bg-[#000000] border border-white/[0.08] space-y-5">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="badge-2mm px-2.5 py-0.5 rounded text-[10px]">
                         {core.code} · {core.week}
                       </span>
                       <span className="text-xs text-zinc-400">Target Runtime: {core.runtimeTarget}</span>
+                      <span className="px-2 py-0.5 rounded bg-[#09ADEF]/10 border border-[#09ADEF]/30 text-[10px] font-semibold text-[#09ADEF]">
+                        {core.code === 'B1'
+                          ? '⇄ Two-Way Synced with Lesson 10'
+                          : core.code === 'B2'
+                          ? '⇄ Two-Way Synced with Lesson 11'
+                          : core.code === 'B3'
+                          ? '⇄ Two-Way Synced with Lesson 12'
+                          : core.code === 'B4'
+                          ? '⇄ Two-Way Synced with Lesson 13'
+                          : '⇄ Linked to Lesson 7 Matrix & Lessons 14–17'}
+                      </span>
                     </div>
                     <h3 className="font-display text-2xl uppercase text-white tracking-wide mt-2">{core.name}</h3>
                     <p className="text-xs text-zinc-400 mt-1">{core.purpose}</p>
@@ -1180,6 +1400,70 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     );
                   })}
                 </div>
+
+                {/* B5 Exclusive: 20-Video Expert Demo Matrix Tracker (Lessons 7 & 14–17) */}
+                {core.code === 'B5' && (() => {
+                  const demoItems = Array.from({ length: 20 }, (_, i) => {
+                    const num = i + 1;
+                    const padded = String(num).padStart(2, '0');
+                    const batchLesson = num <= 5 ? 14 : num <= 10 ? 15 : num <= 15 ? 16 : 17;
+                    const scriptKey = `l${batchLesson}_v${padded}_script`;
+                    const matrixCellKey = `m06_cell_${padded}`;
+                    const title = student.worksheetAnswers[matrixCellKey]?.trim() || `Demo Video #${padded}`;
+                    const script = student.worksheetAnswers[scriptKey]?.trim() || '';
+                    return { num, padded, batchLesson, title, script, hasScript: Boolean(script) };
+                  });
+                  const scriptedCount = demoItems.filter(d => d.hasScript).length;
+
+                  return (
+                    <div className="p-4 rounded-xl bg-[#040507] border border-white/[0.08] space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                            B5 · 20 EXPERT DEMO VIDEOS MATRIX (LESSONS 7 & 14–17)
+                          </div>
+                          <p className="text-[11px] text-zinc-400 mt-0.5">
+                            Working titles pull from Lesson 7 (5×4 Matrix) and script outlines pull from Lessons 14–17 (Batches 1–4).
+                          </p>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full bg-[#09ADEF]/15 border border-[#09ADEF]/30 text-[10px] font-bold text-[#09ADEF]">
+                          {scriptedCount} / 20 Scripted in Workbook
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 max-h-72 overflow-y-auto pr-1">
+                        {demoItems.map(item => (
+                          <div
+                            key={item.num}
+                            className={`p-2.5 rounded-lg border text-xs flex flex-col justify-between gap-1.5 ${
+                              item.hasScript
+                                ? 'bg-emerald-500/[0.07] border-emerald-500/30 text-white'
+                                : 'bg-black border-white/10 text-zinc-400'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF]">
+                                #{item.padded} · L{item.batchLesson}
+                              </span>
+                              <span
+                                className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                                  item.hasScript
+                                    ? 'bg-emerald-500/20 text-emerald-300'
+                                    : 'bg-white/5 text-zinc-500'
+                                }`}
+                              >
+                                {item.hasScript ? '✓ Scripted' : 'Pending'}
+                              </span>
+                            </div>
+                            <div className="font-semibold text-[11px] text-zinc-100 line-clamp-2">
+                              {item.title}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Bottom Prev / Next Bar */}
                 <div className="pt-4 border-t border-white/[0.07] flex items-center justify-between">

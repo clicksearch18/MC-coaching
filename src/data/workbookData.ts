@@ -15,8 +15,7 @@ export const CORE_BRAND_VIDEOS_TEMPLATE: CoreBrandVideo[] = [
       F: 'Forge the difference — Show the standard and mechanism you built in response.',
       T: 'Transfer the legacy — Why you exist and the one next action for the viewer.'
     },
-    status: 'Completed',
-    videoUrl: 'https://youtu.be/mcm-doc-v1'
+    status: 'Not Started'
   },
   {
     id: 'core-b2',
@@ -32,8 +31,7 @@ export const CORE_BRAND_VIDEOS_TEMPLATE: CoreBrandVideo[] = [
       F: 'Frame the journey — Real installations, real deliverables, supporting middle.',
       T: 'Take the first step — One clear friction-free next step.'
     },
-    status: 'Completed',
-    videoUrl: 'https://youtu.be/mcm-product-v1'
+    status: 'Not Started'
   },
   {
     id: 'core-b3',
@@ -49,7 +47,7 @@ export const CORE_BRAND_VIDEOS_TEMPLATE: CoreBrandVideo[] = [
       F: 'Finish the transformation — Visible before-and-after plus a real number.',
       T: 'Tell them what is possible — Directly answers the Core Objection.'
     },
-    status: 'In Progress'
+    status: 'Not Started'
   },
   {
     id: 'core-b4',
@@ -81,7 +79,7 @@ export const CORE_BRAND_VIDEOS_TEMPLATE: CoreBrandVideo[] = [
       F: 'Formulate the fix (1:45–3:00) — Show the better way in 3 steps (40% runtime).',
       T: 'Trigger the transfer (3:00–3:10) — Urgent close-up, one clear CTA.'
     },
-    status: 'In Progress'
+    status: 'Not Started'
   }
 ];
 

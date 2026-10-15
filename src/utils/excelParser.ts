@@ -6,6 +6,112 @@ export interface ParsedContentPlan {
   supporting: SupportingVideoItem[];
 }
 
+export function inferPillarIdForVideo(
+  pillarStage: string,
+  dayNumber: number,
+  playbook: PlaybookPillar[]
+): string | undefined {
+  if (!playbook || playbook.length === 0) return undefined;
+  const stageLower = (pillarStage || '').toLowerCase();
+
+  // 1. Check explicit Pillar # prefix (e.g. "Pillar #3" or "Pillar 3")
+  const explicitNumMatch = stageLower.match(/pillar\s*#?(\d+)/i);
+  if (explicitNumMatch) {
+    const pIndex = parseInt(explicitNumMatch[1], 10) - 1;
+    if (playbook[pIndex]) return playbook[pIndex].id;
+  }
+
+  // 2. Check exact match against `${p.stage} — ${p.pillar}` or `p.pillar`
+  const directPillarMatch = playbook.find(
+    p =>
+      stageLower.includes(p.pillar.toLowerCase()) ||
+      `${p.stage} — ${p.pillar}`.toLowerCase() === stageLower
+  );
+  if (directPillarMatch) return directPillarMatch.id;
+
+  // 3. Extract parenthetical sub-topic hint, e.g. "1. Unaware Stage (Referrals)" -> "referrals"
+  const parenMatch = stageLower.match(/\(([^)]+)\)/);
+  if (parenMatch) {
+    const hint = parenMatch[1].trim().toLowerCase();
+    const keywordMap: Record<string, string> = {
+      content: 'pillar-1',
+      referrals: 'pillar-2',
+      'secret expert': 'pillar-3',
+      leaks: 'pillar-4',
+      'beige content': 'pillar-5',
+      'broky magnets': 'pillar-6',
+      'outsourced voice': 'pillar-7',
+      '$5 ads': 'pillar-8',
+      'conversation sales': 'pillar-9',
+      'floor vs ceiling': 'pillar-10',
+      'dxy model': 'pillar-11',
+      'data vs opinion': 'pillar-12',
+      '8-week cohort': 'pillar-13',
+      'risk reversal': 'pillar-14',
+      'super signature': 'pillar-15'
+    };
+    const mappedId = keywordMap[hint];
+    if (mappedId) {
+      const foundById = playbook.find(p => p.id === mappedId);
+      if (foundById) return foundById.id;
+    }
+
+    // Match parenthetical words against pillar title or breaks/installs belief
+    const hintWords = hint.split(/\s+/).filter(w => w.length >= 3);
+    if (hintWords.length > 0) {
+      const stageNum = stageLower.match(/^(\d+)\./)?.[1];
+      const candidates = stageNum
+        ? playbook.filter(p => p.stage.trim().startsWith(`${stageNum}.`))
+        : playbook;
+      const scored = candidates.find(p => {
+        const hay = `${p.pillar} ${p.breaksBelief} ${p.installsBelief} ${p.mustHitBeats}`.toLowerCase();
+        return hintWords.some(w => hay.includes(w));
+      });
+      if (scored) return scored.id;
+    }
+  }
+
+  // 4. Match stage number prefix (1..5) and distribute across the 3 pillars in that stage
+  const stageNumMatch = stageLower.match(/^(\d+)\./);
+  if (stageNumMatch) {
+    const stagePrefix = `${stageNumMatch[1]}.`;
+    const stagePillars = playbook.filter(p => p.stage.trim().startsWith(stagePrefix));
+    if (stagePillars.length > 0) {
+      const subIdx = Math.floor(((dayNumber - 1) % 10) / 3) % stagePillars.length;
+      return stagePillars[subIdx].id;
+    }
+  }
+
+  // 5. Fallback: distribute evenly across playbook
+  const fallbackIdx = Math.min(playbook.length - 1, Math.max(0, Math.floor((dayNumber - 1) / 3)));
+  return playbook[fallbackIdx]?.id;
+}
+
+export function resolveMatchingPillar(
+  video: SupportingVideoItem | undefined,
+  playbook: PlaybookPillar[]
+): PlaybookPillar | undefined {
+  if (!playbook || playbook.length === 0) return undefined;
+  if (!video) return playbook[0];
+
+  if (video.pillarId) {
+    const exact = playbook.find(p => p.id === video.pillarId);
+    if (exact) return exact;
+  }
+
+  const inferredId = inferPillarIdForVideo(video.pillarStage, video.dayNumber || 1, playbook);
+  if (inferredId) {
+    const found = playbook.find(p => p.id === inferredId);
+    if (found) return found;
+  }
+
+  return (
+    playbook.find(
+      p => p.stage.slice(0, 10).toLowerCase() === video.pillarStage.slice(0, 10).toLowerCase()
+    ) || playbook[0]
+  );
+}
+
 export async function parseStudentSpreadsheet(file: File): Promise<ParsedContentPlan> {
   const arrayBuffer = await file.arrayBuffer();
   const workbook = XLSX.read(arrayBuffer, { type: 'array' });
@@ -76,9 +182,11 @@ export async function parseStudentSpreadsheet(file: File): Promise<ParsedContent
           ? rawStatus
           : 'Not Started';
 
+      const dayNum = supporting.length + 1;
       supporting.push({
-        id: `daily-${supporting.length + 1}`,
-        dayNumber: supporting.length + 1,
+        id: `daily-${dayNum}`,
+        dayNumber: dayNum,
+        pillarId: inferPillarIdForVideo(col0, dayNum, playbook),
         pillarStage: col0,
         title: col1,
         hook1: row[2] ? String(row[2]) : '',
