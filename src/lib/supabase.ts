@@ -34,6 +34,29 @@ export async function fetchStudentsFromSupabase(): Promise<StudentProfile[] | nu
   }
 }
 
+export async function upsertSingleStudentToSupabase(student: StudentProfile): Promise<boolean> {
+  if (!supabase) return false;
+  try {
+    const row = {
+      id: student.id,
+      name: student.name,
+      company: student.company,
+      profile: student,
+      updated_at: new Date().toISOString()
+    };
+
+    const { error } = await supabase.from('mc_students').upsert(row, { onConflict: 'id' });
+    if (error) {
+      console.warn('Supabase upsertSingleStudent warning:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('Supabase upsertSingleStudent error:', err);
+    return false;
+  }
+}
+
 export async function upsertStudentsToSupabase(students: StudentProfile[]): Promise<boolean> {
   if (!supabase) return false;
   try {
@@ -55,6 +78,55 @@ export async function upsertStudentsToSupabase(students: StudentProfile[]): Prom
     console.warn('Supabase upsertStudents error:', err);
     return false;
   }
+}
+
+export function subscribeToStudentsRealtime(
+  onUpsert: (student: StudentProfile) => void,
+  onDelete: (studentId: string) => void
+): () => void {
+  if (!supabase) return () => {};
+  const channel = supabase
+    .channel('mc_students_realtime_sync')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'mc_students' },
+      payload => {
+        if (payload.eventType === 'DELETE') {
+          const deletedId = (payload.old as { id?: string })?.id;
+          if (deletedId) onDelete(deletedId);
+          return;
+        }
+        const row = payload.new as { id?: string; profile?: StudentProfile } | undefined;
+        if (row?.profile && row.profile.id) {
+          onUpsert(row.profile);
+        }
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
+export function subscribeToSupabaseAuth(
+  onAuthenticatedEmail: (email: string) => void
+): () => void {
+  if (!supabase) return () => {};
+
+  supabase.auth.getSession().then(({ data }) => {
+    const email = data.session?.user?.email;
+    if (email) onAuthenticatedEmail(email.toLowerCase().trim());
+  });
+
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const email = session?.user?.email;
+    if (email) onAuthenticatedEmail(email.toLowerCase().trim());
+  });
+
+  return () => {
+    data.subscription.unsubscribe();
+  };
 }
 
 export async function deleteStudentFromSupabase(studentId: string): Promise<boolean> {

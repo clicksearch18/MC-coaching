@@ -27,6 +27,9 @@ interface WorkbookViewProps {
   onUpdateField: (fieldId: string, value: string) => void;
   onUpdateRubric: (key: string, score: 'WEAK' | 'ACCEPTABLE' | 'STRONG') => void;
   onSubmitPhaseGate: (phaseNumber: number, nextLesson: number) => void;
+  onCompleteLesson?: (lessonNumber: number, nextLesson: number) => void;
+  requestedLessonNumber?: number | null;
+  onClearRequestedLesson?: () => void;
 }
 
 const PHASES = [
@@ -46,7 +49,10 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
   onToggleTask,
   onUpdateField,
   onUpdateRubric,
-  onSubmitPhaseGate
+  onSubmitPhaseGate,
+  onCompleteLesson,
+  requestedLessonNumber,
+  onClearRequestedLesson
 }) => {
   const [selectedLessonNum, setSelectedLessonNum] = useState<number>(student.currentWeek || 1);
   const [activePanel, setActivePanel] = useState<'LESSON' | 'WORKSHEET' | 'RUBRIC'>('LESSON');
@@ -54,6 +60,16 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
   const [worksheetSlideIdx, setWorksheetSlideIdx] = useState<number>(0);
   const [figureSlideIdx, setFigureSlideIdx] = useState<number>(0);
+
+  React.useEffect(() => {
+    if (requestedLessonNumber && requestedLessonNumber >= 1 && requestedLessonNumber <= 26) {
+      setSelectedLessonNum(requestedLessonNumber);
+      setWorksheetSlideIdx(0);
+      setFigureSlideIdx(0);
+      setActivePanel('LESSON');
+      onClearRequestedLesson?.();
+    }
+  }, [requestedLessonNumber, onClearRequestedLesson]);
 
   const activeLesson = lessons.find(w => w.weekNumber === selectedLessonNum) || lessons[0];
   const lessonsInCurrentPhase = lessons.filter(w => w.phase === activeLesson.phase);
@@ -132,6 +148,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
           {PHASES.map(p => {
             const isSelectedPhase = activeLesson.phase === p.num;
             const firstLesson = lessons.find(w => w.phase === p.num)?.weekNumber || 1;
+            const gateState = student.gateStatus?.[p.num] || (p.num === 1 ? 'OPEN' : 'LOCKED');
             return (
               <button
                 key={p.num}
@@ -144,6 +161,16 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 }`}
               >
                 <span>Phase {p.num}: {p.name}</span>
+                {gateState === 'APPROVED' && (
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[9px]">
+                    ✓
+                  </span>
+                )}
+                {gateState === 'SUBMITTED' && (
+                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px]">
+                    ⏳ Gate
+                  </span>
+                )}
               </button>
             );
           })}
@@ -911,11 +938,40 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 </div>
               )}
 
-              <div className="pt-4 border-t border-white/8 flex items-center justify-between">
+              {activeLesson.isPhaseGate && (
+                <div
+                  className={`p-4 rounded-xl border text-xs flex flex-wrap items-center justify-between gap-2 ${
+                    student.gateStatus?.[activeLesson.phase] === 'APPROVED'
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'
+                      : student.gateStatus?.[activeLesson.phase] === 'SUBMITTED'
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+                      : 'bg-[#09ADEF]/10 border-[#09ADEF]/30 text-neutral-200'
+                  }`}
+                >
+                  <div>
+                    <span className="font-bold uppercase tracking-wider block">
+                      {student.gateStatus?.[activeLesson.phase] === 'APPROVED'
+                        ? `✓ Phase 0${activeLesson.phase} Gate Approved by Coach Josh`
+                        : student.gateStatus?.[activeLesson.phase] === 'SUBMITTED'
+                        ? `⏳ Phase 0${activeLesson.phase} Gate Submitted — Pending Coach Sign-Off`
+                        : `◆ Phase 0${activeLesson.phase} Gate Milestone`}
+                    </span>
+                    <span className="text-neutral-300 mt-0.5 block">
+                      {student.gateStatus?.[activeLesson.phase] === 'APPROVED'
+                        ? 'Your deliverables & rubric for this phase have been verified and signed off.'
+                        : student.gateStatus?.[activeLesson.phase] === 'SUBMITTED'
+                        ? 'Coach Josh has been notified in your chat inbox. You may continue to the next lesson while awaiting sign-off.'
+                        : 'Complete your worksheet fields and self-score the rubric above, then submit for Coach sign-off.'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-white/8 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <button
                   type="button"
                   onClick={() => setActivePanel('WORKSHEET')}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-xs font-medium text-slate-300 cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-xs font-medium text-slate-300 cursor-pointer"
                 >
                   <ChevronLeft className="w-4 h-4" /> Back to Worksheet
                 </button>
@@ -923,22 +979,32 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 {activeLesson.isPhaseGate ? (
                   <button
                     type="button"
-                    onClick={() =>
-                      onSubmitPhaseGate(activeLesson.phase, Math.min(26, activeLesson.weekNumber + 1))
-                    }
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-semibold text-sm cursor-pointer shadow-lg shadow-amber-500/20"
+                    onClick={() => {
+                      const nextNum = Math.min(26, activeLesson.weekNumber + 1);
+                      onSubmitPhaseGate(activeLesson.phase, nextNum);
+                      setSelectedLessonNum(nextNum);
+                      setActivePanel('LESSON');
+                    }}
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-semibold text-sm cursor-pointer shadow-lg shadow-amber-500/20"
                   >
-                    <span>◆ Submit Phase 0{activeLesson.phase} Gate for Coach Sign-Off</span>
+                    <span>
+                      {student.gateStatus?.[activeLesson.phase] === 'SUBMITTED' ||
+                      student.gateStatus?.[activeLesson.phase] === 'APPROVED'
+                        ? `◆ Resubmit Phase 0${activeLesson.phase} Gate & Open Lesson ${Math.min(26, activeLesson.weekNumber + 1)}`
+                        : `◆ Submit Phase 0${activeLesson.phase} Gate for Coach Sign-Off`}
+                    </span>
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={() => {
-                      setSelectedLessonNum(n => Math.min(26, n + 1));
+                      const nextNum = Math.min(26, activeLesson.weekNumber + 1);
+                      onCompleteLesson?.(activeLesson.weekNumber, nextNum);
+                      setSelectedLessonNum(nextNum);
                       setActivePanel('LESSON');
                     }}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-semibold text-sm cursor-pointer shadow-lg shadow-emerald-500/20"
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-semibold text-sm cursor-pointer shadow-lg shadow-emerald-500/20"
                   >
                     <span>
                       Complete Lesson {activeLesson.weekNumber} & Advance to Lesson{' '}

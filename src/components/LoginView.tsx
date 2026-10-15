@@ -86,7 +86,28 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const handleSendMagicLink = async (mode: 'STUDENT' | 'ADMIN') => {
     setErrorMsg(null);
     setMagicLinkSent(null);
-    const targetEmail = (mode === 'ADMIN' ? adminEmail : studentIdentifier).trim().toLowerCase();
+    const rawQuery = (mode === 'ADMIN' ? adminEmail : studentIdentifier).trim().toLowerCase();
+    if (!rawQuery) {
+      setErrorMsg('Enter your email address or access code first to receive a magic sign-in link.');
+      return;
+    }
+
+    let targetEmail = rawQuery;
+    let redirectPath = mode === 'ADMIN' ? '/admin' : '/student';
+
+    if (mode === 'STUDENT') {
+      const matched = students.find(
+        s =>
+          s.email?.toLowerCase() === rawQuery ||
+          s.accessCode?.toLowerCase() === rawQuery ||
+          s.id.toLowerCase() === rawQuery
+      );
+      if (matched) {
+        if (matched.email) targetEmail = matched.email.toLowerCase().trim();
+        redirectPath = `/student?student=${matched.id}`;
+      }
+    }
+
     if (!targetEmail || !targetEmail.includes('@')) {
       setErrorMsg('Enter a valid email address first to receive a magic sign-in link.');
       return;
@@ -97,10 +118,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
     }
 
     setSendingLink(true);
-    const res = await sendSupabaseMagicLinkEmail(
-      targetEmail,
-      mode === 'ADMIN' ? '/admin' : '/student'
-    );
+    const res = await sendSupabaseMagicLinkEmail(targetEmail, redirectPath);
     setSendingLink(false);
 
     if (res.ok) {

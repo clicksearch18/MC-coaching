@@ -28,8 +28,17 @@ interface DailyCadenceViewProps {
   onUpdateVideo: (videoId: string, updates: Partial<SupportingVideoItem>) => void;
   onMarkVideoDone: (videoId: string, videoUrl: string) => void;
   onUpdatePillarStatus: (pillarId: string, status: string) => void;
-  onUpdateCoreVideoStatus: (coreId: string, status: 'Not Started' | 'In Progress' | 'Completed', url?: string) => void;
+  onUpdateCoreVideoStatus: (
+    coreId: string,
+    status: 'Not Started' | 'In Progress' | 'Completed',
+    url?: string,
+    scriptDraft?: { S: string; H: string; I: string; F: string; T: string }
+  ) => void;
   onOpenImportModal: () => void;
+  requestedSubTab?: 'STUDIO' | 'QUEUE' | 'CORE5' | 'PLAYBOOK' | null;
+  requestedVideoId?: string | null;
+  requestedCoreVideoId?: string | null;
+  onClearRequestedNavigation?: () => void;
 }
 
 const SHIFT_CYCLE_DAYS = [
@@ -54,10 +63,16 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
   onMarkVideoDone,
   onUpdatePillarStatus,
   onUpdateCoreVideoStatus,
-  onOpenImportModal
+  requestedSubTab,
+  requestedVideoId,
+  requestedCoreVideoId,
+  onClearRequestedNavigation
 }) => {
-  const firstActiveIndex = student.supportingVideos.findIndex(v => v.status !== 'Completed');
-  const [selectedIndex, setSelectedIndex] = useState(firstActiveIndex >= 0 ? firstActiveIndex : 0);
+  const revisionIdx = student.supportingVideos.findIndex(v => v.coachReviewStatus === 'Needs Revision');
+  const firstIncompleteIdx = student.supportingVideos.findIndex(v => v.status !== 'Completed');
+  const firstActiveIndex = revisionIdx >= 0 ? revisionIdx : firstIncompleteIdx >= 0 ? firstIncompleteIdx : 0;
+
+  const [selectedIndex, setSelectedIndex] = useState(firstActiveIndex);
   const [subTab, setSubTab] = useState<'STUDIO' | 'QUEUE' | 'CORE5' | 'PLAYBOOK'>('STUDIO');
   const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4>(1);
   const [coreSlideIdx, setCoreSlideIdx] = useState(0);
@@ -65,7 +80,34 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
   const [stageFilter, setStageFilter] = useState<string>('ALL');
   const [videoLinkInput, setVideoLinkInput] = useState('');
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [coreUrlDrafts, setCoreUrlDrafts] = useState<Record<string, string>>({});
+  const [coreUrlError, setCoreUrlError] = useState<string | null>(null);
   const [showQueueDrawer, setShowQueueDrawer] = useState(false);
+
+  // Handle deep-link navigation from chat messages or review links
+  useEffect(() => {
+    if (!requestedSubTab && !requestedVideoId && !requestedCoreVideoId) return;
+    if (requestedSubTab) {
+      setSubTab(requestedSubTab);
+    }
+    if (requestedVideoId) {
+      const idx = student.supportingVideos.findIndex(v => v.id === requestedVideoId);
+      if (idx >= 0) {
+        setSelectedIndex(idx);
+        setSubTab('STUDIO');
+        const targetVid = student.supportingVideos[idx];
+        setActiveStep(targetVid?.coachReviewStatus === 'Needs Revision' ? 4 : 1);
+      }
+    }
+    if (requestedCoreVideoId) {
+      const cIdx = student.coreVideos.findIndex(c => c.id === requestedCoreVideoId);
+      if (cIdx >= 0) {
+        setCoreSlideIdx(cIdx);
+        setSubTab('CORE5');
+      }
+    }
+    onClearRequestedNavigation?.();
+  }, [requestedSubTab, requestedVideoId, requestedCoreVideoId, student.supportingVideos, student.coreVideos, onClearRequestedNavigation]);
 
   // Timer state for <10-Minute execution & Teleprompter
   const [timerSeconds, setTimerSeconds] = useState(0);
@@ -90,6 +132,13 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
   const completedCoreCount = student.coreVideos.filter(v => v.status === 'Completed').length;
   const completedPillarCount = student.playbook.filter(p => p.status === 'Completed').length;
 
+  const revisionSupportingVideos = student.supportingVideos.filter(
+    v => v.coachReviewStatus === 'Needs Revision'
+  );
+  const revisionCoreVideos = student.coreVideos.filter(
+    c => c.coachReviewStatus === 'Needs Revision'
+  );
+
   const matchingPillar: PlaybookPillar | undefined =
     student.playbook.find(
       p => p.stage.slice(0, 10).toLowerCase() === currentVideo?.pillarStage.slice(0, 10).toLowerCase()
@@ -97,7 +146,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
 
   const selectedHookNum = currentVideo?.selectedHook || 1;
   const activeHookText =
-    currentVideo?.customHook ||
+    currentVideo?.customHook?.trim() ||
     (selectedHookNum === 1
       ? currentVideo?.hook1
       : selectedHookNum === 2
@@ -156,6 +205,47 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* Alert Banner when Coach Requests a Revision on any video */}
+      {(revisionSupportingVideos.length > 0 || revisionCoreVideos.length > 0) && (
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-rose-500/10 border border-rose-500/35 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wider text-rose-300">
+                Coach Action Required · {revisionSupportingVideos.length + revisionCoreVideos.length} Video Revision Requested
+              </div>
+              <p className="text-xs text-neutral-200 mt-0.5">
+                {revisionSupportingVideos[0]
+                  ? `Day #${String(revisionSupportingVideos[0].dayNumber).padStart(2, '0')}: "${revisionSupportingVideos[0].title}" — ${revisionSupportingVideos[0].coachFeedback || 'Please review Coach notes and submit an updated link.'}`
+                  : `${revisionCoreVideos[0]?.code}: "${revisionCoreVideos[0]?.name}" — ${revisionCoreVideos[0]?.coachFeedback || 'Please review Coach notes and submit an updated link.'}`}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (revisionSupportingVideos[0]) {
+                const idx = student.supportingVideos.findIndex(v => v.id === revisionSupportingVideos[0].id);
+                if (idx >= 0) {
+                  setSelectedIndex(idx);
+                  setSubTab('STUDIO');
+                  setActiveStep(4);
+                }
+              } else if (revisionCoreVideos[0]) {
+                const cIdx = student.coreVideos.findIndex(c => c.id === revisionCoreVideos[0].id);
+                if (cIdx >= 0) {
+                  setCoreSlideIdx(cIdx);
+                  setSubTab('CORE5');
+                }
+              }
+            }}
+            className="px-3.5 py-2 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/40 text-xs font-bold uppercase tracking-wider text-rose-200 shrink-0 cursor-pointer"
+          >
+            Open & Resubmit →
+          </button>
+        </div>
+      )}
+
       {/* Clean Sub-Navigation & Day Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="flex overflow-x-auto no-scrollbar p-1 rounded-xl bg-[#07090D] border border-white/[0.08] w-full sm:w-auto">
@@ -333,7 +423,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     { num: 2 as const, badge: 'OPTION 2 · CONTRARIAN', text: currentVideo.hook2 },
                     { num: 3 as const, badge: 'OPTION 3 · STATUS', text: currentVideo.hook3 }
                   ].map(h => {
-                    const isSelected = selectedHookNum === h.num;
+                    const isSelected = !currentVideo.customHook?.trim() && selectedHookNum === h.num;
                     return (
                       <button
                         key={h.num}
@@ -365,6 +455,46 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                       </button>
                     );
                   })}
+                </div>
+
+                {/* Custom Hook & Personal Talking Notes */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <div className="p-3.5 rounded-xl bg-[#040507] border border-white/[0.08] space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                        Custom / Tweaked Hook (Optional)
+                      </label>
+                      {currentVideo.customHook?.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => onUpdateVideo(currentVideo.id, { customHook: undefined })}
+                          className="text-[10px] text-neutral-400 hover:text-white cursor-pointer"
+                        >
+                          Reset to Preset
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={currentVideo.customHook || ''}
+                      onChange={e => onUpdateVideo(currentVideo.id, { customHook: e.target.value })}
+                      placeholder="Or write your own opening hook for the Teleprompter..."
+                      className="w-full rounded-lg bg-black border border-white/12 px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-[#09ADEF]"
+                    />
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-[#040507] border border-white/[0.08] space-y-1.5">
+                    <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
+                      Personal Example / Story Beat Note (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={currentVideo.notes || ''}
+                      onChange={e => onUpdateVideo(currentVideo.id, { notes: e.target.value })}
+                      placeholder="Jot down a quick client story or stat for your shoot..."
+                      className="w-full rounded-lg bg-black border border-white/12 px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-[#09ADEF]"
+                    />
+                  </div>
                 </div>
 
                 <div className="pt-4 border-t border-white/[0.07] flex items-center justify-end">
@@ -538,6 +668,17 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     </div>
                   )}
 
+                  {currentVideo.notes?.trim() && (
+                    <div className="pt-3 border-t border-white/[0.07]">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-300 block mb-1">
+                        PERSONAL STORY / TALKING NOTE
+                      </span>
+                      <p className="text-xs sm:text-sm text-neutral-200 leading-relaxed">
+                        {currentVideo.notes}
+                      </p>
+                    </div>
+                  )}
+
                   {attachedMagnet && (
                     <div className="pt-4 border-t border-white/[0.07]">
                       <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF] block mb-1">
@@ -595,7 +736,9 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     STEP 4 · PROOF OF EXECUTION
                   </span>
                   <h2 className="font-display text-2xl sm:text-3xl text-white mt-1">
-                    VERIFY PUBLISHED VIDEO LINK
+                    {currentVideo.coachReviewStatus === 'Needs Revision'
+                      ? 'SUBMIT REVISED VIDEO LINK'
+                      : 'VERIFY PUBLISHED VIDEO LINK'}
                   </h2>
                 </div>
 
@@ -623,38 +766,58 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   )}
                 </div>
 
-                {currentVideo.status === 'Completed' ? (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-xl bg-[#040507] border border-[#09ADEF]/30 p-4 sm:p-5">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <CheckCircle2 className="w-6 h-6 text-[#09ADEF] shrink-0" />
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold uppercase tracking-wider text-[#09ADEF]">
-                          Day #{currentVideo.dayNumber} Verified
+                {currentVideo.status === 'Completed' && currentVideo.coachReviewStatus !== 'Needs Revision' ? (
+                  <div className="space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-xl bg-[#040507] border border-[#09ADEF]/30 p-4 sm:p-5">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <CheckCircle2 className="w-6 h-6 text-[#09ADEF] shrink-0" />
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold uppercase tracking-wider text-[#09ADEF]">
+                            Day #{currentVideo.dayNumber} Verified · {currentVideo.coachReviewStatus || 'Pending Coach Review'}
+                          </div>
+                          <a
+                            href={currentVideo.videoUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-[#09ADEF] hover:underline flex items-center gap-1 truncate mt-0.5"
+                          >
+                            <span className="truncate">{currentVideo.videoUrl}</span>
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                          </a>
                         </div>
-                        <a
-                          href={currentVideo.videoUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs text-[#09ADEF] hover:underline flex items-center gap-1 truncate mt-0.5"
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        {videoLinkInput.trim() &&
+                          videoLinkInput.trim() !== (currentVideo.videoUrl || '').trim() && (
+                            <button
+                              type="button"
+                              onClick={handleCompleteCurrent}
+                              className="px-4 py-2.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold uppercase tracking-wider cursor-pointer"
+                            >
+                              Update Link
+                            </button>
+                          )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextIdx = student.supportingVideos.findIndex(
+                              v => v.status !== 'Completed' || v.coachReviewStatus === 'Needs Revision'
+                            );
+                            if (nextIdx >= 0 && nextIdx !== selectedIndex) {
+                              setSelectedIndex(nextIdx);
+                              setActiveStep(1);
+                            } else if (selectedIndex < student.supportingVideos.length - 1) {
+                              setSelectedIndex(selectedIndex + 1);
+                              setActiveStep(1);
+                            }
+                          }}
+                          className="w-full sm:w-auto px-4 py-2.5 rounded-lg btn-2mm text-xs cursor-pointer"
                         >
-                          <span className="truncate">{currentVideo.videoUrl}</span>
-                          <ExternalLink className="w-3 h-3 shrink-0" />
-                        </a>
+                          Load Next Day →
+                        </button>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const nextIdx = student.supportingVideos.findIndex(v => v.status !== 'Completed');
-                        if (nextIdx >= 0) {
-                          setSelectedIndex(nextIdx);
-                          setActiveStep(1);
-                        }
-                      }}
-                      className="w-full sm:w-auto px-4 py-2.5 rounded-lg btn-2mm text-xs cursor-pointer shrink-0"
-                    >
-                      Load Next Day →
-                    </button>
                   </div>
                 ) : (
                   <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-2">
@@ -672,7 +835,11 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                       className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-lg btn-2mm text-xs cursor-pointer"
                     >
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Verify & Complete Day #{currentVideo.dayNumber}</span>
+                      <span>
+                        {currentVideo.coachReviewStatus === 'Needs Revision'
+                          ? `Resubmit Revised Link for Day #${currentVideo.dayNumber}`
+                          : `Verify & Complete Day #${currentVideo.dayNumber}`}
+                      </span>
                     </button>
                   </div>
                 )}
@@ -722,7 +889,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   onClick={() => {
                     setSelectedIndex(actualIndex);
                     setSubTab('STUDIO');
-                    setActiveStep(1);
+                    setActiveStep(item.coachReviewStatus === 'Needs Revision' ? 4 : 1);
                   }}
                   className={`p-4 rounded-xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
                     isSelected
@@ -793,6 +960,23 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
         const core = student.coreVideos[safeCoreIdx];
         if (!core) return null;
 
+        const currentCoreUrl =
+          coreUrlDrafts[core.id] !== undefined ? coreUrlDrafts[core.id] : core.videoUrl || '';
+
+        const handleVerifyCoreUrl = () => {
+          if (!isValidProofUrl(currentCoreUrl)) {
+            setCoreUrlError(
+              'Please enter a valid published video URL (YouTube, Loom, Vimeo, Instagram, etc.) to submit for Coach Review.'
+            );
+            return;
+          }
+          const normalized = currentCoreUrl.trim().startsWith('http')
+            ? currentCoreUrl.trim()
+            : `https://${currentCoreUrl.trim()}`;
+          setCoreUrlError(null);
+          onUpdateCoreVideoStatus(core.id, 'Completed', normalized);
+        };
+
         return (
           <div className="space-y-4">
             <div className="glass-panel rounded-2xl p-6 space-y-5">
@@ -812,7 +996,10 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     <button
                       type="button"
                       disabled={safeCoreIdx === 0}
-                      onClick={() => setCoreSlideIdx(i => Math.max(0, i - 1))}
+                      onClick={() => {
+                        setCoreSlideIdx(i => Math.max(0, i - 1));
+                        setCoreUrlError(null);
+                      }}
                       className="p-2 rounded-lg bg-white/[0.04] border border-white/10 text-zinc-300 hover:text-white disabled:opacity-30 cursor-pointer"
                     >
                       <ChevronLeft className="w-4 h-4" />
@@ -820,7 +1007,10 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     <button
                       type="button"
                       disabled={safeCoreIdx >= totalCore - 1}
-                      onClick={() => setCoreSlideIdx(i => Math.min(totalCore - 1, i + 1))}
+                      onClick={() => {
+                        setCoreSlideIdx(i => Math.min(totalCore - 1, i + 1));
+                        setCoreUrlError(null);
+                      }}
                       className="p-2 rounded-lg bg-[#09ADEF]/15 border border-[#09ADEF]/40 text-[#09ADEF] hover:bg-[#09ADEF]/25 disabled:opacity-30 cursor-pointer"
                     >
                       <ChevronRight className="w-4 h-4" />
@@ -834,7 +1024,10 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   min={0}
                   max={totalCore - 1}
                   value={safeCoreIdx}
-                  onChange={e => setCoreSlideIdx(Number(e.target.value))}
+                  onChange={e => {
+                    setCoreSlideIdx(Number(e.target.value));
+                    setCoreUrlError(null);
+                  }}
                   className="w-full accent-[#09ADEF] h-1.5 bg-white/10 rounded-lg cursor-pointer"
                 />
 
@@ -842,20 +1035,26 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   {student.coreVideos.map((cv, idx) => {
                     const isCurrent = idx === safeCoreIdx;
                     const isDone = cv.status === 'Completed';
+                    const needsRev = cv.coachReviewStatus === 'Needs Revision';
                     return (
                       <button
                         key={cv.id}
                         type="button"
-                        onClick={() => setCoreSlideIdx(idx)}
+                        onClick={() => {
+                          setCoreSlideIdx(idx);
+                          setCoreUrlError(null);
+                        }}
                         className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-[0.14em] transition-all cursor-pointer shrink-0 ${
                           isCurrent
                             ? 'bg-[#09ADEF] text-white'
+                            : needsRev
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                             : isDone
                             ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                             : 'bg-white/[0.03] text-zinc-400 border border-white/[0.06] hover:text-white'
                         }`}
                       >
-                        {cv.code} {isDone ? '✓' : ''}
+                        {cv.code} {needsRev ? '↻' : isDone ? '✓' : ''}
                       </button>
                     );
                   })}
@@ -879,25 +1078,37 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   <div className="flex flex-wrap items-center gap-2">
                     <input
                       type="url"
-                      defaultValue={core.videoUrl || ''}
-                      placeholder="Paste published YouTube/Ad URL..."
-                      onBlur={e => {
-                        const val = e.target.value.trim();
-                        if (val) {
-                          onUpdateCoreVideoStatus(core.id, 'Completed', val);
-                        }
+                      value={currentCoreUrl}
+                      placeholder="Paste published YouTube/VSL URL..."
+                      onChange={e => {
+                        setCoreUrlDrafts(prev => ({ ...prev, [core.id]: e.target.value }));
+                        if (coreUrlError) setCoreUrlError(null);
                       }}
-                      className="rounded-xl bg-[#040507] border border-white/12 px-3 py-2 text-xs text-white w-64 focus:outline-none focus:border-[#09ADEF]"
+                      className="rounded-xl bg-[#040507] border border-white/12 px-3 py-2 text-xs text-white w-60 sm:w-64 focus:outline-none focus:border-[#09ADEF]"
                     />
+                    <button
+                      type="button"
+                      onClick={handleVerifyCoreUrl}
+                      className="btn-2mm px-3.5 py-2 rounded-xl text-[10px] cursor-pointer shrink-0"
+                    >
+                      {core.coachReviewStatus === 'Needs Revision'
+                        ? 'Resubmit Link'
+                        : core.status === 'Completed'
+                        ? 'Update Link'
+                        : 'Verify & Submit'}
+                    </button>
                     <select
                       value={core.status}
-                      onChange={e =>
-                        onUpdateCoreVideoStatus(
-                          core.id,
-                          e.target.value as 'Not Started' | 'In Progress' | 'Completed',
-                          core.videoUrl
-                        )
-                      }
+                      onChange={e => {
+                        const nextStatus = e.target.value as 'Not Started' | 'In Progress' | 'Completed';
+                        if (nextStatus === 'Completed' && !isValidProofUrl(currentCoreUrl)) {
+                          setCoreUrlError(
+                            'Paste your published video URL first before marking this Core Video Completed.'
+                          );
+                          return;
+                        }
+                        onUpdateCoreVideoStatus(core.id, nextStatus, currentCoreUrl.trim() || core.videoUrl);
+                      }}
                       className={`rounded-xl border px-3 py-2 text-xs font-bold uppercase tracking-wider cursor-pointer ${
                         core.status === 'Completed'
                           ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300'
@@ -912,6 +1123,13 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     </select>
                   </div>
                 </div>
+
+                {coreUrlError && (
+                  <div className="flex items-center gap-2 text-xs text-rose-300 bg-rose-500/10 border border-rose-500/25 rounded-xl p-3">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                    <span>{coreUrlError}</span>
+                  </div>
+                )}
 
                 {(core.coachReviewStatus || core.coachFeedback) && (
                   <div
@@ -938,12 +1156,29 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-2.5">
-                  {(['S', 'H', 'I', 'F', 'T'] as const).map(letter => (
-                    <div key={letter} className="p-3.5 rounded-xl bg-[#040507] border border-white/[0.07]">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">{letter} Stage</div>
-                      <p className="text-xs text-zinc-200 mt-1.5 leading-relaxed">{core.shiftStages[letter]}</p>
-                    </div>
-                  ))}
+                  {(['S', 'H', 'I', 'F', 'T'] as const).map(letter => {
+                    const draftObj = core.scriptDraft || { S: '', H: '', I: '', F: '', T: '' };
+                    return (
+                      <div key={letter} className="p-3.5 rounded-xl bg-[#040507] border border-white/[0.07] flex flex-col justify-between space-y-2.5">
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">{letter} Stage</div>
+                          <p className="text-xs text-zinc-200 mt-1.5 leading-relaxed">{core.shiftStages[letter]}</p>
+                        </div>
+                        <textarea
+                          rows={2}
+                          value={draftObj[letter] || ''}
+                          onChange={e =>
+                            onUpdateCoreVideoStatus(core.id, core.status === 'Completed' ? 'Completed' : 'In Progress', core.videoUrl, {
+                              ...draftObj,
+                              [letter]: e.target.value
+                            })
+                          }
+                          placeholder={`Draft your ${letter} stage script beat...`}
+                          className="w-full rounded-lg bg-black border border-white/10 p-2 text-[11px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#09ADEF]"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Bottom Prev / Next Bar */}

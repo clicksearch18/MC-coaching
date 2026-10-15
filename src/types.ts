@@ -32,6 +32,7 @@ export interface SupportingVideoItem {
   videoFileName?: string;
   attachedMagnetId?: string;
   completedAt?: string;
+  completedDateISO?: string;
   notes?: string;
   coachReviewStatus?: CoachReviewStatus;
   coachFeedback?: string;
@@ -137,6 +138,15 @@ export interface WorkbookWeek {
   rubric?: WorkbookRubricRow[];
 }
 
+export interface ChatMessageActionTarget {
+  tab: 'CADENCE' | 'WORKBOOK' | 'MAGNETS';
+  subTab?: 'STUDIO' | 'QUEUE' | 'CORE5' | 'PLAYBOOK';
+  videoId?: string;
+  coreVideoId?: string;
+  lessonNumber?: number;
+  label?: string;
+}
+
 export interface ChatMessage {
   id: string;
   senderRole: 'COACH' | 'STUDENT' | 'SYSTEM';
@@ -145,6 +155,9 @@ export interface ChatMessage {
   timestamp: string;
   relatedVideoTitle?: string;
   isAlert?: boolean;
+  readByStudent?: boolean;
+  readByCoach?: boolean;
+  actionTarget?: ChatMessageActionTarget;
 }
 
 export interface StudentProfile {
@@ -159,6 +172,7 @@ export interface StudentProfile {
   currentPhase: number;
   streakDays: number;
   todayVideoStatus: 'COMPLETED' | 'PENDING' | 'MISSED';
+  lastCompletedDateISO?: string;
   lastActive: string;
   minutesAvailableBaseline: number;
   minutesAvailableCurrent: number;
