@@ -88,6 +88,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
   const [coreUrlError, setCoreUrlError] = useState<string | null>(null);
   const [showQueueDrawer, setShowQueueDrawer] = useState(false);
   const [teleprompterLargeText, setTeleprompterLargeText] = useState(false);
+  const [fullscreenPrompter, setFullscreenPrompter] = useState(false);
 
   // Handle deep-link navigation from chat messages or review links
   useEffect(() => {
@@ -264,14 +265,14 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
         </div>
       )}
 
-      {/* Clean Sub-Navigation & Day Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+      {/* Single-Row Sub-Navigation Bar (No redundant 2nd row on mobile) */}
+      <div className="flex items-center justify-between gap-2">
         <div className="flex overflow-x-auto no-scrollbar p-1 rounded-xl bg-[#07090D] border border-white/[0.08] w-full sm:w-auto">
           {[
-            { id: 'STUDIO' as const, label: 'Studio', icon: Sparkles },
-            { id: 'QUEUE' as const, label: `50 Videos (${completedSupportingCount})`, icon: ListVideo },
-            { id: 'CORE5' as const, label: `5 Core (${completedCoreCount}/5)`, icon: Award },
-            { id: 'PLAYBOOK' as const, label: `Playbook (${completedPillarCount})`, icon: Layers }
+            { id: 'STUDIO' as const, label: 'Studio', shortLabel: 'Studio', icon: Sparkles },
+            { id: 'QUEUE' as const, label: `50 Videos (${completedSupportingCount})`, shortLabel: `50 Queue (${completedSupportingCount})`, icon: ListVideo },
+            { id: 'CORE5' as const, label: `5 Core (${completedCoreCount}/5)`, shortLabel: `Core 5 (${completedCoreCount}/5)`, icon: Award },
+            { id: 'PLAYBOOK' as const, label: `Playbook (${completedPillarCount})`, shortLabel: `Playbook`, icon: Layers }
           ].map(tab => {
             const Icon = tab.icon;
             const active = subTab === tab.id;
@@ -280,20 +281,21 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                 key={tab.id}
                 type="button"
                 onClick={() => setSubTab(tab.id)}
-                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-[0.08em] whitespace-nowrap transition-all cursor-pointer ${
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-lg text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.06em] whitespace-nowrap transition-all cursor-pointer ${
                   active
                     ? 'bg-[#09ADEF] text-white shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
                     : 'text-neutral-400 hover:text-white'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
-                <span>{tab.label}</span>
+                <span className="sm:hidden">{tab.shortLabel}</span>
+                <span className="hidden sm:inline">{tab.label}</span>
               </button>
             );
           })}
         </div>
 
-        <div className="flex items-center justify-between sm:justify-end gap-2">
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
           <div className="badge-2mm flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px]">
             <Flame className="w-3.5 h-3.5 fill-[#09ADEF] text-[#09ADEF] shrink-0" />
             <span>{student.streakDays}D STREAK</span>
@@ -311,23 +313,25 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
 
       {/* TAB 1: SEQUENTIAL 4-STEP DAILY STUDIO */}
       {subTab === 'STUDIO' && currentVideo && (
-        <div className="max-w-3xl mx-auto space-y-4">
-          {/* Clean Current Day Header + 4-Step Segmented Bar */}
-          <div className="glass-panel rounded-2xl p-5 sm:p-7">
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <span className="w-5 h-[1.5px] bg-[#09ADEF]" />
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#09ADEF]">
-                  DAY #{currentVideo.dayNumber} · {shiftDay.day} · {shiftDay.stage}
-                </span>
-                {matchingPillar && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] font-semibold text-zinc-300">
-                    {matchingPillar.stage} · {matchingPillar.pillar}
-                  </span>
-                )}
-              </div>
+        <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4">
+          {/* Unified Current Day Header + 4-Step Segmented Bar */}
+          <div className="glass-panel rounded-2xl p-4 sm:p-7">
+            <div className="flex items-center justify-between gap-2 mb-2.5">
+              <button
+                type="button"
+                onClick={() => setShowQueueDrawer(true)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#09ADEF]/12 border border-[#09ADEF]/30 text-[10px] font-bold uppercase tracking-[0.14em] text-[#09ADEF] hover:bg-[#09ADEF]/20 transition cursor-pointer"
+                title="Tap to jump to any of the 50 daily videos"
+              >
+                <span>DAY #{currentVideo.dayNumber} · {shiftDay.day} · {shiftDay.stage}</span>
+                <span>▾</span>
+              </button>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
+                <span className="sm:hidden inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/[0.04] border border-white/10 text-[10px] font-bold text-[#09ADEF]">
+                  <Flame className="w-3 h-3 fill-[#09ADEF] text-[#09ADEF]" />
+                  {student.streakDays}d
+                </span>
                 <button
                   type="button"
                   disabled={selectedIndex === 0}
@@ -355,14 +359,19 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
               </div>
             </div>
 
-            <h1 className="font-display text-2xl sm:text-4xl text-white tracking-wide">
+            <h1 className="font-display text-2xl sm:text-4xl text-white tracking-wide leading-tight">
               “{currentVideo.title}”
             </h1>
+            {matchingPillar && (
+              <p className="text-[11px] text-neutral-400 mt-1 truncate">
+                {matchingPillar.stage} · <span className="text-neutral-300">{matchingPillar.pillar}</span>
+              </p>
+            )}
 
             {/* Coach Review & Feedback Banner (Visible to Student once submitted or reviewed) */}
             {(currentVideo.coachReviewStatus || currentVideo.coachFeedback) && (
               <div
-                className={`mt-4 p-3.5 sm:p-4 rounded-xl border ${
+                className={`mt-3.5 p-3 sm:p-4 rounded-xl border ${
                   currentVideo.coachReviewStatus === 'Approved'
                     ? 'bg-emerald-500/10 border-emerald-500/30'
                     : currentVideo.coachReviewStatus === 'Needs Revision'
@@ -399,7 +408,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
             )}
 
             {/* Clean Single-Row 4-Step Stepper */}
-            <div className="grid grid-cols-4 gap-1.5 mt-5 pt-4 border-t border-white/[0.07]">
+            <div className="grid grid-cols-4 gap-1.5 mt-4 pt-3.5 border-t border-white/[0.07]">
               {steps.map(s => {
                 const isCurrent = activeStep === s.num;
                 const isPassed = activeStep > s.num || currentVideo.status === 'Completed';
@@ -408,7 +417,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     key={s.num}
                     type="button"
                     onClick={() => setActiveStep(s.num)}
-                    className={`py-2 px-2.5 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] ${
+                    className={`py-2 px-2 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.06em] ${
                       isCurrent
                         ? 'bg-[#09ADEF] text-white border-[#09ADEF] shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
                         : isPassed
@@ -417,7 +426,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     }`}
                   >
                     {isPassed && !isCurrent ? (
-                      <Check className="w-3.5 h-3.5 stroke-[3] shrink-0" />
+                      <Check className="w-3 h-3 stroke-[3] shrink-0" />
                     ) : (
                       <span>{s.num}.</span>
                     )}
@@ -432,12 +441,19 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
           </div>
 
           {/* SEQUENTIAL PANEL CONTENT */}
-          <div className="glass-panel rounded-2xl p-5 sm:p-7 transition-all">
+          <div className="glass-panel rounded-2xl p-4 sm:p-7 transition-all">
             {/* PANEL 1: CHOOSE YOUR HOOK */}
             {activeStep === 1 && (
-              <div className="space-y-4">
-                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
-                  STEP 1 · SELECT OPENING HOOK
+              <div className="space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                    STEP 1 · TAP YOUR OPENING HOOK
+                  </div>
+                  {currentVideo.customHook?.trim() && (
+                    <span className="px-2 py-0.5 rounded bg-[#09ADEF]/15 text-[#09ADEF] text-[10px] font-bold">
+                      Custom Hook Active
+                    </span>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 gap-2.5">
@@ -452,13 +468,13 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         key={h.num}
                         type="button"
                         onClick={() => onUpdateVideo(currentVideo.id, { selectedHook: h.num, customHook: undefined })}
-                        className={`w-full text-left p-4 sm:p-5 rounded-xl border transition-all cursor-pointer ${
+                        className={`w-full text-left p-3.5 sm:p-5 rounded-xl border transition-all cursor-pointer ${
                           isSelected
                             ? 'bg-[#09ADEF]/10 border-[#09ADEF] shadow-[0_8px_30px_rgba(9,173,239,0.12)]'
                             : 'bg-[#040507] border-white/[0.07] hover:border-white/20'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center justify-between mb-1.5">
                           <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
                             {h.badge}
                           </span>
@@ -480,78 +496,65 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   })}
                 </div>
 
-                {/* Custom Hook & Personal Talking Notes */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  <div className="p-3.5 rounded-xl bg-[#040507] border border-white/[0.08] space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
-                        Custom / Tweaked Hook (Optional)
-                      </label>
-                      {currentVideo.customHook?.trim() && (
-                        <button
-                          type="button"
-                          onClick={() => onUpdateVideo(currentVideo.id, { customHook: undefined })}
-                          className="text-[10px] text-neutral-400 hover:text-white cursor-pointer"
-                        >
-                          Reset to Preset
-                        </button>
-                      )}
-                    </div>
-                    <input
-                      type="text"
-                      value={currentVideo.customHook || ''}
-                      onChange={e => onUpdateVideo(currentVideo.id, { customHook: e.target.value })}
-                      placeholder="Or write your own opening hook for the Teleprompter..."
-                      className="w-full rounded-lg bg-black border border-white/12 px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-[#09ADEF]"
-                    />
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-[#040507] border border-white/[0.08] space-y-1.5">
-                    <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
-                      Personal Example / Story Beat Note (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={currentVideo.notes || ''}
-                      onChange={e => onUpdateVideo(currentVideo.id, { notes: e.target.value })}
-                      placeholder="Jot down a quick client story or stat for your shoot..."
-                      className="w-full rounded-lg bg-black border border-white/12 px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-[#09ADEF]"
-                    />
-                  </div>
-                </div>
-
-                {/* Collapsible Foundation & Story Bank Reference (Lessons 2–6 Bridge) */}
-                <details className="group rounded-xl bg-[#040507] border border-white/[0.08] p-3.5">
+                {/* Progressive Disclosure: Custom Hook, Personal Story Beat & Story Bank Reference */}
+                <details
+                  open={Boolean(currentVideo.customHook?.trim() || currentVideo.notes?.trim())}
+                  className="group rounded-xl bg-[#040507] border border-white/[0.08] p-3.5"
+                >
                   <summary className="text-xs font-semibold text-neutral-300 cursor-pointer flex items-center justify-between list-none">
                     <span className="flex items-center gap-2">
-                      <BookOpen className="w-3.5 h-3.5 text-[#09ADEF]" />
-                      <span>Workbook Foundation & Top 8 Story Bank Reference (Click to insert story beat)</span>
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-[#09ADEF]" />
+                      <span>
+                        Customize Hook or Add Story Beat Note
+                        {(currentVideo.customHook?.trim() || currentVideo.notes?.trim()) ? ' (Saved)' : ' (Optional)'}
+                      </span>
                     </span>
                     <span className="text-[#09ADEF] text-[11px] group-open:rotate-90 transition-transform">▸</span>
                   </summary>
-                  <div className="mt-3 pt-3 border-t border-white/[0.07] space-y-3 text-xs">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <div className="p-2.5 rounded-lg bg-black border border-white/10">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF]">
-                          Q1 · Core Transformation
+
+                  <div className="mt-3.5 pt-3.5 border-t border-white/[0.07] space-y-3.5 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                            Custom / Tweaked Hook
+                          </label>
+                          {currentVideo.customHook?.trim() && (
+                            <button
+                              type="button"
+                              onClick={() => onUpdateVideo(currentVideo.id, { customHook: undefined })}
+                              className="text-[10px] text-neutral-400 hover:text-white cursor-pointer"
+                            >
+                              Reset to Preset
+                            </button>
+                          )}
                         </div>
-                        <p className="text-neutral-200 mt-1 leading-relaxed">
-                          {student.worksheetAnswers['m02_q1_transformation'] || 'Not yet filled in Lesson 2'}
-                        </p>
+                        <input
+                          type="text"
+                          value={currentVideo.customHook || ''}
+                          onChange={e => onUpdateVideo(currentVideo.id, { customHook: e.target.value })}
+                          placeholder="Or write your own opening hook..."
+                          className="w-full rounded-lg bg-black border border-white/12 px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-[#09ADEF]"
+                        />
                       </div>
-                      <div className="p-2.5 rounded-lg bg-black border border-white/10">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF]">
-                          Q4 · Core Belief Statement
-                        </div>
-                        <p className="text-neutral-200 mt-1 leading-relaxed">
-                          {student.worksheetAnswers['m02_q4_belief'] || 'Not yet filled in Lesson 2'}
-                        </p>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
+                          Personal Example / Story Beat Note
+                        </label>
+                        <input
+                          type="text"
+                          value={currentVideo.notes || ''}
+                          onChange={e => onUpdateVideo(currentVideo.id, { notes: e.target.value })}
+                          placeholder="Jot down a client story or stat for Take 3..."
+                          className="w-full rounded-lg bg-black border border-white/12 px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-[#09ADEF]"
+                        />
                       </div>
                     </div>
 
                     <div>
                       <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
-                        Top 8 Stories (Lesson 6 Story Bank) — Click any story to load into your Story Beat Note:
+                        Tap a Story Bank Item (Lesson 6) to Insert into Take 3:
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {[
@@ -591,13 +594,10 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                                 </span>
                                 {hasContent && (
                                   <span className="text-[9px] font-bold uppercase tracking-wider text-[#09ADEF] shrink-0">
-                                    + Use Story
+                                    + Use
                                   </span>
                                 )}
                               </div>
-                              {story.snippet && (
-                                <p className="text-[11px] text-neutral-400 truncate mt-0.5">{story.snippet}</p>
-                              )}
                             </button>
                           );
                         })}
@@ -606,11 +606,11 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   </div>
                 </details>
 
-                <div className="pt-4 border-t border-white/[0.07] flex items-center justify-end">
+                <div className="pt-3 border-t border-white/[0.07] flex items-center justify-end">
                   <button
                     type="button"
                     onClick={() => setActiveStep(2)}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg btn-2mm text-xs cursor-pointer"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl btn-2mm text-xs cursor-pointer"
                   >
                     <span>Next: Talking Beats</span>
                     <ChevronRight className="w-4 h-4" />
@@ -719,13 +719,26 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
 
             {/* PANEL 3: ON-CAMERA TELEPROMPTER & 5-TAKE GUIDE */}
             {activeStep === 3 && (
-              <div className="space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-4 sm:space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-2.5">
                   <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
                     STEP 3 · TELEPROMPTER & 5-TAKE SHOOT
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
+                    {/* 1-Tap Full-Screen Camera-Aligned Mode */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFullscreenPrompter(true);
+                        setTimerRunning(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#09ADEF] text-white text-[10px] font-bold uppercase tracking-wider shadow-[0_4px_16px_rgba(9,173,239,0.35)] cursor-pointer"
+                    >
+                      <Maximize2 className="w-3 h-3" />
+                      <span>Full-Screen Camera Mode</span>
+                    </button>
+
                     {/* Large Text Toggle */}
                     <button
                       type="button"
@@ -736,16 +749,11 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                           : 'bg-[#040507] border-white/12 text-neutral-300 hover:text-white'
                       }`}
                     >
-                      {teleprompterLargeText ? (
-                        <Minimize2 className="w-3 h-3 text-[#09ADEF]" />
-                      ) : (
-                        <Maximize2 className="w-3 h-3 text-[#09ADEF]" />
-                      )}
-                      <span>{teleprompterLargeText ? 'Standard Text' : 'Large Studio Font'}</span>
+                      <span>{teleprompterLargeText ? 'A- Standard' : 'A+ Large Text'}</span>
                     </button>
 
                     {/* Sleek Pill Timer */}
-                    <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#040507] border border-white/12">
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#040507] border border-white/12">
                       <Clock className="w-3.5 h-3.5 text-[#09ADEF]" />
                       <span className="font-mono-tech text-xs font-semibold text-white">
                         {formatTimer(timerSeconds)}
@@ -772,8 +780,155 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   </div>
                 </div>
 
+                {/* Full-Screen Camera-Aligned Teleprompter Overlay (Keeps eyes locked near top selfie camera) */}
+                {fullscreenPrompter && (
+                  <div className="fixed inset-0 z-50 bg-black flex flex-col justify-between pt-safe pb-safe px-4 sm:px-10">
+                    {/* Top Camera-Line Bar */}
+                    <div className="flex items-center justify-between gap-2 py-2.5 border-b border-white/10">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+                        <span className="font-mono-tech text-xs font-bold text-white">
+                          {formatTimer(timerSeconds)}
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF] ml-1">
+                          LOOK HERE ↑ AT CAMERA
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setTeleprompterLargeText(v => !v)}
+                          className="px-2.5 py-1 rounded-lg bg-white/10 text-xs font-bold text-white cursor-pointer"
+                        >
+                          {teleprompterLargeText ? 'A-' : 'A+'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFullscreenPrompter(false)}
+                          className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-neutral-200 cursor-pointer"
+                        >
+                          ✕ Exit
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Upper-Screen Eye-Line Script Reader */}
+                    <div className="flex-1 overflow-y-auto py-4 space-y-5 max-w-2xl mx-auto w-full">
+                      <div className="p-4 rounded-2xl bg-[#070A0F] border border-[#09ADEF]/40">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF] mb-1">
+                          TAKE 1 · OPENING HOOK (0:00–0:15)
+                        </div>
+                        <p
+                          className={`${
+                            teleprompterLargeText ? 'text-2xl sm:text-4xl' : 'text-xl sm:text-3xl'
+                          } font-bold text-white leading-snug`}
+                        >
+                          “{activeHookText}”
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-[#05070B] border border-white/10">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF] mb-1">
+                          TAKE 2 · HUMANIZE & KEYWORD (0:15–0:30)
+                        </div>
+                        <p
+                          className={`${
+                            teleprompterLargeText ? 'text-xl sm:text-2xl' : 'text-base sm:text-xl'
+                          } text-neutral-100 leading-relaxed font-medium`}
+                        >
+                          {attachedMagnet
+                            ? `“If we haven't met, I help ${student.niche.toLowerCase()} ${
+                                (student.worksheetAnswers['m02_q1_transformation'] || 'install the 2mm Shift').toLowerCase()
+                              }. Comment ‘${attachedMagnet.keywordTrigger}’ below and I’ll send you my ${
+                                attachedMagnet.workingTitle
+                              }.”`
+                            : `“If we haven't met, I help ${student.niche.toLowerCase()} ${
+                                (student.worksheetAnswers['m02_q1_transformation'] || 'install the 2mm Shift').toLowerCase()
+                              }.”`}
+                        </p>
+                      </div>
+
+                      {matchingPillar && (
+                        <>
+                          <div className="p-4 rounded-2xl bg-[#05070B] border border-white/10 space-y-2">
+                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">
+                              TAKE 3 · BREAK OLD BELIEF (0:30–1:45)
+                            </div>
+                            <p
+                              className={`${
+                                teleprompterLargeText ? 'text-xl sm:text-2xl' : 'text-base sm:text-xl'
+                              } text-neutral-200 leading-relaxed`}
+                            >
+                              {matchingPillar.breaksBelief}
+                            </p>
+                            {currentVideo.notes?.trim() && (
+                              <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-sm font-medium">
+                                ★ Story Beat: {currentVideo.notes}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="p-4 rounded-2xl bg-[#070A0F] border-l-4 border-[#09ADEF] space-y-2">
+                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                              TAKE 4 · INSTALL THE 2MM SHIFT (1:45–3:00)
+                            </div>
+                            <p
+                              className={`${
+                                teleprompterLargeText ? 'text-xl sm:text-2xl' : 'text-base sm:text-xl'
+                              } text-white font-semibold leading-relaxed`}
+                            >
+                              {matchingPillar.installsBelief}
+                            </p>
+                            {matchingPillar.mustHitBeats && (
+                              <p className="text-sm text-[#09ADEF] font-semibold">
+                                Beats: {matchingPillar.mustHitBeats}
+                              </p>
+                            )}
+                          </div>
+                        </>
+                      )}
+
+                      {attachedMagnet && (
+                        <div className="p-4 rounded-2xl bg-[#070A0F] border border-[#09ADEF]/40">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF] mb-1">
+                            TAKE 5 · DIRECT CTA (3:00–3:10)
+                          </div>
+                          <p
+                            className={`${
+                              teleprompterLargeText ? 'text-xl sm:text-3xl' : 'text-lg sm:text-2xl'
+                            } font-bold text-white leading-snug`}
+                          >
+                            “Comment <span className="text-[#09ADEF]">‘{attachedMagnet.keywordTrigger}’</span> below and I’ll DM you the {attachedMagnet.workingTitle}!”
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bottom Thumb Bar */}
+                    <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-3 max-w-2xl mx-auto w-full">
+                      <button
+                        type="button"
+                        onClick={() => setTimerRunning(r => !r)}
+                        className="px-4 py-3 rounded-xl bg-white/10 text-xs font-bold uppercase tracking-wider text-white cursor-pointer"
+                      >
+                        {timerRunning ? 'Pause Timer' : 'Resume Timer'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFullscreenPrompter(false);
+                          setActiveStep(4);
+                        }}
+                        className="flex-1 py-3 px-5 rounded-xl btn-2mm text-xs font-bold uppercase tracking-wider text-center cursor-pointer"
+                      >
+                        Done Shooting → Verify Link
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Large Readable 5-Take Teleprompter Card */}
-                <div className="p-5 sm:p-6 rounded-2xl bg-[#040507] border border-[#09ADEF]/30 space-y-5">
+                <div className="p-4 sm:p-6 rounded-2xl bg-[#040507] border border-[#09ADEF]/30 space-y-4 sm:space-y-5">
                   {/* TAKE 1: SIGNAL */}
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-1">

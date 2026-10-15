@@ -63,6 +63,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
   const [activePanel, setActivePanel] = useState<'LESSON' | 'WORKSHEET' | 'RUBRIC'>('LESSON');
   const [showWorkedExample, setShowWorkedExample] = useState<boolean>(false);
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
+  const [showLessonDrawer, setShowLessonDrawer] = useState<boolean>(false);
   const [worksheetSlideIdx, setWorksheetSlideIdx] = useState<number>(0);
   const [figureSlideIdx, setFigureSlideIdx] = useState<number>(0);
   const [showAllFieldsOnOnePage, setShowAllFieldsOnOnePage] = useState<boolean>(false);
@@ -157,9 +158,9 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-5">
-      {/* Clean Top Phase Strip + Optional Admin Edit Button */}
-      <div className="flex items-center justify-between gap-2">
+    <div className="space-y-3 sm:space-y-5">
+      {/* Desktop Top Phase Strip + Optional Admin Edit Button (Hidden on Mobile to prevent 5-layer toolbar stacking) */}
+      <div className="hidden lg:flex items-center justify-between gap-2">
         <div className="flex overflow-x-auto no-scrollbar gap-1.5 pb-0.5">
           {PHASES.map(p => {
             const isSelectedPhase = activeLesson.phase === p.num;
@@ -199,45 +200,9 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-[11px] font-bold uppercase tracking-wider text-[#09ADEF] transition-colors cursor-pointer shrink-0"
           >
             <Pencil className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Edit Lesson</span>
+            <span>Edit Lesson</span>
           </button>
         )}
-      </div>
-
-      {/* Mobile-Only Compact Lesson Switcher Bar */}
-      <div className="lg:hidden glass-panel rounded-xl p-2 flex items-center gap-2">
-        <button
-          type="button"
-          disabled={selectedLessonNum <= 1}
-          onClick={() => selectLesson(Math.max(1, selectedLessonNum - 1))}
-          className="p-2 rounded-lg bg-[#0A0C10] border border-white/10 text-neutral-300 disabled:opacity-30 shrink-0"
-          aria-label="Previous Lesson"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-
-        <select
-          value={selectedLessonNum}
-          onChange={e => selectLesson(Number(e.target.value))}
-          aria-label="Select lesson"
-          className="flex-1 min-w-0 rounded-lg bg-black border border-white/15 px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-[#09ADEF]"
-        >
-          {lessons.map(l => (
-            <option key={l.weekNumber} value={l.weekNumber}>
-              Lesson {String(l.weekNumber).padStart(2, '0')}: {l.title} {l.isPhaseGate ? '◆ Gate' : ''}
-            </option>
-          ))}
-        </select>
-
-        <button
-          type="button"
-          disabled={selectedLessonNum >= 26}
-          onClick={() => selectLesson(Math.min(26, selectedLessonNum + 1))}
-          className="p-2 rounded-lg bg-[#0A0C10] border border-white/10 text-neutral-300 disabled:opacity-30 shrink-0"
-          aria-label="Next Lesson"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
       </div>
 
       {/* Main Split Layout: Left Lessons Menu (Desktop) + Right Lesson Canvas */}
@@ -304,23 +269,38 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
         </div>
 
         {/* Right 9 Columns: Active Lesson */}
-        <div className="lg:col-span-9 space-y-4">
-          {/* Clean Lesson Header & 3-Tab Switcher */}
-          <div className="glass-panel rounded-2xl p-5 sm:p-7">
+        <div className="lg:col-span-9 space-y-3 sm:space-y-4">
+          {/* Unified Lesson Header & 3-Tab Switcher */}
+          <div className="glass-panel rounded-2xl p-4 sm:p-7">
             <div className="flex items-center justify-between gap-2 mb-2.5">
-              <div className="flex items-center gap-2.5">
-                <span className="w-5 h-[1.5px] bg-[#09ADEF]" />
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#09ADEF]">
-                  LESSON {activeLesson.weekNumber} OF 26 · PHASE 0{activeLesson.phase}
+              <button
+                type="button"
+                onClick={() => setShowLessonDrawer(true)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#09ADEF]/12 border border-[#09ADEF]/30 text-[10px] font-bold uppercase tracking-[0.14em] text-[#09ADEF] hover:bg-[#09ADEF]/20 transition cursor-pointer"
+                title="Tap to view all 5 Phases & 26 Lessons"
+              >
+                <span>
+                  LESSON {String(activeLesson.weekNumber).padStart(2, '0')}/26 · PHASE 0{activeLesson.phase}
                 </span>
                 {activeLesson.isPhaseGate && (
-                  <span className="badge-2mm px-2.5 py-0.5 rounded-full text-[9px]">
-                    PHASE GATE
+                  <span className="px-1.5 py-0.2 rounded bg-[#09ADEF] text-white text-[8px]">
+                    GATE
                   </span>
                 )}
-              </div>
+                <span>▾</span>
+              </button>
 
-              <div className="hidden lg:flex items-center gap-1">
+              <div className="flex items-center gap-1">
+                {isCoachMode && (
+                  <button
+                    type="button"
+                    onClick={openEditor}
+                    className="lg:hidden p-1.5 rounded-lg bg-[#0A0C10] border border-white/10 text-[#09ADEF] cursor-pointer"
+                    title="Edit Lesson"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 <button
                   type="button"
                   disabled={selectedLessonNum <= 1}
@@ -342,17 +322,17 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               </div>
             </div>
 
-            <h1 className="font-display text-2xl sm:text-4xl text-white tracking-wide">
+            <h1 className="font-display text-2xl sm:text-4xl text-white tracking-wide leading-tight">
               {activeLesson.title}
             </h1>
-            <p className="text-xs sm:text-sm text-neutral-400 mt-1.5 leading-relaxed">{activeLesson.subtitle}</p>
+            <p className="text-xs sm:text-sm text-neutral-400 mt-1 leading-relaxed">{activeLesson.subtitle}</p>
 
             {/* Clean Single-Row 3-Tab Switcher */}
-            <div className="grid grid-cols-3 gap-1.5 mt-5 pt-4 border-t border-white/[0.07]">
+            <div className="grid grid-cols-3 gap-1.5 mt-4 pt-3.5 border-t border-white/[0.07]">
               <button
                 type="button"
                 onClick={() => setActivePanel('LESSON')}
-                className={`py-2 px-3 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] ${
+                className={`py-2 px-2 sm:px-3 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.06em] ${
                   activePanel === 'LESSON'
                     ? 'bg-[#09ADEF] text-white border-[#09ADEF] shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
                     : 'bg-[#07090D] border-white/[0.07] text-neutral-400 hover:text-white'
@@ -365,20 +345,20 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               <button
                 type="button"
                 onClick={() => setActivePanel('WORKSHEET')}
-                className={`py-2 px-3 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] ${
+                className={`py-2 px-2 sm:px-3 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.06em] ${
                   activePanel === 'WORKSHEET'
                     ? 'bg-[#09ADEF] text-white border-[#09ADEF] shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
                     : 'bg-[#07090D] border-white/[0.07] text-neutral-400 hover:text-white'
                 }`}
               >
                 <FileEdit className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">Worksheet ({lessonFieldsFilledCount}/{activeLesson.fields.length})</span>
+                <span className="truncate">Sheet ({lessonFieldsFilledCount}/{activeLesson.fields.length})</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActivePanel('RUBRIC')}
-                className={`py-2 px-3 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] ${
+                className={`py-2 px-2 sm:px-3 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.06em] ${
                   activePanel === 'RUBRIC'
                     ? 'bg-[#09ADEF] text-white border-[#09ADEF] shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
                     : 'bg-[#07090D] border-white/[0.07] text-neutral-400 hover:text-white'
@@ -1542,6 +1522,110 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
             </div>
           </div>
         </form>
+      </ModalDialog>
+
+      {/* Unified Mobile/Desktop Curriculum Lesson & Phase Picker Sheet */}
+      <ModalDialog
+        isOpen={showLessonDrawer}
+        onClose={() => setShowLessonDrawer(false)}
+        title="26-Lesson Curriculum Roadmap"
+        subtitle={`Currently viewing Lesson ${String(selectedLessonNum).padStart(2, '0')} · Assigned Lesson ${String(student.currentWeek).padStart(2, '0')}`}
+        maxWidthClass="max-w-2xl"
+      >
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+          {PHASES.map(p => {
+            const phaseLessons = lessons.filter(l => l.phase === p.num);
+            const phaseDone = phaseLessons.filter(l =>
+              l.tasks.every((_, idx) => student.tasksCompleted[`${l.weekNumber}-${idx}`])
+            ).length;
+            const gateState = student.gateStatus?.[p.num] || (p.num === 1 ? 'OPEN' : 'LOCKED');
+
+            return (
+              <div
+                key={p.num}
+                className="rounded-2xl bg-[#040507] border border-white/10 p-3.5 space-y-2.5"
+              >
+                <div className="flex items-center justify-between gap-2 pb-2 border-b border-white/[0.06]">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                      PHASE 0{p.num} · {p.name} ({p.desc})
+                    </div>
+                    <div className="text-[11px] text-neutral-400 mt-0.5">
+                      {phaseDone}/{phaseLessons.length} Lessons Completed · {p.range}
+                    </div>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                      gateState === 'APPROVED'
+                        ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                        : gateState === 'SUBMITTED'
+                        ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                        : 'bg-white/5 text-neutral-400 border border-white/10'
+                    }`}
+                  >
+                    Gate: {gateState}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {phaseLessons.map(lesson => {
+                    const isSelected = lesson.weekNumber === selectedLessonNum;
+                    const isCompleted = lesson.tasks.every(
+                      (_, idx) => student.tasksCompleted[`${lesson.weekNumber}-${idx}`]
+                    );
+                    const isAssigned = lesson.weekNumber === student.currentWeek;
+
+                    return (
+                      <button
+                        key={lesson.weekNumber}
+                        type="button"
+                        onClick={() => {
+                          selectLesson(lesson.weekNumber);
+                          setShowLessonDrawer(false);
+                        }}
+                        className={`w-full text-left px-3 py-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#09ADEF]/15 border-[#09ADEF] text-white'
+                            : isCompleted
+                            ? 'bg-white/[0.02] border-emerald-500/25 text-slate-200 hover:border-white/20'
+                            : 'bg-black/40 border-white/[0.06] text-slate-300 hover:border-white/15'
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF]">
+                              Lesson {String(lesson.weekNumber).padStart(2, '0')}
+                            </span>
+                            {isAssigned && (
+                              <span className="px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 text-[9px] font-bold uppercase">
+                                Current
+                              </span>
+                            )}
+                            {lesson.isPhaseGate && (
+                              <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[9px] font-bold uppercase">
+                                ◆ Gate
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs font-medium text-white truncate mt-0.5">
+                            {lesson.title}
+                          </div>
+                        </div>
+                        {isCompleted ? (
+                          <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </span>
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-neutral-500 shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </ModalDialog>
     </div>
   );

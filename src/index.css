@@ -111,8 +111,19 @@ dialog::backdrop {
   scrollbar-width: none;
 }
 
-/* iOS / PWA home indicator safe area padding */
+/* iOS / PWA home indicator & notch safe area padding */
 .pb-safe {
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
+.pt-safe {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+}
 
+/* Prevent iOS Safari from forcibly zooming the viewport when tapping inputs < 16px */
+@media (max-width: 639px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

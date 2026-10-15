@@ -1625,21 +1625,26 @@ export function App() {
           </nav>
         </div>
 
-        {/* Bottom Active Profile Switcher (Admin Only) + Logout */}
+        {/* Bottom Active Profile Switcher (Admin Preview Mode Only) + Logout */}
         <div className="pt-4 border-t border-white/[0.07] space-y-2">
-          {isAdminSession && (
-            <select
-              value={activeStudentId}
-              onChange={e => setActiveStudentId(e.target.value)}
-              aria-label="Select active student profile"
-              className="w-full rounded-lg bg-[#080A0E] border border-white/10 text-xs font-medium text-white px-3 py-2 focus:outline-none focus:border-[#09ADEF]"
-            >
-              {students.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+          {isAdminSession && activeTab !== 'COACH' && (
+            <div className="space-y-1">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-500 px-1">
+                Previewing Operator
+              </span>
+              <select
+                value={activeStudentId}
+                onChange={e => setActiveStudentId(e.target.value)}
+                aria-label="Select active student profile"
+                className="w-full rounded-lg bg-[#080A0E] border border-white/10 text-xs font-medium text-white px-3 py-2 focus:outline-none focus:border-[#09ADEF]"
+              >
+                {students.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
 
           <button
@@ -1657,9 +1662,9 @@ export function App() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Admin Preview Banner when viewing Student Tabs */}
         {isAdminSession && activeTab !== 'COACH' && (
-          <div className="bg-[#09ADEF]/12 border-b border-[#09ADEF]/25 px-3.5 sm:px-8 py-1.5 flex items-center justify-between gap-2 text-xs">
+          <div className="bg-[#09ADEF]/12 border-b border-[#09ADEF]/25 px-3 sm:px-8 py-1.5 flex items-center justify-between gap-2 text-xs">
             <span className="text-neutral-200 truncate">
-              Coach Preview Mode: Viewing <strong className="text-white">{currentStudent.name}</strong> (Messages still send as Coach Josh)
+              Previewing <strong className="text-white">{currentStudent.name}</strong>
             </span>
             <button
               type="button"
@@ -1674,37 +1679,51 @@ export function App() {
               }}
               className="px-2.5 py-1 rounded-full bg-[#09ADEF] text-white font-bold uppercase tracking-wider text-[10px] hover:bg-[#09B3F8] transition-colors cursor-pointer shrink-0"
             >
-              ← Back to Admin
+              ← Admin
             </button>
           </div>
         )}
 
-        {/* Clean Single-Row Top Header */}
+        {/* Clean Single-Row Contextual Top Header */}
         <header className="border-b border-white/[0.07] bg-black/90 backdrop-blur-md sticky top-0 z-20">
-          <div className="max-w-5xl mx-auto px-3.5 sm:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <img
-                src="/2mmshift-logo-wide.png"
-                alt="The 2mm Shift"
-                className="md:hidden h-8 w-auto object-contain shrink-0 mr-1 select-none"
-              />
-              <div className="w-7 h-7 rounded-lg bg-[#09ADEF]/15 border border-[#09ADEF]/30 text-[#09ADEF] font-bold text-xs flex items-center justify-center shrink-0">
-                {currentStudent.avatar}
+          <div className="max-w-5xl mx-auto px-3 sm:px-8 py-2.5 flex items-center justify-between gap-2">
+            {activeTab === 'COACH' ? (
+              <div className="flex items-center gap-2.5 min-w-0">
+                <img
+                  src="/2mmshift-logo-wide.png"
+                  alt="The 2mm Shift"
+                  className="md:hidden h-7 w-auto object-contain shrink-0 select-none"
+                />
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="hidden sm:inline-block w-3.5 h-[1.5px] bg-[#09ADEF]" />
+                  <span className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.16em] text-white truncate">
+                    Coach Command Center
+                  </span>
+                  <span className="badge-2mm px-2 py-0.5 rounded-full text-[9px] shrink-0">
+                    {students.length} Operators
+                  </span>
+                </div>
               </div>
+            ) : (
               <div className="flex items-center gap-2 min-w-0">
-                <span className="text-xs sm:text-sm font-semibold text-white truncate">
-                  {currentStudent.name}
-                </span>
-                <span className="badge-2mm px-2.5 py-0.5 rounded-full text-[10px] shrink-0">
-                  Lesson {currentStudent.currentWeek}
-                </span>
+                <div className="w-7 h-7 rounded-lg bg-[#09ADEF]/15 border border-[#09ADEF]/30 text-[#09ADEF] font-bold text-xs flex items-center justify-center shrink-0">
+                  {currentStudent.avatar}
+                </div>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-xs sm:text-sm font-semibold text-white truncate">
+                    {currentStudent.name}
+                  </span>
+                  <span className="badge-2mm px-2 py-0.5 rounded-full text-[10px] shrink-0">
+                    L{String(currentStudent.currentWeek).padStart(2, '0')}
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Right Minimal Actions */}
             <div className="flex items-center gap-1.5 shrink-0">
               <span
-                className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-semibold ${
+                className={`inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full border text-[10px] font-semibold ${
                   dbSyncStatus === 'SYNCED'
                     ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
                     : dbSyncStatus === 'SYNCING' || dbSyncStatus === 'CONNECTING'
@@ -1722,7 +1741,7 @@ export function App() {
                       : 'bg-neutral-500'
                   }`}
                 />
-                <span>
+                <span className="hidden sm:inline">
                   {dbSyncStatus === 'SYNCED'
                     ? 'Synced'
                     : dbSyncStatus === 'SYNCING'
@@ -1754,7 +1773,7 @@ export function App() {
               <button
                 type="button"
                 onClick={() => setShowStudentInboxModal(true)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors cursor-pointer ${
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full border text-xs font-medium transition-colors cursor-pointer ${
                   unreadMessagesForCurrentViewer > 0
                     ? 'bg-[#09ADEF]/15 border-[#09ADEF] text-white shadow-[0_0_16px_rgba(9,173,239,0.25)]'
                     : 'bg-[#0A0C10] hover:bg-white/[0.08] border-white/10 text-neutral-200'
@@ -1764,7 +1783,7 @@ export function App() {
                 <span className="hidden sm:inline">Messages</span>
                 {unreadMessagesForCurrentViewer > 0 ? (
                   <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold">
-                    {unreadMessagesForCurrentViewer} New
+                    {unreadMessagesForCurrentViewer}
                   </span>
                 ) : (
                   currentStudent.messages.length > 0 && (
@@ -1788,7 +1807,7 @@ export function App() {
         </header>
 
         {/* Main Workspace Canvas (Generous Bottom Padding for Mobile Fixed Nav) */}
-        <main className="flex-1 max-w-6xl w-full mx-auto px-3.5 sm:px-8 py-4 sm:py-7 pb-24 md:pb-8">
+        <main className="flex-1 max-w-6xl w-full mx-auto px-2.5 sm:px-8 py-3 sm:py-7 pb-24 md:pb-8">
           {activeTab === 'CADENCE' && (
             <DailyCadenceView
               student={currentStudent}

@@ -580,15 +580,15 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-5">
-      {/* Top Sleek KPI Summary Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        <div className="glass-panel rounded-2xl p-4 flex items-center justify-between">
+    <div className="space-y-3.5 sm:space-y-5">
+      {/* Top Sleek KPI Summary Row (Compact 2x2 on mobile, 4-col on desktop) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+        <div className="glass-panel rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center justify-between">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">ACTIVE COHORT</div>
-            <div className="font-display text-2xl sm:text-3xl text-white mt-0.5">{students.length} OPERATORS</div>
+            <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-[#09ADEF]">ACTIVE COHORT</div>
+            <div className="font-display text-xl sm:text-3xl text-white mt-0.5">{students.length} OPERATORS</div>
           </div>
-          <span className="badge-2mm px-2.5 py-1 rounded-full text-xs">
+          <span className="badge-2mm px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-xs">
             {students.length}
           </span>
         </div>
@@ -596,80 +596,45 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
         <button
           type="button"
           onClick={() => setCoachSubTab('LINKS')}
-          className="glass-panel rounded-2xl p-4 flex items-center justify-between text-left hover:border-[#09ADEF]/50 transition-all cursor-pointer"
+          className="glass-panel rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center justify-between text-left hover:border-[#09ADEF]/50 transition-all cursor-pointer"
         >
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">VIDEO REVIEW QUEUE</div>
-            <div className="font-display text-2xl sm:text-3xl text-white mt-0.5">
-              {pendingReviewTotal > 0 ? `${pendingReviewTotal} TO REVIEW` : `${allCohortReviewItems.length} COMPLETED`}
+            <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-[#09ADEF]">REVIEW QUEUE</div>
+            <div className="font-display text-xl sm:text-3xl text-white mt-0.5">
+              {pendingReviewTotal > 0 ? `${pendingReviewTotal} TO REVIEW` : `${allCohortReviewItems.length} DONE`}
             </div>
           </div>
-          <span className="badge-2mm px-2.5 py-1 rounded-full text-[10px]">
+          <span className="hidden sm:inline-flex badge-2mm px-2.5 py-1 rounded-full text-[10px]">
             Open Queue
           </span>
         </button>
 
-        <div className="glass-panel rounded-2xl p-4 flex items-center justify-between">
+        <div className="glass-panel rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center justify-between">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">POSTED TODAY</div>
-            <div className="font-display text-2xl sm:text-3xl text-[#09ADEF] mt-0.5">{onCadenceCount} VERIFIED</div>
+            <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400">POSTED TODAY</div>
+            <div className="font-display text-xl sm:text-3xl text-[#09ADEF] mt-0.5">{onCadenceCount} VERIFIED</div>
           </div>
-          <span className="w-2.5 h-2.5 rounded-full bg-[#09ADEF] shadow-[0_0_12px_#09ADEF]" />
+          <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-[#09ADEF] shadow-[0_0_12px_#09ADEF]" />
         </div>
 
-        <div className="glass-panel rounded-2xl p-4 flex items-center justify-between gap-2">
+        <div className="glass-panel rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center justify-between gap-1.5">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-rose-400">MISSED / DUE</div>
-            <div className="font-display text-2xl sm:text-3xl text-white mt-0.5">
+            <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-rose-400">MISSED / DUE</div>
+            <div className="font-display text-xl sm:text-3xl text-white mt-0.5">
               {missedCount > 0 ? `${missedCount} MISSED` : `${pendingCount} DUE`}
             </div>
           </div>
           <button
             type="button"
             onClick={handleBatchNudgeAllDue}
-            className="px-2.5 py-1 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-[10px] font-bold uppercase tracking-wider text-rose-300 cursor-pointer shrink-0"
+            className="px-2 py-1 sm:px-2.5 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-rose-300 cursor-pointer shrink-0"
             title="Send push & chat cadence nudge to all due/missed students"
           >
             {missedCount + pendingCount > 1
-              ? `Nudge All (${missedCount + pendingCount})`
+              ? `Nudge (${missedCount + pendingCount})`
               : 'Alert'}
           </button>
         </div>
-      </div>
-
-      {/* Mobile-Only Compact Student Switcher Bar */}
-      <div className="lg:hidden glass-panel rounded-xl p-2.5 flex items-center justify-between gap-2">
-        <select
-          id="mobile-student-select"
-          value={activeStudent.id}
-          onChange={e => onSelectStudent(e.target.value)}
-          className="flex-1 min-w-0 rounded-lg bg-black border border-white/15 px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-[#09ADEF]"
-        >
-          {students.map(st => {
-            const unread = rosterSummariesById[st.id]?.unread || 0;
-            return (
-              <option key={st.id} value={st.id}>
-                {st.name} ({st.company}) · Lesson {st.currentWeek}{unread > 0 ? ` · 💬 ${unread} New` : ''}
-              </option>
-            );
-          })}
-        </select>
-        <button
-          type="button"
-          onClick={() => setShowAddStudentModal(true)}
-          className="px-3 py-2 rounded-lg btn-2mm text-[10px] shrink-0 cursor-pointer"
-        >
-          + New
-        </button>
-        {onPreviewStudentDashboard && (
-          <button
-            type="button"
-            onClick={() => onPreviewStudentDashboard(activeStudent.id)}
-            className="px-2.5 py-2 rounded-lg bg-[#0A0C10] border border-white/15 text-neutral-200 text-[11px] font-semibold shrink-0 cursor-pointer"
-          >
-            Preview
-          </button>
-        )}
       </div>
 
       {/* Main Split: Left Student Roster (Desktop) + Right Focused Student Admin & Coaching Workspace */}
@@ -820,50 +785,80 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
         </div>
 
         {/* Right 8 Cols: Selected Student Workspace with 5 Admin & Coaching Tabs */}
-        <div className="lg:col-span-8 glass-panel rounded-2xl p-5 sm:p-7 space-y-5">
-          {/* Student Header */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/[0.07]">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="w-4 h-[1.5px] bg-[#09ADEF]" />
-                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
-                  LESSON {activeStudent.currentWeek} · PHASE 0{activeStudent.currentPhase} · {activeStudent.niche}
-                </span>
+        <div className="lg:col-span-8 glass-panel rounded-2xl p-4 sm:p-7 space-y-4 sm:space-y-5">
+          {/* Student Header (Unified with Mobile Student Switcher on <lg) */}
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3 pb-4 border-b border-white/[0.07]">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-4 h-[1.5px] bg-[#09ADEF] shrink-0" />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF] truncate">
+                    LESSON {activeStudent.currentWeek} · PHASE 0{activeStudent.currentPhase} · {activeStudent.niche}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddStudentModal(true)}
+                  className="lg:hidden px-2.5 py-1 rounded-lg btn-2mm text-[10px] shrink-0 cursor-pointer"
+                >
+                  + New Student
+                </button>
               </div>
-              <h2 className="font-display text-2xl sm:text-4xl text-white mt-1 tracking-wide">
+
+              {/* Mobile Unified Student Selector */}
+              <div className="lg:hidden mt-2">
+                <select
+                  id="mobile-student-select"
+                  value={activeStudent.id}
+                  onChange={e => onSelectStudent(e.target.value)}
+                  className="w-full rounded-xl bg-[#040507] border border-white/15 px-3 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-[#09ADEF]"
+                >
+                  {students.map(st => {
+                    const unread = rosterSummariesById[st.id]?.unread || 0;
+                    return (
+                      <option key={st.id} value={st.id}>
+                        {st.name} — {st.company} (Lesson {st.currentWeek}){unread > 0 ? ` · 💬 ${unread} New` : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              {/* Desktop Student Heading */}
+              <h2 className="hidden lg:block font-display text-2xl sm:text-4xl text-white mt-1 tracking-wide">
                 {activeStudent.name} <span className="text-[#09ADEF]">— {activeStudent.company}</span>
               </h2>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               {onPreviewStudentDashboard && (
                 <button
                   type="button"
                   onClick={() => onPreviewStudentDashboard(activeStudent.id)}
-                  className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/12 text-xs font-semibold text-white cursor-pointer"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/12 text-[11px] sm:text-xs font-semibold text-white cursor-pointer"
                 >
                   <ExternalLink className="w-3.5 h-3.5 text-[#09ADEF]" />
-                  <span>Preview Student</span>
+                  <span>Preview</span>
                 </button>
               )}
 
               <button
                 type="button"
                 onClick={handleExportCohortCsv}
-                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/12 text-xs font-semibold text-neutral-200 cursor-pointer"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/12 text-[11px] sm:text-xs font-semibold text-neutral-200 cursor-pointer"
                 title="Download CSV backup of all students and progress"
               >
                 <Download className="w-3.5 h-3.5 text-[#09ADEF]" />
-                <span>Export CSV</span>
+                <span>CSV</span>
               </button>
 
               <button
                 type="button"
                 onClick={onOpenImportModal}
-                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg badge-2mm text-[10px] cursor-pointer"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-lg badge-2mm text-[10px] cursor-pointer"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
-                <span>Upload .xlsx</span>
+                <span>.xlsx</span>
               </button>
 
               <button
@@ -873,7 +868,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                   setSaveBanner(`Approved Phase 0${targetPhaseToApprove} Gate for ${activeStudent.name}!`);
                   setTimeout(() => setSaveBanner(null), 3500);
                 }}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer ${
                   submittedGatePhases.length > 0
                     ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/25 hover:bg-emerald-400'
                     : 'btn-2mm'
@@ -882,8 +877,8 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>
                   {submittedGatePhases.length > 0
-                    ? `Approve Submitted Gate 0${targetPhaseToApprove}`
-                    : `Approve Phase 0${targetPhaseToApprove}`}
+                    ? `Approve Gate 0${targetPhaseToApprove}`
+                    : `Gate 0${targetPhaseToApprove}`}
                 </span>
               </button>
             </div>
@@ -965,15 +960,27 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
             </div>
           )}
 
-          {/* TAB 0: STUDENT SETUP & SPECIFICS (ADMIN) */}
+          {/* TAB 0: STUDENT SETUP & SPECIFICS (ADMIN - Collapsible Accordions for Mobile Maturity) */}
           {coachSubTab === 'SETUP' && (
-            <div className="space-y-6">
-              {/* Step 1: Upload Student Specific Content Plan (.xlsx) */}
-              <div className="p-5 rounded-2xl bg-[#040507] border border-[#09ADEF]/25 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
-                    1. STUDENT CONTENT PLAN SPREADSHEET (.XLSX)
+            <div className="space-y-3.5">
+              {/* Accordion 1: Upload Student Specific Content Plan (.xlsx) */}
+              <details className="group rounded-2xl bg-[#040507] border border-[#09ADEF]/25 overflow-hidden">
+                <summary className="list-none cursor-pointer p-4 sm:p-5 flex items-center justify-between gap-3 select-none">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                      1. STUDENT CONTENT PLAN SPREADSHEET (.XLSX)
+                    </div>
+                    <p className="text-xs text-neutral-300 mt-0.5">
+                      {activeStudent.playbook.length} Core Pillars · {activeStudent.supportingVideos.length} Daily Videos loaded
+                    </p>
                   </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[11px] font-semibold text-[#09ADEF] group-open:rotate-180 transition-transform">
+                      ▾
+                    </span>
+                  </div>
+                </summary>
+                <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-2 border-t border-white/8 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <p className="text-xs text-neutral-300 leading-relaxed">
                     Currently loaded for <strong>{activeStudent.name}</strong>:{' '}
                     <span className="text-white font-semibold">{activeStudent.playbook.length} Core Pillars</span> &{' '}
@@ -982,397 +989,411 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                     </span>
                     . Re-uploading preserves completed links & coach reviews.
                   </p>
+                  <button
+                    type="button"
+                    onClick={onOpenImportModal}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg btn-2mm text-xs shrink-0 cursor-pointer"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>Upload .xlsx</span>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={onOpenImportModal}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg btn-2mm text-xs shrink-0 cursor-pointer"
-                >
-                  <Upload className="w-4 h-4" />
-                  <span>Upload .xlsx</span>
-                </button>
-              </div>
+              </details>
 
-              {/* Step 2: Edit Profile, Login Credentials, Current Lesson, & Core Positioning Specifics */}
-              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8 space-y-4">
-                <div className="flex items-center justify-between border-b border-white/8 pb-3">
+              {/* Accordion 2: Edit Profile, Login Credentials, Current Lesson, & Core Positioning Specifics */}
+              <details open className="group rounded-2xl bg-white/[0.02] border border-white/8 overflow-hidden">
+                <summary className="list-none cursor-pointer p-4 sm:p-5 flex items-center justify-between gap-3 select-none">
                   <div>
                     <div className="text-xs font-bold uppercase tracking-wider text-sky-400">
-                      2. Student Profile, Login Access & Positioning Specifics
+                      2. Student Profile, Login Access & Positioning
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      Changes auto-save live to Supabase & {activeStudent.name}’s student dashboard.
+                      Auto-saves live · Lesson {activeStudent.currentWeek} · Code: {activeStudent.accessCode || 'Unset'}
                     </p>
                   </div>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 text-[11px] font-semibold">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>Auto-Synced Live</span>
-                  </span>
-                </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 text-[10px] font-semibold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Auto-Synced</span>
+                    </span>
+                    <span className="text-xs text-slate-400 group-open:rotate-180 transition-transform">▾</span>
+                  </div>
+                </summary>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Student Full Name</label>
-                    <input
-                      type="text"
-                      value={activeStudent.name}
-                      onChange={e =>
-                        onUpdateStudentSpecifics(activeStudent.id, { name: e.target.value })
-                      }
-                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
-                    />
+                <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-3 border-t border-white/8 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs">
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">Student Full Name</label>
+                      <input
+                        type="text"
+                        value={activeStudent.name}
+                        onChange={e =>
+                          onUpdateStudentSpecifics(activeStudent.id, { name: e.target.value })
+                        }
+                        className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">Company / Brand Name</label>
+                      <input
+                        type="text"
+                        value={activeStudent.company}
+                        onChange={e =>
+                          onUpdateStudentSpecifics(activeStudent.id, { company: e.target.value })
+                        }
+                        className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">Industry / Niche</label>
+                      <input
+                        type="text"
+                        value={activeStudent.niche}
+                        onChange={e =>
+                          onUpdateStudentSpecifics(activeStudent.id, { niche: e.target.value })
+                        }
+                        className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Company / Brand Name</label>
-                    <input
-                      type="text"
-                      value={activeStudent.company}
-                      onChange={e =>
-                        onUpdateStudentSpecifics(activeStudent.id, { company: e.target.value })
-                      }
-                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Industry / Niche</label>
-                    <input
-                      type="text"
-                      value={activeStudent.niche}
-                      onChange={e =>
-                        onUpdateStudentSpecifics(activeStudent.id, { niche: e.target.value })
-                      }
-                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">
-                      Student Login Email (Used on <code className="text-sky-400">/login</code>)
-                    </label>
-                    <input
-                      type="email"
-                      value={activeStudent.email || ''}
-                      onChange={e =>
-                        onUpdateStudentSpecifics(activeStudent.id, { email: e.target.value })
-                      }
-                      placeholder="student@company.com"
-                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">
+                        Student Login Email (Used on <code className="text-sky-400">/login</code>)
+                      </label>
+                      <input
+                        type="email"
+                        value={activeStudent.email || ''}
+                        onChange={e =>
+                          onUpdateStudentSpecifics(activeStudent.id, { email: e.target.value })
+                        }
+                        placeholder="student@company.com"
+                        className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">
+                        Student Login Access Code (Used on <code className="text-sky-400">/login</code>)
+                      </label>
+                      <input
+                        type="text"
+                        value={activeStudent.accessCode || ''}
+                        onChange={e =>
+                          onUpdateStudentSpecifics(activeStudent.id, {
+                            accessCode: e.target.value.toUpperCase()
+                          })
+                        }
+                        placeholder="CODE-01"
+                        className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 font-mono text-sky-300 focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">
-                      Student Login Access Code (Used on <code className="text-sky-400">/login</code>)
-                    </label>
-                    <input
-                      type="text"
-                      value={activeStudent.accessCode || ''}
-                      onChange={e =>
-                        onUpdateStudentSpecifics(activeStudent.id, {
-                          accessCode: e.target.value.toUpperCase()
-                        })
-                      }
-                      placeholder="CODE-01"
-                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 font-mono text-sky-300 focus:border-sky-400 focus:outline-none"
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Assigned Lesson (1–26)</label>
-                    <select
-                      value={activeStudent.currentWeek}
-                      onChange={e => {
-                        const wk = Number(e.target.value);
-                        const ph = wk <= 4 ? 1 : wk <= 8 ? 2 : wk <= 18 ? 3 : wk <= 22 ? 4 : 5;
-                        onUpdateStudentSpecifics(activeStudent.id, {
-                          currentWeek: wk,
-                          currentPhase: ph
-                        });
-                      }}
-                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
-                    >
-                      {Array.from({ length: 26 }, (_, i) => i + 1).map(num => (
-                        <option key={num} value={num}>
-                          Lesson {String(num).padStart(2, '0')}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Time on Brand (Mins)</label>
-                    <input
-                      type="number"
-                      value={activeStudent.minutesAvailableCurrent}
-                      onChange={e =>
-                        onUpdateStudentSpecifics(activeStudent.id, {
-                          minutesAvailableCurrent: Number(e.target.value)
-                        })
-                      }
-                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Full List Pool (25%)</label>
-                    <input
-                      type="number"
-                      value={activeStudent.fullListSize}
-                      onChange={e =>
-                        onUpdateStudentSpecifics(activeStudent.id, {
-                          fullListSize: Number(e.target.value)
-                        })
-                      }
-                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Weekly DM Convos</label>
-                    <input
-                      type="number"
-                      value={activeStudent.dmConversationsWeekly}
-                      onChange={e =>
-                        onUpdateStudentSpecifics(activeStudent.id, {
-                          dmConversationsWeekly: Number(e.target.value)
-                        })
-                      }
-                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-2">
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">
-                      Core Transformation (Module 02 · Q1)
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={activeStudent.worksheetAnswers.m02_q1_transformation || ''}
-                      onChange={e =>
-                        onUpdateStudentSpecifics(
-                          activeStudent.id,
-                          {},
-                          { m02_q1_transformation: e.target.value }
-                        )
-                      }
-                      placeholder="What specific transformation does this student deliver?"
-                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">
-                      Core Belief Statement (Module 02 · Q4)
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={activeStudent.worksheetAnswers.m02_q4_belief || ''}
-                      onChange={e =>
-                        onUpdateStudentSpecifics(
-                          activeStudent.id,
-                          {},
-                          { m02_q4_belief: e.target.value }
-                        )
-                      }
-                      placeholder="What is the 1 Core Belief their 25 videos install?"
-                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                {students.length > 1 && (
-                  <div className="pt-2 border-t border-white/8 flex items-center justify-end">
-                    {!confirmDeleteStudent ? (
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDeleteStudent(true)}
-                        className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-rose-400/80 hover:text-rose-300 cursor-pointer"
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 text-xs">
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">Assigned Lesson (1–26)</label>
+                      <select
+                        value={activeStudent.currentWeek}
+                        onChange={e => {
+                          const wk = Number(e.target.value);
+                          const ph = wk <= 4 ? 1 : wk <= 8 ? 2 : wk <= 18 ? 3 : wk <= 22 ? 4 : 5;
+                          onUpdateStudentSpecifics(activeStudent.id, {
+                            currentWeek: wk,
+                            currentPhase: ph
+                          });
+                        }}
+                        className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
                       >
-                        <Trash2 className="w-3.5 h-3.5" /> Remove {activeStudent.name} from Cohort
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-2 bg-rose-500/10 border border-rose-500/30 px-3 py-1.5 rounded-xl">
-                        <span className="text-[11px] font-semibold text-rose-200">
-                          Permanently delete {activeStudent.name}?
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onDeleteStudent(activeStudent.id);
-                            setConfirmDeleteStudent(false);
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-rose-500 hover:bg-rose-400 text-slate-950 font-bold text-[10px] uppercase tracking-wider cursor-pointer"
-                        >
-                          Confirm Delete
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDeleteStudent(false)}
-                          className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-slate-300 font-semibold text-[10px] cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    )}
+                        {Array.from({ length: 26 }, (_, i) => i + 1).map(num => (
+                          <option key={num} value={num}>
+                            Lesson {String(num).padStart(2, '0')}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">Time on Brand (Mins)</label>
+                      <input
+                        type="number"
+                        value={activeStudent.minutesAvailableCurrent}
+                        onChange={e =>
+                          onUpdateStudentSpecifics(activeStudent.id, {
+                            minutesAvailableCurrent: Number(e.target.value)
+                          })
+                        }
+                        className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">Full List Pool (25%)</label>
+                      <input
+                        type="number"
+                        value={activeStudent.fullListSize}
+                        onChange={e =>
+                          onUpdateStudentSpecifics(activeStudent.id, {
+                            fullListSize: Number(e.target.value)
+                          })
+                        }
+                        className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">Weekly DM Convos</label>
+                      <input
+                        type="number"
+                        value={activeStudent.dmConversationsWeekly}
+                        onChange={e =>
+                          onUpdateStudentSpecifics(activeStudent.id, {
+                            dmConversationsWeekly: Number(e.target.value)
+                          })
+                        }
+                        className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
                   </div>
-                )}
-              </div>
 
-              {/* Step 3: Add a Custom Video OR Edit Any Existing Video & Hooks Directly in Student's Queue */}
-              <form
-                onSubmit={handleAddOrUpdateCustomVideo}
-                className="p-5 rounded-2xl bg-white/[0.02] border border-white/8 space-y-4 text-xs"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/8 pb-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs pt-1">
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">
+                        Core Transformation (Module 02 · Q1)
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={activeStudent.worksheetAnswers.m02_q1_transformation || ''}
+                        onChange={e =>
+                          onUpdateStudentSpecifics(
+                            activeStudent.id,
+                            {},
+                            { m02_q1_transformation: e.target.value }
+                          )
+                        }
+                        placeholder="What specific transformation does this student deliver?"
+                        className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">
+                        Core Belief Statement (Module 02 · Q4)
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={activeStudent.worksheetAnswers.m02_q4_belief || ''}
+                        onChange={e =>
+                          onUpdateStudentSpecifics(
+                            activeStudent.id,
+                            {},
+                            { m02_q4_belief: e.target.value }
+                          )
+                        }
+                        placeholder="What is the 1 Core Belief their 25 videos install?"
+                        className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {students.length > 1 && (
+                    <div className="pt-2 border-t border-white/8 flex items-center justify-end">
+                      {!confirmDeleteStudent ? (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteStudent(true)}
+                          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-rose-400/80 hover:text-rose-300 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Remove {activeStudent.name} from Cohort
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-2 bg-rose-500/10 border border-rose-500/30 px-3 py-1.5 rounded-xl">
+                          <span className="text-[11px] font-semibold text-rose-200">
+                            Permanently delete {activeStudent.name}?
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onDeleteStudent(activeStudent.id);
+                              setConfirmDeleteStudent(false);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-rose-500 hover:bg-rose-400 text-slate-950 font-bold text-[10px] uppercase tracking-wider cursor-pointer"
+                          >
+                            Confirm Delete
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteStudent(false)}
+                            className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-slate-300 font-semibold text-[10px] cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </details>
+
+              {/* Accordion 3: Add a Custom Video OR Edit Any Existing Video & Hooks Directly in Student's Queue */}
+              <details className="group rounded-2xl bg-white/[0.02] border border-white/8 overflow-hidden">
+                <summary className="list-none cursor-pointer p-4 sm:p-5 flex items-center justify-between gap-3 select-none">
                   <div>
                     <div className="text-xs font-bold uppercase tracking-wider text-sky-400">
                       3. Add or Edit Daily Video & Hooks in {activeStudent.name.split(' ')[0]}’s Queue
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      Add a new daily video or pick any existing Day (#01–#{activeStudent.supportingVideos.length}) to edit its topic and hooks live.
+                      Add a new daily video or edit any existing Day (#01–#{activeStudent.supportingVideos.length})
                     </p>
                   </div>
-                  <select
-                    value={editingVideoId}
-                    onChange={e => {
-                      handleSelectVideoToEdit(e.target.value);
-                      setConfirmDeleteVideo(false);
-                    }}
-                    className="rounded-xl bg-[#0B0D14] border border-white/15 px-3 py-2 text-xs font-semibold text-white focus:border-sky-400 focus:outline-none"
-                  >
-                    <option value="NEW">+ Add New Video to Queue</option>
-                    {activeStudent.supportingVideos.map(v => (
-                      <option key={v.id} value={v.id}>
-                        Edit Day #{String(v.dayNumber).padStart(2, '0')} — {v.title.slice(0, 38)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  <span className="text-xs text-slate-400 group-open:rotate-180 transition-transform shrink-0">▾</span>
+                </summary>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Video Title / Topic</label>
-                    <input
-                      type="text"
-                      required
-                      value={customVideoTitle}
-                      onChange={e => setCustomVideoTitle(e.target.value)}
-                      placeholder="Video title..."
-                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Playbook Pillar & Funnel Stage</label>
+                <form
+                  onSubmit={handleAddOrUpdateCustomVideo}
+                  className="px-4 pb-4 sm:px-5 sm:pb-5 pt-3 border-t border-white/8 space-y-4 text-xs"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <span className="text-[11px] font-medium text-slate-300">
+                      Select video to edit or add a new slot:
+                    </span>
                     <select
-                      value={customVideoPillarId}
+                      value={editingVideoId}
                       onChange={e => {
-                        const nextPillarId = e.target.value;
-                        setCustomVideoPillarId(nextPillarId);
-                        const found = activeStudent.playbook.find(p => p.id === nextPillarId);
-                        if (found) {
-                          setCustomVideoStage(`${found.stage} (${found.pillar})`);
-                        }
+                        handleSelectVideoToEdit(e.target.value);
+                        setConfirmDeleteVideo(false);
                       }}
-                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
+                      className="rounded-xl bg-[#0B0D14] border border-white/15 px-3 py-2 text-xs font-semibold text-white focus:border-sky-400 focus:outline-none"
                     >
-                      {activeStudent.playbook.map((p, idx) => (
-                        <option key={p.id} value={p.id}>
-                          #{idx + 1} · {p.stage} — {p.pillar}
+                      <option value="NEW">+ Add New Video to Queue</option>
+                      {activeStudent.supportingVideos.map(v => (
+                        <option key={v.id} value={v.id}>
+                          Edit Day #{String(v.dayNumber).padStart(2, '0')} — {v.title.slice(0, 38)}
                         </option>
                       ))}
                     </select>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Hook Option 1 (Required)</label>
-                    <input
-                      type="text"
-                      required
-                      value={customHook1}
-                      onChange={e => setCustomHook1(e.target.value)}
-                      placeholder="Contrarian or curiosity hook..."
-                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Hook Option 2</label>
-                    <input
-                      type="text"
-                      value={customHook2}
-                      onChange={e => setCustomHook2(e.target.value)}
-                      placeholder="Direct call-out hook..."
-                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Hook Option 3</label>
-                    <input
-                      type="text"
-                      value={customHook3}
-                      onChange={e => setCustomHook3(e.target.value)}
-                      placeholder="Story / proof hook..."
-                      className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                  {editingVideoId !== 'NEW' && onDeleteStudentVideo && activeStudent.supportingVideos.length > 1 ? (
-                    !confirmDeleteVideo ? (
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDeleteVideo(true)}
-                        className="inline-flex items-center gap-1.5 text-rose-400 hover:text-rose-300 cursor-pointer font-semibold"
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">Video Title / Topic</label>
+                      <input
+                        type="text"
+                        required
+                        value={customVideoTitle}
+                        onChange={e => setCustomVideoTitle(e.target.value)}
+                        placeholder="Video title..."
+                        className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">Playbook Pillar & Funnel Stage</label>
+                      <select
+                        value={customVideoPillarId}
+                        onChange={e => {
+                          const nextPillarId = e.target.value;
+                          setCustomVideoPillarId(nextPillarId);
+                          const found = activeStudent.playbook.find(p => p.id === nextPillarId);
+                          if (found) {
+                            setCustomVideoStage(`${found.stage} (${found.pillar})`);
+                          }
+                        }}
+                        className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
                       >
-                        <Trash2 className="w-3.5 h-3.5" /> Delete Selected Video
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-2 bg-rose-500/10 border border-rose-500/30 px-3 py-1.5 rounded-xl">
-                        <span className="text-[11px] font-semibold text-rose-200">
-                          Delete this daily video & renumber queue?
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onDeleteStudentVideo(activeStudent.id, editingVideoId);
-                            handleSelectVideoToEdit('NEW');
-                            setConfirmDeleteVideo(false);
-                            setSaveBanner('Removed video and renumbered student queue.');
-                            setTimeout(() => setSaveBanner(null), 3500);
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-rose-500 hover:bg-rose-400 text-slate-950 font-bold text-[10px] uppercase tracking-wider cursor-pointer"
-                        >
-                          Yes, Delete Video
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDeleteVideo(false)}
-                          className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-slate-300 font-semibold text-[10px] cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    )
-                  ) : (
-                    <span />
-                  )}
+                        {activeStudent.playbook.map((p, idx) => (
+                          <option key={p.id} value={p.id}>
+                            #{idx + 1} · {p.stage} — {p.pillar}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
 
-                  <button
-                    type="submit"
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 text-sky-300 font-semibold cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>
-                      {editingVideoId === 'NEW'
-                        ? 'Add Video to Student Queue'
-                        : 'Save Changes to Selected Video'}
-                    </span>
-                  </button>
-                </div>
-              </form>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">Hook Option 1 (Required)</label>
+                      <input
+                        type="text"
+                        required
+                        value={customHook1}
+                        onChange={e => setCustomHook1(e.target.value)}
+                        placeholder="Contrarian or curiosity hook..."
+                        className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">Hook Option 2</label>
+                      <input
+                        type="text"
+                        value={customHook2}
+                        onChange={e => setCustomHook2(e.target.value)}
+                        placeholder="Direct call-out hook..."
+                        className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-300 mb-1">Hook Option 3</label>
+                      <input
+                        type="text"
+                        value={customHook3}
+                        onChange={e => setCustomHook3(e.target.value)}
+                        placeholder="Story / proof hook..."
+                        className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                    {editingVideoId !== 'NEW' && onDeleteStudentVideo && activeStudent.supportingVideos.length > 1 ? (
+                      !confirmDeleteVideo ? (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteVideo(true)}
+                          className="inline-flex items-center gap-1.5 text-rose-400 hover:text-rose-300 cursor-pointer font-semibold"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Delete Selected Video
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-2 bg-rose-500/10 border border-rose-500/30 px-3 py-1.5 rounded-xl">
+                          <span className="text-[11px] font-semibold text-rose-200">
+                            Delete this daily video & renumber queue?
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onDeleteStudentVideo(activeStudent.id, editingVideoId);
+                              handleSelectVideoToEdit('NEW');
+                              setConfirmDeleteVideo(false);
+                              setSaveBanner('Removed video and renumbered student queue.');
+                              setTimeout(() => setSaveBanner(null), 3500);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-rose-500 hover:bg-rose-400 text-slate-950 font-bold text-[10px] uppercase tracking-wider cursor-pointer"
+                          >
+                            Yes, Delete Video
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteVideo(false)}
+                            className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-slate-300 font-semibold text-[10px] cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )
+                    ) : (
+                      <span />
+                    )}
+
+                    <button
+                      type="submit"
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 text-sky-300 font-semibold cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>
+                        {editingVideoId === 'NEW'
+                          ? 'Add Video to Student Queue'
+                          : 'Save Changes to Selected Video'}
+                      </span>
+                    </button>
+                  </div>
+                </form>
+              </details>
             </div>
           )}
 
