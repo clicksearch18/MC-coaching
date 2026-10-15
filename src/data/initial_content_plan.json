@@ -1,0 +1,731 @@
+{
+  "playbook": [
+    {
+      "id": "pillar-1",
+      "stage": "1. UNAWARE STAGE \u2014 Targeting Unconscious Plateaus (Cold Audience Bait)",
+      "pillar": "The Content Hamster Wheel vs. Pipeline Equity",
+      "status": "Not Started",
+      "breaksBelief": "To get high-ticket clients, I just need to create more content and post daily to get more organic reach.",
+      "installsBelief": "More content doesn't create clients; consumption depth does. You need an automated Concussion Content.",
+      "mustHitBeats": "Wasted reach vs. consumption depth; why the content hamster wheel leads to burnout; Google's 7-11-4 rule (7 hours of binging, 11 touchpoints, 4 platforms); building a warm Concussion Content.",
+      "angles": {
+        "actionable": "The 3-Step Audit to See If Your Social Posts Are Building Brand Equity or Just Wasting Your Time",
+        "analytical": "We Analyzed 270 Client Posts: Why 90% of High-Reach Reels Generate Exactly $0.00 in Sales",
+        "psychological": "The Psychology of Brand Binging: Why Warm Lurkers Buy from the Creator Who Nurtures, Not the One Who Shouts",
+        "aspirational": "How an Overworked Coach Stopped Posting 5 Times a Day, Switched to a 3-Step Concussion Content, and Signed 4 Premium Clients in 14 Days"
+      }
+    },
+    {
+      "id": "pillar-2",
+      "stage": "1. UNAWARE STAGE \u2014 Targeting Unconscious Plateaus (Cold Audience Bait)",
+      "pillar": "The Silent Churn of Referral-Only Growth",
+      "status": "Not Started",
+      "breaksBelief": "Referrals and word-of-mouth are the most stable and organic way to grow a premium business.",
+      "installsBelief": "Referrals are an unpredictable lottery. Direct-to-DM client acquisition systems build reliable pipeline equity.",
+      "mustHitBeats": "The referral plateau; the anxiety of not knowing where next month's cash is coming from; pipeline equity; building the well before you're thirsty.",
+      "angles": {
+        "actionable": "How to Build a Back-Up Lead Gen Pipeline in 20 Minutes (Without Touching Your Referral List)",
+        "analytical": "The Referral Math: Why 95% of 'Highly Recommended' Agencies Hit a Revenue Wall at $20k/Month",
+        "psychological": "The Illusion of Safety: Why Founders Rely on Referrals to Avoid the Vulnerability of Direct Marketing",
+        "aspirational": "From 'Referral Lottery' to Inbound Predictability: How a Boutique Consultancy Built a $30k Pipeline in 30 Days"
+      }
+    },
+    {
+      "id": "pillar-3",
+      "stage": "1. UNAWARE STAGE \u2014 Targeting Unconscious Plateaus (Cold Audience Bait)",
+      "pillar": "The Danger of the 'Best Kept Secret' Status",
+      "status": "Not Started",
+      "breaksBelief": "If my service is outstanding and I get great results, the market will naturally find and reward me.",
+      "installsBelief": "Being unknown is active business suicide. Attention is a currency you must actively capture and control.",
+      "mustHitBeats": "The expert's curse; 'bozo' agencies winning on louder marketing; the Nobel physicist & chauffeur story; why your best work is currently invisible.",
+      "angles": {
+        "actionable": "The 5-Minute 'Best Kept Secret' Audit: Is Your Positioning Killing Your Conversions?",
+        "analytical": "How Louder, Less-Competent Competitors Command 3x Your Prices (The True Cost of Invisibility)",
+        "psychological": "The Chauffeur Syndrome: Why the Market Pays the Loudest Presenter Instead of the Deepest Physicist",
+        "aspirational": "How a Brilliant Presentation Engineer Went from 'Best-Kept Secret' to the Obvious $30k Choice in Their Niche"
+      }
+    },
+    {
+      "id": "pillar-4",
+      "stage": "2. PROBLEM AWARE STAGE \u2014 Diagnosing the Real Constraint (Waking Up Warm Leads)",
+      "pillar": "The Funnel Leak: Why Traditional Funnels Fail",
+      "status": "Not Started",
+      "breaksBelief": "I need a complex clickfunnel with landing pages, webinars, and long email sequences to automate sales.",
+      "installsBelief": "Complex funnels have massive leakage points. Simple $5 video ads to DMs build direct, frictionless trust.",
+      "mustHitBeats": "Why standard funnel math is broken; 20-30% opt-in rates mean 70-80% wasted spend; why people abandon webinars at minute 10; short funnels have fewer points of failure.",
+      "angles": {
+        "actionable": "The 10-Minute Funnel Teardown: How to Find the Leaks Sucking Up Your Ad Spend",
+        "analytical": "Why We Turned Off a $150k/Month Lead Funnel and Sales Didn't Change by a Single Dollar",
+        "psychological": "The Friction Barrier: Why Busy, Sophisticated Buyers Close the Tab When they See a Webinar Progress Bar",
+        "aspirational": "From $350 Per Booked Call to Under $15: How a Coaching Founder Plugged Her Leaky Funnel with a $5 Ad"
+      }
+    },
+    {
+      "id": "pillar-5",
+      "stage": "2. PROBLEM AWARE STAGE \u2014 Diagnosing the Real Constraint (Waking Up Warm Leads)",
+      "pillar": "The 'Beige' Content Trap",
+      "status": "Not Started",
+      "breaksBelief": "To attract premium clients, I must consistently post educational 'how-to' content.",
+      "installsBelief": "Generic how-to content attracts broke beginners. Premium buyers pay for transformation, not information.",
+      "mustHitBeats": "Why 'beige' content gets zero comments; the difference between floor and ceiling buyers; how 'how-to' content attracts freebie hunters; writing content that makes premium buyers say 'That's me!'",
+      "angles": {
+        "actionable": "How to Filter Your Content: Tearing Down 'Beige' Posts and Rewriting Them for Premium Buyers",
+        "analytical": "We Tracked 100 DM Leads: Why 'How-To' Content Attracts Freebie Hunters with Zero Budget",
+        "psychological": "The Sophistication Shift: Why High-Ticket Buyers Ignore Education and Search for Perspective and Authority",
+        "aspirational": "How a Marketing Consultant Stopped Giving Away Free Tips, Upgraded Their Messaging, and Landed a $25k Client via DM"
+      }
+    },
+    {
+      "id": "pillar-6",
+      "stage": "2. PROBLEM AWARE STAGE \u2014 Diagnosing the Real Constraint (Waking Up Warm Leads)",
+      "pillar": "The 'Broky' Magnet: Why Your Lead Magnets Attract the Wrong People",
+      "status": "Not Started",
+      "breaksBelief": "A comprehensive free eBook, mini-course, or 5-day challenge is the best way to build a list.",
+      "installsBelief": "Information magnets attract people with more time than money. Busy, high-ticket buyers want a micro-outcome.",
+      "mustHitBeats": "Baby turtles vs. high-value salmon; why busy operators don't watch 5-day challenges; the rise of the 'micromagnet' (tools over training); light-switch outcomes.",
+      "angles": {
+        "actionable": "The 3-Step Formula to Turn a Dense, Boring eBook into a High-Converting Micromagnet",
+        "analytical": "How We Generated 1,256 Qualified Leads in 48 Hours for $0.27 Each (Using a Simple Tool, Not Training)",
+        "psychological": "The Convenience Playbook: Why Busy, Successful Operators Pay for Implementation but Grab Cheat Codes for Free",
+        "aspirational": "How a B2B Copywriter Replaced their 50-Page Guide with a 1-Page PDF and Booked 12 Discovery Calls in 7 Days"
+      }
+    },
+    {
+      "id": "pillar-7",
+      "stage": "3. SOLUTION AWARE STAGE \u2014 Shifting the Mechanism (Why This Time is Different)",
+      "pillar": "The Ad Agency Deception (The Death of Outsourced Voice)",
+      "status": "Not Started",
+      "breaksBelief": "I should hire an ad agency to write my copy, run my traffic, and scale my business.",
+      "installsBelief": "You cannot outsource your perspective. AI-cloning of your own brain beats any agency copywriter.",
+      "mustHitBeats": "Why agencies fail in 2026; the $2k/mo copywriter writing 'vanilla' posts; using AI to clone your unique framework; the physicist vs. chauffeur.",
+      "angles": {
+        "actionable": "The AI Voice-Cloning Framework: How to Train Your Personal AI to Write Ad Copy That Actually Sounds Like You",
+        "analytical": "The Agency Autopsy: Why 85% of Coaches Lose Money in the First 90 Days of Hiring a Media Buyer",
+        "psychological": "The Authenticity Deficit: Why Premium Buyers Instantly Sniff Out Agency-Written Copy and Run the Other Way",
+        "aspirational": "How a Boutique Founder Fired Her $4,000/Month Agency, Automated Her $5 Ads in 15 Minutes, and Doubled Her Conversions"
+      }
+    },
+    {
+      "id": "pillar-8",
+      "stage": "3. SOLUTION AWARE STAGE \u2014 Shifting the Mechanism (Why This Time is Different)",
+      "pillar": "The $5 Ads Ecosystem (Leveraging the Algorithmic Shift)",
+      "status": "Not Started",
+      "breaksBelief": "Scaling requires spending thousands on complex cold audience targeting and conversion ads.",
+      "installsBelief": "Andromeda targets based on content, not settings. Run $5 Goodwill ads to build an 'Invisible List'.",
+      "mustHitBeats": "The rise of Meta's Andromeda learning machine; why interest targeting is dead; how a $5 ad trains the algorithm on your absolute best customer; the 'Invisible List'.",
+      "angles": {
+        "actionable": "The $5 Ad Setup: Step-by-Step Guide to Training Meta's Andromeda Machine on Your Perfect Client",
+        "analytical": "How a $5/Day Goodwill Ad Built an 'Invisible List' of 10,000 Warm Prospects (and Lowered CPA by 60%)",
+        "psychological": "The Algorithm's Mind: Why Meta's AI Prioritizes Deep Video Engagement Over Cheap Clicks and How to Use It to Your Advantage",
+        "aspirational": "How a Niche Consultant Used a Single $5/Day Power Video to Secure a 20x ROAS Without Complex Funnels"
+      }
+    },
+    {
+      "id": "pillar-9",
+      "stage": "3. SOLUTION AWARE STAGE \u2014 Shifting the Mechanism (Why This Time is Different)",
+      "pillar": "Conversions as a Conversation, Not a Funnel",
+      "status": "Not Started",
+      "breaksBelief": "I need a high-pressure sales team or an automated webinar to close high-ticket contracts.",
+      "installsBelief": "Conversations are the fastest path to cash. Inception in the DMs closes premium clients effortlessly.",
+      "mustHitBeats": "High-ticket virgins are dead; high-agency buyers hate high-pressure closes; using micro-wins in the DMs; the diagnostic ping-pong framework.",
+      "angles": {
+        "actionable": "The 3-Step DM Diagnostic Framework: How to Move Warm Leads from Comments to Self-Checkout",
+        "analytical": "The Messenger Math: Why a Solo Operator Closed $45k in Sales via DMs While Her Competitor's Webinar Closed 0%",
+        "psychological": "The Inception Principle: Why Highly Sophisticated Buyers Only Buy When They Believe It Was Their Own Idea",
+        "aspirational": "How a Luxury Watch Seller Replaced His Entire Sales Call Calendar with a Simple 4-Step DM Framework"
+      }
+    },
+    {
+      "id": "pillar-10",
+      "stage": "4. YOUR SOLUTION AWARE STAGE \u2014 The Ceiling vs. Floor Filter (Why Josh's Frameworks)",
+      "pillar": "The Brand Shift (Floor) vs. Market Concussion (Ceiling)",
+      "status": "Not Started",
+      "breaksBelief": "Josh's community and high-ticket mastermind are teaching the same tools.",
+      "installsBelief": "The Brand Shift is for beginners learning the 'what' (AI websites, video). Market Concussion is for operators optimizing the 'how' (pipeline, conversion).",
+      "mustHitBeats": "The ceiling vs. floor filter; why beginners shouldn't run advanced Concussion Content systems; what you need to have in place to make $5 ads explode your business.",
+      "angles": {
+        "actionable": "How to Self-Select Your Stage: Are You Ready to Scale an Existing Offer, or Do You Need to Validate One from Scratch?",
+        "analytical": "Why We Turn Down 60% of Applicants to 'Market Concussion' (and Direct Them to 'The Brand Shift' Instead)",
+        "psychological": "The Mastery Index: Why Trying to Run Advanced Conversions Before Validating Your Offer Will Burn Your Cash",
+        "aspirational": "How a Solo Coach Graduated from 'The Brand Shift' to 'Market Concussion' and Built a $10k/Month Stable Engine"
+      }
+    },
+    {
+      "id": "pillar-11",
+      "stage": "4. YOUR SOLUTION AWARE STAGE \u2014 The Ceiling vs. Floor Filter (Why Josh's Frameworks)",
+      "pillar": "The 'Done Accelerated For You' (DXY) Paradigm",
+      "status": "Not Started",
+      "breaksBelief": "I don't have the time to learn complex AI prompting or set up this ads manager stuff myself.",
+      "installsBelief": "You don't need to learn the tools. We build the light-switch infrastructure with you to buy back your time.",
+      "mustHitBeats": "Done-with-you vs. Done-for-you; how we eliminate the 'expert's curse' of implementation; setting up the entire ads engine in 30 days so you only look at the dashboard.",
+      "angles": {
+        "actionable": "The DXY Roadmap: How We Set Up Your Entire $5 Ad Engine and DM Funnel in Less Than 30 Days",
+        "analytical": "The Time Audit: How Outsourcing Your Setup (DXY) Saves You 40+ Hours of Technical Grinding in Month One",
+        "psychological": "The Implementation Block: Why Brilliant Operators Spend Months Planning and Why a DXY 'Power-Up' Shatters the Procrastination Cycle",
+        "aspirational": "How a Busy Author Had His Entire AI Video, Website, and $5 Ad System Installed Live in Under 7 Days"
+      }
+    },
+    {
+      "id": "pillar-12",
+      "stage": "4. YOUR SOLUTION AWARE STAGE \u2014 The Ceiling vs. Floor Filter (Why Josh's Frameworks)",
+      "pillar": "Why Your Data Trumps Any Guru's Opinion",
+      "status": "Not Started",
+      "breaksBelief": "I should follow the exact same launch blueprint as the big coaching gurus.",
+      "installsBelief": "Your business is a lab. We test, track your own data, and ignore the noise.",
+      "mustHitBeats": "Why copycatting fails; 'engaging the field' to get actual feedback; tracking hook rates and hold rates; why a small audience can yield $30k months.",
+      "angles": {
+        "actionable": "How to Audit Your Own Ad Accounts Using Only Two Metrics: Hook Rate and Hold Rate",
+        "analytical": "The Fraud of the Case Study: Why Copying a Multi-Million Dollar Launch Blueprint Blew Up an Operator's $10k Account",
+        "psychological": "The 'Engage the Field' Principle: Why Real Operators Stop Consuming Theory and Start Demanding Their Own Market Data",
+        "aspirational": "How a Presentation Designer Ignored the 'Scaling Bros' Advice, Tracked His Own Metrics, and Landed 3 High-Ticket Clients for $100/Week"
+      }
+    },
+    {
+      "id": "pillar-13",
+      "stage": "5. DEAL TIME STAGE \u2014 Seamless Frictionless Conversions (Closing the Loop)",
+      "pillar": "The 8-Week Founding Implementation Cohort (2026)",
+      "status": "Not Started",
+      "breaksBelief": "I can wait and figure this out on my own next quarter.",
+      "installsBelief": "Lulls are for positioning, but sets are for catching. Join the cohort to build your machine before the market shifts.",
+      "mustHitBeats": "The cost of delay; the power of a highly focused cohort; the 2026 algorithmic changes; why this is the optimal window to launch.",
+      "angles": {
+        "actionable": "The 8-Week Cohort Syllabus: Every Asset, AI Clone, and Ad Campaign We Will Install Together",
+        "analytical": "The True Cost of Inaction: How Delaying Your Client Acquisition Setup by 90 Days Costs You $60k in Revenue",
+        "psychological": "The Psychology of Sprints: Why Business Operators Achieve More Progress in 6 Weeks Than 6 Months of Solo Planning",
+        "aspirational": "Inside the Founding Cohort: How 10 Operators Are Replacing Their Sales Teams with AI and $5 Ads"
+      }
+    },
+    {
+      "id": "pillar-14",
+      "stage": "5. DEAL TIME STAGE \u2014 Seamless Frictionless Conversions (Closing the Loop)",
+      "pillar": "Risk Reversal: The 'Love It or Leave It' Guarantee",
+      "status": "Not Started",
+      "breaksBelief": "High-ticket masterminds are high-risk and rarely deliver on their big promises.",
+      "installsBelief": "We eliminate the risk. If you don't validate your engine in 30 days, we'll buy it back.",
+      "mustHitBeats": "The standard mastermind trap; risk-reversal mechanics; why we only take qualified operators; the mutual skin-in-the-game philosophy.",
+      "angles": {
+        "actionable": "The No-Risk Blueprint: How Our 'Love It or Leave It' Guarantee Protects Your Mastermind Investment",
+        "analytical": "The Mastermind Math: Why Masterminds Without Guarantees Underdeliver and How We Engineered the Opposite",
+        "psychological": "The Safety Switch: Why Premium Buyers Deserve a Risk-Reversal and How It Builds Deep Algorithmic and Human Trust",
+        "aspirational": "How an Agency Owner Unlocked His Growth with Complete Confidence Because of a No-Risk Guarantee"
+      }
+    },
+    {
+      "id": "pillar-15",
+      "stage": "5. DEAL TIME STAGE \u2014 Seamless Frictionless Conversions (Closing the Loop)",
+      "pillar": "The Super Signature and Direct Checkout (No Calls)",
+      "status": "Not Started",
+      "breaksBelief": "I have to jump on a 60-minute high-pressure sales call to join a premium program.",
+      "installsBelief": "We don't do sales calls. Read our 2-page offer document, self-checkout, and let's get to work.",
+      "mustHitBeats": "Why high-pressure sales calls are dead; the 'Super Signature' framework; self-checkout mechanics; why we filter for high-agency buyers.",
+      "angles": {
+        "actionable": "How to Read Our 2-Page Offer Document and Secure Your Spot in the Cohort (Without a Single Call)",
+        "analytical": "Why We Signed 45 High-Ticket Clients in One Month Without Making a Single Sales Call",
+        "psychological": "The Freedom Factor: Why Sophisticated Business Owners Appreciate the No-Call Checkout",
+        "aspirational": "How Josh Beechraft Built a $100k/Month Engine Without a Single Sales Script on His Calendar"
+      }
+    }
+  ],
+  "supporting": [
+    {
+      "id": "daily-1",
+      "dayNumber": 1,
+      "pillarStage": "1. Unaware Stage (Content)",
+      "title": "Why Posting More Content is a Wasted Reach Trap",
+      "hook1": "How to stop running the content hamster wheel and build a conversion machine that scales without more posts.",
+      "hook2": "Why creating 10 reels a day is actually keeping your premium business stuck in the referral-only trap.",
+      "hook3": "The silent reach killer: how posting daily generic tips makes you completely invisible to premium buyers.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-2",
+      "dayNumber": 2,
+      "pillarStage": "1. Unaware Stage (Content)",
+      "title": "Google's 7-11-4 Rule for Sophisticated Buyers",
+      "hook1": "The exact timing sequence that compresses a 12-month high-ticket sales cycle into under 48 hours.",
+      "hook2": "Why sophisticated buyers never respond to cold DMs, but will wire you $30k after binging this specific sequence.",
+      "hook3": "The brandwidth failure: why your 3-step email nurture is losing to competitors who dominate consumption time.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-3",
+      "dayNumber": 3,
+      "pillarStage": "1. Unaware Stage (Content)",
+      "title": "How to Turn Social Views Into Pipeline Equity",
+      "hook1": "How to build a compounding digital asset that delivers qualified warm prospects to your inbox 24/7.",
+      "hook2": "Why views and likes are vanity metrics that are actively bankrupting your agency's client acquisition.",
+      "hook3": "The lead cupboard is empty: why relying on random acts of marketing keeps you playing business on hard mode.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-4",
+      "dayNumber": 4,
+      "pillarStage": "1. Unaware Stage (Referrals)",
+      "title": "The Referral Lottery is Unpredictable Business Suicide",
+      "hook1": "How to install a direct client acquisition system so next month's cash flow is 100% predictable.",
+      "hook2": "Why relying on word-of-mouth is the most dangerous way to grow a premium high-ticket coaching business.",
+      "hook3": "The referral plateau: why your boutique consultancy is stuck at $20k/month despite getting epic client results.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-5",
+      "dayNumber": 5,
+      "pillarStage": "1. Unaware Stage (Referrals)",
+      "title": "Building the Well Before You're Thirsty",
+      "hook1": "How to build a warm audience 'Concussion Content' that fills your high-ticket spots the moment they open.",
+      "hook2": "Why turning off cold traffic ads won't hurt your business if you've already built this invisible asset.",
+      "hook3": "The dry-spell panic: why waiting until your pipeline is empty to launch a campaign is killing your margins.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-6",
+      "dayNumber": 6,
+      "pillarStage": "1. Unaware Stage (Referrals)",
+      "title": "Cash Flow Follows Your Calendar Cadence",
+      "hook1": "How to design a simple daily and weekly calendar cadence that guarantees consistent cash injection spikes.",
+      "hook2": "Why your cash flow is spiky: it's not a market problem, it's a calendar consistency problem.",
+      "hook3": "The empty calendar trap: how delivery burnout makes you stop marketing until it's too late.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-7",
+      "dayNumber": 7,
+      "pillarStage": "1. Unaware Stage (Secret Expert)",
+      "title": "The Nobel Physicist and the Chauffeur Metaphor",
+      "hook1": "How to position your high-ticket framework so you are treated as a trusted physician, not a cheap vendor.",
+      "hook2": "Why less-competent competitors are charging 3x your prices using your stolen ideas.",
+      "hook3": "The expert's curse: why being the best-kept secret in your industry is actually a form of business suicide.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-8",
+      "dayNumber": 8,
+      "pillarStage": "1. Unaware Stage (Secret Expert)",
+      "title": "Why Being Good at Your Craft is Not Enough",
+      "hook1": "How to shift from selling your 'process' to commanding premium fees for automated business transformation.",
+      "hook2": "Why clients don't buy your outstanding delivery\u2014they buy the clear, friction-free destination.",
+      "hook3": "The product-first trap: why spending months tweaking your portal won't fix your empty pipeline.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-9",
+      "dayNumber": 9,
+      "pillarStage": "1. Unaware Stage (Secret Expert)",
+      "title": "Invisibility is the Ultimate Margin Killer",
+      "hook1": "How to command absolute category authority so premium buyers hunt you down instead of you chasing them.",
+      "hook2": "Why your market is buying high-ticket offers from 'gurus' who know half of what you do.",
+      "hook3": "The price-shopping nightmare: why being invisible forces you to compete with low-rent agencies.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-10",
+      "dayNumber": 10,
+      "pillarStage": "1. Unaware Stage (Content)",
+      "title": "The High-Ticket 'Hamster' Reality Check",
+      "hook1": "How to use simple $5 ads to stop chasing tire-kickers and start attracting established, high-agency operators.",
+      "hook2": "Why the 'hustle harder' advice from 20-year-old bro marketers is ruinous for lifestyle business owners.",
+      "hook3": "Drowning in noise: why broad, generic content is attracting people who can never afford your services.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-11",
+      "dayNumber": 11,
+      "pillarStage": "2. Problem Aware ( leaks )",
+      "title": "Why Standard Funnel Math Bleeds Cash Flow",
+      "hook1": "How to lower your high-ticket customer acquisition cost to under $35 per booked call.",
+      "hook2": "Why traditional opt-in landing pages are losing you 80% of your paid traffic on day one.",
+      "hook3": "The $500 booked call disaster: why traditional direct-response webinars are bleeding your budget dry.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-12",
+      "dayNumber": 12,
+      "pillarStage": "2. Problem Aware ( leaks )",
+      "title": "The 3 Black Holes of Traditional Webinars",
+      "hook1": "How to ensure 100% of your warm traffic sees your high-ticket offer without making them watch a 90-minute video.",
+      "hook2": "Why webinar play rates are under 40% and what sophisticated buyers do instead of registering.",
+      "hook3": "The webinar fatigue: why busy, successful operators close your video sales letter at minute 10.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-13",
+      "dayNumber": 13,
+      "pillarStage": "2. Problem Aware ( leaks )",
+      "title": "Why Complex Landing Pages Repel Premium Buyers",
+      "hook1": "How to streamline your sales path into a 'short funnel' that converts followers 2x faster.",
+      "hook2": "Why your multi-step ClickFunnels page is actively killing your trust with high-agency buyers.",
+      "hook3": "Friction points: how every extra step in your sales cycle creates a leakage point where prospects ghost.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-14",
+      "dayNumber": 14,
+      "pillarStage": "2. Problem Aware (Beige Content)",
+      "title": "Why Vanilla Marketing Jargon Makes You Invisible",
+      "hook1": "How to write polarized copy that acts as a dog whistle to attract ceiling-level clients.",
+      "hook2": "Why safe, beige content is the most expensive thing you can publish in a noisy market.",
+      "hook3": "The silence of value: why your highly educational posts get liked by competitors but ignored by buyers.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-15",
+      "dayNumber": 15,
+      "pillarStage": "2. Problem Aware (Beige Content)",
+      "title": "Stop Writing Content to Teach Night School",
+      "hook1": "How to shift your content strategy to deliver quick, actionable wins instead of passive information.",
+      "hook2": "Why giving away the 'secrets' for free gets you hired for premium implementation.",
+      "hook3": "The information trap: why creating long, academic training videos is keeping your audience warm but broke.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-16",
+      "dayNumber": 16,
+      "pillarStage": "2. Problem Aware (Beige Content)",
+      "title": "Shifting from 'Beige' to High-Conviction Assets",
+      "hook1": "How to build a 'conviction engine' that establishes absolute authority without ever having to pitch.",
+      "hook2": "Why your audience is ignoring your grand promises and looking for proof of your real-world frameworks.",
+      "hook3": "The trust deficit: why buyers are skeptical of your case studies unless you show them over-the-shoulder data.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-17",
+      "dayNumber": 17,
+      "pillarStage": "2. Problem Aware (Broky Magnets)",
+      "title": "Why Free 5-Day Challenges Attract the Wrong People",
+      "hook1": "How to swap high-friction lead magnets for micro-assets that sophisticated buyers can consume in 2 minutes.",
+      "hook2": "Why 5-day challenges attract 'baby turtles' with more time than money who will never buy high-ticket.",
+      "hook3": "The 'ain't nobody got time for that' barrier: why long-form lead magnets are killing your conversion.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-18",
+      "dayNumber": 18,
+      "pillarStage": "2. Problem Aware (Broky Magnets)",
+      "title": "Lead Magnets Are Dead\u2014Meet the Micromagnet",
+      "hook1": "How to build custom GPTs and one-page templates that act as effortless 'cheatsheets' for premium prospects.",
+      "hook2": "Why high-ticket buyers want 'light-switch' outcomes, not an educational course they have to study.",
+      "hook3": "The lead magnet crap: why your 50-page ebook is sitting unopened in your prospect's download folder.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-19",
+      "dayNumber": 19,
+      "pillarStage": "2. Problem Aware (Broky Magnets)",
+      "title": "The 'Hassle Barrier' and How to Shorten Your Offers",
+      "hook1": "How to structure your front-end micro-offers to balance perceived risk and reward for quick checkout.",
+      "hook2": "Why asking for a phone number on a free download is repelling your warmest, most sophisticated leads.",
+      "hook3": "The trap of the 'free strategy session': why everyone knows it's just an awkward sales call.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-20",
+      "dayNumber": 20,
+      "pillarStage": "2. Problem Aware ( leaks )",
+      "title": "The Real Cost of Indecision in High-Ticket Sales",
+      "hook1": "How to use short, warm 'microwaves' to move hesitant lurkers into buyer-ready decisions.",
+      "hook2": "Why your sales pipeline is stalled: it's not a traffic problem, it's an indecision bottleneck.",
+      "hook3": "The price of waiting: how stalling on launching your ads is costing you thousands in pipeline equity.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-21",
+      "dayNumber": 21,
+      "pillarStage": "3. Solution Aware (Outsourced Voice)",
+      "title": "Why You Cannot Outsource Your Perspective",
+      "hook1": "How to use simple AI cloning to scale your authentic voice without losing your unique perspective.",
+      "hook2": "Why outsourcing your content to a $2,000/month agency is passive brand suicide.",
+      "hook3": "The agency lie: why standard content writing packages make your premium business sound like everyone else.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-22",
+      "dayNumber": 22,
+      "pillarStage": "3. Solution Aware (Outsourced Voice)",
+      "title": "Traditional Done-For-You is Passive Suicide",
+      "hook1": "How to build internal content and ad systems that keep you in your 'genius zone' and off the tools.",
+      "hook2": "Why hiring a high-ticket sales team before validating your offer is a fast track to bankruptcy.",
+      "hook3": "The sales team trap: why managing whiny closers is worse than trading time for dollars on Zoom.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-23",
+      "dayNumber": 23,
+      "pillarStage": "3. Solution Aware (Outsourced Voice)",
+      "title": "Using AI to Clone Your Brain, Not Replace It",
+      "hook1": "How to build custom GPTs trained on your proprietary IP to write highly accurate, voice-aligned ads.",
+      "hook2": "Why generic AI content fails, and how to train Claude on your unique frameworks for perfect copy.",
+      "hook3": "The vanilla AI trap: why copy-pasting raw ChatGPT outputs is ruining your credibility with ceiling clients.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-24",
+      "dayNumber": 24,
+      "pillarStage": "3. Solution Aware ($5 Ads)",
+      "title": "Running Cheap Video View Ads for Pennies",
+      "hook1": "How to get 500 to 1,000 highly targeted warm prospects onto your list every single week for pennies.",
+      "hook2": "Why $5 video ads are the cheapest, most fail-proof form of advertising on Facebook today.",
+      "hook3": "The low-budget advantage: how our students make six figures on a tiny $300/month ad spend.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-25",
+      "dayNumber": 25,
+      "pillarStage": "3. Solution Aware ($5 Ads)",
+      "title": "How to Build Your Invisible List on Facebook",
+      "hook1": "How to build a massive custom retargeting audience of people who have watched 25%+ of your videos.",
+      "hook2": "Why your CRM is lying to you: the 'Invisible List' of video viewers that you are completely ignoring.",
+      "hook3": "The pixel advantage: why on-platform engagement is safer and more durable than traditional cookie tracking.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-26",
+      "dayNumber": 26,
+      "pillarStage": "3. Solution Aware ($5 Ads)",
+      "title": "Stacking Top, Middle, and Bottom-of-Funnel",
+      "hook1": "How to use Meta's Andromeda algorithm to serve the right ad to the right buyer at the right time.",
+      "hook2": "Why you should consolidate your campaign structure into a single, high-leverage ad set.",
+      "hook3": "The campaign spaghetti mess: why running 15 separate ad campaigns is fatiguing your account and wasting budget.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-27",
+      "dayNumber": 27,
+      "pillarStage": "3. Solution Aware ($5 Ads)",
+      "title": "Hook Rate and Hold Rate: The Real Ad KPIs",
+      "hook1": "How to evaluate and troubleshoot your ad creatives using actual platform behavior data.",
+      "hook2": "Why your hook rate is below 40% (It's not your offer, it's your visual scroll-stopper).",
+      "hook3": "The 15-second hold rate metric: the only stat that tells you if your message is building real trust.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-28",
+      "dayNumber": 28,
+      "pillarStage": "3. Solution Aware (Conversation Sales)",
+      "title": "Why Conversations Are the Fastest Path to Cash",
+      "hook1": "How to skip high-pressure sales calls entirely by closing premium clients directly in the DMs.",
+      "hook2": "Why a simple 2-step conversation in Messenger converts 2x faster than a traditional landing page.",
+      "hook3": "The television secret: why commercial producers focus on attention and conversation over funnel tactics.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-29",
+      "dayNumber": 29,
+      "pillarStage": "3. Solution Aware (Conversation Sales)",
+      "title": "Withholding the Value Bomb in the DMs",
+      "hook1": "The ninja DM strategy: why you should never give away your free resource on the very first message.",
+      "hook2": "Why sending a download link immediately is losing you 90% of your DM sales conversations.",
+      "hook3": "The diagnostic intercept: how to use a freebie to start a high-value diagnostic dialogue.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-30",
+      "dayNumber": 30,
+      "pillarStage": "3. Solution Aware (Conversation Sales)",
+      "title": "The 'Inception' Selling Method in Messenger",
+      "hook1": "How to guide a prospect in Messenger so they self-diagnose their constraint and ask you for the checkout link.",
+      "hook2": "Why high-pressure sales scripts fail with sophisticated buyers, and how 'Inception' closes them effortlessly.",
+      "hook3": "The ping-pong match: how to lightly navigate DM conversations without sounding like a pushy sales bot.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-31",
+      "dayNumber": 31,
+      "pillarStage": "4. Your Solution (Floor vs Ceiling)",
+      "title": "Redefining the Floor and Ceiling by Problem",
+      "hook1": "How to divide your audience into beginners who need 'how-to' tools vs. operators who need system infrastructure.",
+      "hook2": "Why marketing the same offer to beginners and advanced operators is bankrupting your positioning.",
+      "hook3": "The minimum requirement: why you must repel prospects who haven't validated their offer yet.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-32",
+      "dayNumber": 32,
+      "pillarStage": "4. Your Solution (Floor vs Ceiling)",
+      "title": "The Brand Shift Community: Handholding for Beginners",
+      "hook1": "How we built a high-value, low-ticket community focused on teaching AI websites, vibecoding, and video.",
+      "hook2": "Why low-ticket memberships fail without a premium backend (The hard math on client acquisition costs).",
+      "hook3": "The beginner's sandbox: how to incubate future high-ticket clients inside a low-cost community.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-33",
+      "dayNumber": 33,
+      "pillarStage": "4. Your Solution (Floor vs Ceiling)",
+      "title": "Market Concussion: The Escape Route for Advanced Operators",
+      "hook1": "How to install a compounding customer acquisition system in 8 weeks for established operators.",
+      "hook2": "Why sophisticated B2B consultants pay $30k for system infrastructure instead of information.",
+      "hook3": "The Market Concussion framework: how we turn scattered content into a single unified customer machine.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-34",
+      "dayNumber": 34,
+      "pillarStage": "4. Your Solution (DXY Model)",
+      "title": "Teach, Template, Tweak: The DXY Concept",
+      "hook1": "How to deliver premium transformation by providing pre-built assets, GPT templates, and custom workflows.",
+      "hook2": "Why standard courses have a 5% completion rate, and how the DXY model gets 90%+ client execution.",
+      "hook3": "The Done-Accelerated-For-You breakthrough: how to help clients win in days instead of months.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-35",
+      "dayNumber": 35,
+      "pillarStage": "4. Your Solution (DXY Model)",
+      "title": "Why Done-With-You Fails Without Acceleration",
+      "hook1": "How to eliminate the delivery bottleneck by building assets directly inside your client's accounts.",
+      "hook2": "Why traditional consulting is slow and boring, and how to accelerate client momentum using custom GPTs.",
+      "hook3": "The G-spot of business growth: how to keep clients winning so fast they never want to leave.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-36",
+      "dayNumber": 36,
+      "pillarStage": "4. Your Solution (DXY Model)",
+      "title": "Scalable Delivery Without Team Overwhelm",
+      "hook1": "How to run a high-ticket mastermind with a tiny, lean team of 'batteries-included' operators.",
+      "hook2": "Why scaling your headcount is a vanity move that eats your profit margins and increases your stress.",
+      "hook3": "The self-managing coaching engine: how to automate operations so your life gets better as business gets bigger.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-37",
+      "dayNumber": 37,
+      "pillarStage": "4. Your Solution (Data vs Opinion)",
+      "title": "Stop Copying Everyone Else's Funnels",
+      "hook1": "How to build an authentic business model that fits your wallet, your calendar, and your mirror.",
+      "hook2": "Why copy-pasting another guru's landing page is keeping you stuck in the manual prospecting loop.",
+      "hook3": "The alignment framework: why your willing-to-do answers are more important than your revenue goals.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-38",
+      "dayNumber": 38,
+      "pillarStage": "4. Your Solution (Data vs Opinion)",
+      "title": "How to Run the $150 Validation Test",
+      "hook1": "The step-by-step ad setup we use to validate high-ticket offers before writing a single line of curriculum.",
+      "hook2": "Why spending months building a course before getting cash-in-hand is a rookie mistake.",
+      "hook3": "The $150 cash flow injection: how to get a buyer to fund your product development.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-39",
+      "dayNumber": 39,
+      "pillarStage": "4. Your Solution (Data vs Opinion)",
+      "title": "Your Data Trumps My Opinion",
+      "hook1": "Why you must ignore theoretical marketing advice and let raw platform data dictate your next business move.",
+      "hook2": "The data-first rule: why we never guess or pivot your ads without looking at hook and hold rates.",
+      "hook3": "The metric trap: why listening to opinion-based feedback from peers is killing your ad profitability.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-40",
+      "dayNumber": 40,
+      "pillarStage": "4. Your Solution (Floor vs Ceiling)",
+      "title": "Why Premium Clients Pay for Speed and Organization",
+      "hook1": "How to package your intellectual property so sophisticated buyers pay you $30k for rapid implementation.",
+      "hook2": "Why you don't need to gatekeep your secrets: clients pay for speed and intimacy, not information.",
+      "hook3": "The organization premium: why busy operators pay to have disorganized free resources vacuum-sealed into SOPs.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-41",
+      "dayNumber": 41,
+      "pillarStage": "5. Deal Time (8-Week Cohort)",
+      "title": "Inside the 8-Week Founding Cohort (2026)",
+      "hook1": "How we work hands-on to install a compounding customer acquisition engine underneath your business.",
+      "hook2": "Why the 2026 Founding Cohort is limited to serious operators who want strategic infrastructure.",
+      "hook3": "The 8-week operating system: how we bridge the gap between 'interesting content' and 'buyer-ready demand.'",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-42",
+      "dayNumber": 42,
+      "pillarStage": "5. Deal Time (8-Week Cohort)",
+      "title": "Why We Limit Supply to 30 Spots a Month",
+      "hook1": "How to leverage natural scarcity to sell out your premium program months in advance.",
+      "hook2": "Why capping enrollment at 30 spots ensures deep client transformation and maximum team leverage.",
+      "hook3": "The sold-out psychological trigger: why making your program hard to get into makes everyone want in.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-43",
+      "dayNumber": 43,
+      "pillarStage": "5. Deal Time (8-Week Cohort)",
+      "title": "Moving from 'Fire Drill' to Smooth Cohorts",
+      "hook1": "How to design an open-close campaign rhythm that eliminates constant chasing and monthly sales stress.",
+      "hook2": "Why open-close cohorts outperform evergreen 'always open' models for high-ticket lifestyle businesses.",
+      "hook3": "The pre-sell cash injection: how to sell out 50% of your next cohort before the cart even opens.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-44",
+      "dayNumber": 44,
+      "pillarStage": "5. Deal Time (Risk Reversal)",
+      "title": "The 'Love It or Leave It' 60-Day Guarantee",
+      "hook1": "How to write an irresistible risk-reversal guarantee that makes saying yes a complete no-brainer.",
+      "hook2": "Why we take 100% of the financial risk during the first 60 days of working together.",
+      "hook3": "The friendly split: how to build massive trust by offering a penalty-free exit if it's not a perfect fit.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-45",
+      "dayNumber": 45,
+      "pillarStage": "5. Deal Time (Risk Reversal)",
+      "title": "Why We Take 100% of the Perceived Risk",
+      "hook1": "How to balance perceived risk and reward so your high-ticket offer practically sells itself.",
+      "hook2": "Why risk is the #1 friction point holding sophisticated buyers back from clicking your checkout link.",
+      "hook3": "The double-risk reversal: how to promise realistic, documented business outcomes with zero downside.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-46",
+      "dayNumber": 46,
+      "pillarStage": "5. Deal Time (Risk Reversal)",
+      "title": "The $10k in 10 Minutes Cash Injection Bonus",
+      "hook1": "How to give new clients an immediate cash win in their first week to completely eliminate buyer's remorse.",
+      "hook2": "Why 30% of our black belt members pay for their entire annual tuition before their kickoff call.",
+      "hook3": "The instant momentum trigger: how to bake quick-win 'cash injections' into your onboarding flow.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-47",
+      "dayNumber": 47,
+      "pillarStage": "5. Deal Time (Super Signature)",
+      "title": "Why Sales Calls are a Trust Verification Failure",
+      "hook1": "How trust has moved upstream: why sophisticated buyers decide to hire you way before they ever talk to you.",
+      "hook2": "Why sales calls are a trust verification failure: the new reality of high-agency buyer behavior.",
+      "hook3": "The death of the 'closing schmucks' era: why founders are turning off their sales teams in 2026.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-48",
+      "dayNumber": 48,
+      "pillarStage": "5. Deal Time (Super Signature)",
+      "title": "The Simple 2-Page Offer Document",
+      "hook1": "How to write an elegant, written offer document that closes $3k to $30k deals on autopilot.",
+      "hook2": "Why an offer doc that reads like an itemized receipt converts better than a hyped-up clickfunnels sales page.",
+      "hook3": "The silent offer test: how to write an offer so clear you could slide it across a table in complete silence.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-49",
+      "dayNumber": 49,
+      "pillarStage": "5. Deal Time (Super Signature)",
+      "title": "Why Sophisticated Buyers Hate 60-Minute Calls",
+      "hook1": "Why forcing busy, successful operators onto a 60-minute pitch session is killing your high-ticket conversions.",
+      "hook2": "The high-agency buyer: why the people you want to work with most just want the direct checkout link.",
+      "hook3": "The convenience barrier: why high-pressure 'sales calls' feel like a manipulative trap to sophisticated minds.",
+      "status": "Not Started"
+    },
+    {
+      "id": "daily-50",
+      "dayNumber": 50,
+      "pillarStage": "5. Deal Time (Super Signature)",
+      "title": "The 2026 Founding Cohort Selection",
+      "hook1": "How to secure one of the strictly limited spots in our 8-week customer acquisition engine installation.",
+      "hook2": "The doors are closing: why this is the last time we are running the Market Concussion Accelerator as a founding cohort.",
+      "hook3": "Why the 2026 cohort spots are coming off the board the moment applications are accepted.",
+      "status": "Not Started"
+    }
+  ]
+}
