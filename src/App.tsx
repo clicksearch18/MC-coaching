@@ -31,9 +31,10 @@ import {
   isSupabaseConfigured
 } from './lib/supabase';
 
-const STORAGE_KEY = 'mcm_cam005_students_v3';
+const STORAGE_KEY = 'mcm_cam005_students_v4_clean';
 const LESSONS_STORAGE_KEY = 'mcm_cam005_lessons_v2';
 const AUTH_SESSION_KEY = 'mcm_cam005_auth_session_v1';
+const LEGACY_DEMO_IDS = new Set(['student-marcus', 'student-elena', 'student-devon']);
 
 interface AuthSession {
   role: 'UNAUTHENTICATED' | 'STUDENT' | 'ADMIN';
@@ -135,23 +136,39 @@ export function App() {
 
       if (remoteStudents === null) {
         setDbSyncStatus('LOCAL');
-      } else if (remoteStudents.length === 0) {
-        await upsertStudentsToSupabase(students);
-        setDbSyncStatus('SYNCED');
       } else {
-        const enriched = remoteStudents.map(rs => {
-          const fallback = INITIAL_STUDENTS.find(i => i.id === rs.id);
-          return {
-            ...rs,
-            email: rs.email || fallback?.email || '',
-            accessCode:
-              rs.accessCode ||
-              fallback?.accessCode ||
-              `${rs.name.split(' ')[0].toUpperCase()}-01`
-          };
-        });
-        setStudents(enriched);
-        setDbSyncStatus('SYNCED');
+        // Delete any legacy demo users from Supabase
+        for (const rs of remoteStudents) {
+          if (LEGACY_DEMO_IDS.has(rs.id)) {
+            await deleteStudentFromSupabase(rs.id);
+          }
+        }
+        const realRemoteStudents = remoteStudents.filter(rs => !LEGACY_DEMO_IDS.has(rs.id));
+
+        if (realRemoteStudents.length === 0) {
+          await upsertStudentsToSupabase(INITIAL_STUDENTS);
+          setStudents(INITIAL_STUDENTS);
+          setDbSyncStatus('SYNCED');
+        } else {
+          const enriched = realRemoteStudents.map(rs => {
+            const fallback = INITIAL_STUDENTS.find(i => i.id === rs.id);
+            // If student-josh still has old demo stats (2840 fullListSize / 165 minutes), reset to clean INITIAL_STUDENTS[0]
+            if (rs.id === 'student-josh' && rs.fullListSize === 2840 && fallback) {
+              return fallback;
+            }
+            return {
+              ...rs,
+              email: rs.email || fallback?.email || '',
+              accessCode:
+                rs.accessCode ||
+                fallback?.accessCode ||
+                `${rs.name.split(' ')[0].toUpperCase()}-01`
+            };
+          });
+          await upsertStudentsToSupabase(enriched);
+          setStudents(enriched);
+          setDbSyncStatus('SYNCED');
+        }
       }
 
       if (remoteLessons && remoteLessons.length > 0) {
@@ -966,24 +983,30 @@ export function App() {
       >
         <div className="space-y-4">
           <div className="rounded-2xl bg-[#05070A] border border-white/[0.07] p-4 space-y-3 max-h-80 overflow-y-auto">
-            {currentStudent.messages.map(m => (
-              <div
-                key={m.id}
-                className={`p-3.5 rounded-xl border text-xs ${
-                  m.isAlert
-                    ? 'border-rose-500/30 bg-rose-500/10 text-rose-200'
-                    : m.senderRole === 'COACH'
-                    ? 'border-[#09ADEF]/30 bg-[#09ADEF]/10 text-white mr-6'
-                    : 'border-emerald-500/30 bg-emerald-500/10 text-white ml-6'
-                }`}
-              >
-                <div className="flex items-center justify-between text-[11px] text-neutral-400 mb-1">
-                  <span className="text-[#09ADEF] font-semibold">{m.senderName}</span>
-                  <span>{m.timestamp}</span>
-                </div>
-                <p className="leading-relaxed text-sm">{m.text}</p>
+            {currentStudent.messages.length === 0 ? (
+              <div className="py-6 text-center text-xs text-neutral-500">
+                No messages yet.
               </div>
-            ))}
+            ) : (
+              currentStudent.messages.map(m => (
+                <div
+                  key={m.id}
+                  className={`p-3.5 rounded-xl border text-xs ${
+                    m.isAlert
+                      ? 'border-rose-500/30 bg-rose-500/10 text-rose-200'
+                      : m.senderRole === 'COACH'
+                      ? 'border-[#09ADEF]/30 bg-[#09ADEF]/10 text-white mr-6'
+                      : 'border-emerald-500/30 bg-emerald-500/10 text-white ml-6'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-[11px] text-neutral-400 mb-1">
+                    <span className="text-[#09ADEF] font-semibold">{m.senderName}</span>
+                    <span>{m.timestamp}</span>
+                  </div>
+                  <p className="leading-relaxed text-sm">{m.text}</p>
+                </div>
+              ))
+            )}
           </div>
 
           <form

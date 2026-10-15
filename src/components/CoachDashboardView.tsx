@@ -532,7 +532,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                           accessCode: e.target.value.toUpperCase()
                         })
                       }
-                      placeholder="e.g., MARCUS-04"
+                      placeholder="CODE-01"
                       className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 font-mono text-sky-300 focus:border-sky-400 focus:outline-none"
                     />
                   </div>
@@ -657,7 +657,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                       required
                       value={customVideoTitle}
                       onChange={e => setCustomVideoTitle(e.target.value)}
-                      placeholder="e.g., Why 90% of Retargeting Ads Fail Without 7 Hours of Content"
+                      placeholder="Video title..."
                       className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
                     />
                   </div>
@@ -754,24 +754,30 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
 
               {/* Message History */}
               <div className="rounded-2xl bg-[#0B0D14] border border-white/8 p-4 space-y-3 max-h-72 overflow-y-auto">
-                {activeStudent.messages.map(m => (
-                  <div
-                    key={m.id}
-                    className={`p-3.5 rounded-xl border text-xs ${
-                      m.isAlert
-                        ? 'border-rose-500/30 bg-rose-500/10 text-rose-200'
-                        : m.senderRole === 'COACH'
-                        ? 'border-sky-500/30 bg-sky-500/10 text-white ml-8'
-                        : 'border-white/10 bg-white/[0.03] text-slate-200 mr-8'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
-                      <span className="font-semibold text-sky-400">{m.senderName}</span>
-                      <span>{m.timestamp}</span>
-                    </div>
-                    <p className="leading-relaxed text-sm">{m.text}</p>
+                {activeStudent.messages.length === 0 ? (
+                  <div className="py-6 text-center text-xs text-slate-500">
+                    No messages yet.
                   </div>
-                ))}
+                ) : (
+                  activeStudent.messages.map(m => (
+                    <div
+                      key={m.id}
+                      className={`p-3.5 rounded-xl border text-xs ${
+                        m.isAlert
+                          ? 'border-rose-500/30 bg-rose-500/10 text-rose-200'
+                          : m.senderRole === 'COACH'
+                          ? 'border-sky-500/30 bg-sky-500/10 text-white ml-8'
+                          : 'border-white/10 bg-white/[0.03] text-slate-200 mr-8'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+                        <span className="font-semibold text-sky-400">{m.senderName}</span>
+                        <span>{m.timestamp}</span>
+                      </div>
+                      <p className="leading-relaxed text-sm">{m.text}</p>
+                    </div>
+                  ))
+                )}
               </div>
 
               {/* Send Input */}
@@ -904,7 +910,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                 required
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
-                placeholder="e.g., Marcus Vance"
+                placeholder="Student Full Name"
                 className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
               />
             </div>
@@ -915,7 +921,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                 required
                 value={newCompany}
                 onChange={e => setNewCompany(e.target.value)}
-                placeholder="e.g., Apex Commercial Roofing"
+                placeholder="Company Name"
                 className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
               />
             </div>
@@ -928,7 +934,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                 type="email"
                 value={newEmail}
                 onChange={e => setNewEmail(e.target.value)}
-                placeholder="marcus@apexroofing.com"
+                placeholder="student@company.com"
                 className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
               />
             </div>
@@ -940,7 +946,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                 type="text"
                 value={newAccessCode}
                 onChange={e => setNewAccessCode(e.target.value.toUpperCase())}
-                placeholder="e.g., MARCUS-04"
+                placeholder="CODE-01"
                 className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 font-mono text-sky-300 focus:border-sky-400 focus:outline-none"
               />
             </div>
