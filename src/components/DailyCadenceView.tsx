@@ -60,6 +60,8 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
   const [selectedIndex, setSelectedIndex] = useState(firstActiveIndex >= 0 ? firstActiveIndex : 0);
   const [subTab, setSubTab] = useState<'STUDIO' | 'QUEUE' | 'CORE5' | 'PLAYBOOK'>('STUDIO');
   const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4>(1);
+  const [coreSlideIdx, setCoreSlideIdx] = useState(0);
+  const [pillarSlideIdx, setPillarSlideIdx] = useState(0);
   const [stageFilter, setStageFilter] = useState<string>('ALL');
   const [videoLinkInput, setVideoLinkInput] = useState('');
   const [linkError, setLinkError] = useState<string | null>(null);
@@ -722,117 +724,124 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
         </div>
       )}
 
-      {/* TAB 3: THE 5 CORE BRAND VIDEOS (B1–B5) */}
-      {subTab === 'CORE5' && (
-        <div className="space-y-4">
-          <div className="glass-panel rounded-2xl p-6">
-            <h2 className="text-xl font-semibold text-white">
-              The 5 Core Brand Videos (B1–B5)
-            </h2>
-            <p className="text-xs text-slate-400 mt-1">
-              Made once and run continuously at $5–10/day in your sequenced ad ladder. Paste the published link once filmed.
-            </p>
+      {/* TAB 3: THE 5 CORE BRAND VIDEOS (B1–B5) — 1-PANEL SLIDER */}
+      {subTab === 'CORE5' && (() => {
+        const totalCore = student.coreVideos.length;
+        const safeCoreIdx = Math.min(coreSlideIdx, Math.max(totalCore - 1, 0));
+        const core = student.coreVideos[safeCoreIdx];
+        if (!core) return null;
 
-            <div className="space-y-4 mt-5">
-              {student.coreVideos.map(core => (
-                <div key={core.id} className="p-5 rounded-xl bg-white/[0.02] border border-white/8 space-y-4">
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-full bg-sky-500/15 text-sky-300 text-xs font-semibold">
-                          {core.code} · {core.week}
-                        </span>
-                        <span className="text-xs text-slate-400">Target: {core.runtimeTarget}</span>
-                      </div>
-                      <h3 className="text-lg font-semibold text-white mt-1">{core.name}</h3>
-                      <p className="text-xs text-slate-400 mt-0.5">{core.purpose}</p>
+        return (
+          <div className="space-y-4">
+            <div className="glass-panel rounded-2xl p-6 space-y-5">
+              {/* Top Slider Header */}
+              <div className="p-4 rounded-xl bg-[#000000] border border-white/[0.08] space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                      CORE VIDEO {safeCoreIdx + 1} OF {totalCore} · {core.code} ({core.week})
                     </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      <input
-                        type="url"
-                        defaultValue={core.videoUrl || ''}
-                        placeholder="Paste published YouTube/Ad URL..."
-                        onBlur={e => {
-                          const val = e.target.value.trim();
-                          if (val) {
-                            onUpdateCoreVideoStatus(core.id, 'Completed', val);
-                          }
-                        }}
-                        className="rounded-xl bg-[#0B0D14] border border-white/12 px-3 py-2 text-xs text-white w-64 focus:outline-none focus:border-sky-400"
-                      />
-                      <select
-                        value={core.status}
-                        onChange={e =>
-                          onUpdateCoreVideoStatus(
-                            core.id,
-                            e.target.value as 'Not Started' | 'In Progress' | 'Completed',
-                            core.videoUrl
-                          )
-                        }
-                        className={`rounded-xl border px-3 py-2 text-xs font-medium cursor-pointer ${
-                          core.status === 'Completed'
-                            ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300'
-                            : core.status === 'In Progress'
-                            ? 'border-sky-500/30 bg-sky-500/15 text-sky-300'
-                            : 'border-white/12 bg-[#0B0D14] text-slate-300'
-                        }`}
-                      >
-                        <option value="Not Started">Not Started</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Completed">Completed</option>
-                      </select>
-                    </div>
+                    <h2 className="font-display text-2xl uppercase text-white tracking-wide mt-0.5">
+                      The 5 Core Brand Videos (B1–B5)
+                    </h2>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-2.5">
-                    {(['S', 'H', 'I', 'F', 'T'] as const).map(letter => (
-                      <div key={letter} className="p-3 rounded-lg bg-[#0B0D14]/60 border border-white/6">
-                        <div className="text-xs font-bold text-sky-400">{letter} Stage</div>
-                        <p className="text-xs text-slate-300 mt-1 leading-relaxed">{core.shiftStages[letter]}</p>
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={safeCoreIdx === 0}
+                      onClick={() => setCoreSlideIdx(i => Math.max(0, i - 1))}
+                      className="p-2 rounded-lg bg-white/[0.04] border border-white/10 text-zinc-300 hover:text-white disabled:opacity-30 cursor-pointer"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={safeCoreIdx >= totalCore - 1}
+                      onClick={() => setCoreSlideIdx(i => Math.min(totalCore - 1, i + 1))}
+                      className="p-2 rounded-lg bg-[#09ADEF]/15 border border-[#09ADEF]/40 text-[#09ADEF] hover:bg-[#09ADEF]/25 disabled:opacity-30 cursor-pointer"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* TAB 4: CONTENT PLAYBOOK MATRIX (15 PILLARS x 4 ANGLES) */}
-      {subTab === 'PLAYBOOK' && (
-        <div className="space-y-4">
-          <div className="glass-panel rounded-2xl p-6 space-y-4">
-            <div>
-              <h2 className="text-xl font-semibold text-white">
-                Content Playbook Matrix ({student.playbook.length} Core Pillars · 60 Angles)
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Ingested from your strategy spreadsheet. Each pillar breaks an old belief, installs a new belief, and maps out 4 teaching angles.
-              </p>
-            </div>
+                {/* Range Slider + Pill Selector */}
+                <input
+                  type="range"
+                  min={0}
+                  max={totalCore - 1}
+                  value={safeCoreIdx}
+                  onChange={e => setCoreSlideIdx(Number(e.target.value))}
+                  className="w-full accent-[#09ADEF] h-1.5 bg-white/10 rounded-lg cursor-pointer"
+                />
 
-            <div className="space-y-4">
-              {student.playbook.map((pillar, idx) => (
-                <div key={pillar.id} className="p-5 rounded-xl bg-white/[0.02] border border-white/8 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <span className="text-xs font-medium text-sky-400">
-                        Pillar #{idx + 1} · {pillar.stage}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                  {student.coreVideos.map((cv, idx) => {
+                    const isCurrent = idx === safeCoreIdx;
+                    const isDone = cv.status === 'Completed';
+                    return (
+                      <button
+                        key={cv.id}
+                        type="button"
+                        onClick={() => setCoreSlideIdx(idx)}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-[0.14em] transition-all cursor-pointer shrink-0 ${
+                          isCurrent
+                            ? 'bg-[#09ADEF] text-white'
+                            : isDone
+                            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                            : 'bg-white/[0.03] text-zinc-400 border border-white/[0.06] hover:text-white'
+                        }`}
+                      >
+                        {cv.code} {isDone ? '✓' : ''}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Active Single Core Video Card */}
+              <div key={core.id} className="p-5 sm:p-6 rounded-xl bg-[#000000] border border-white/[0.08] space-y-5">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="badge-2mm px-2.5 py-0.5 rounded text-[10px]">
+                        {core.code} · {core.week}
                       </span>
-                      <h3 className="text-lg font-semibold text-white mt-0.5">{pillar.pillar}</h3>
+                      <span className="text-xs text-zinc-400">Target Runtime: {core.runtimeTarget}</span>
                     </div>
+                    <h3 className="font-display text-2xl uppercase text-white tracking-wide mt-2">{core.name}</h3>
+                    <p className="text-xs text-zinc-400 mt-1">{core.purpose}</p>
+                  </div>
 
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="url"
+                      defaultValue={core.videoUrl || ''}
+                      placeholder="Paste published YouTube/Ad URL..."
+                      onBlur={e => {
+                        const val = e.target.value.trim();
+                        if (val) {
+                          onUpdateCoreVideoStatus(core.id, 'Completed', val);
+                        }
+                      }}
+                      className="rounded-xl bg-[#040507] border border-white/12 px-3 py-2 text-xs text-white w-64 focus:outline-none focus:border-[#09ADEF]"
+                    />
                     <select
-                      value={pillar.status}
-                      onChange={e => onUpdatePillarStatus(pillar.id, e.target.value)}
-                      className={`rounded-xl border px-3 py-1.5 text-xs font-medium cursor-pointer ${
-                        pillar.status === 'Completed'
+                      value={core.status}
+                      onChange={e =>
+                        onUpdateCoreVideoStatus(
+                          core.id,
+                          e.target.value as 'Not Started' | 'In Progress' | 'Completed',
+                          core.videoUrl
+                        )
+                      }
+                      className={`rounded-xl border px-3 py-2 text-xs font-bold uppercase tracking-wider cursor-pointer ${
+                        core.status === 'Completed'
                           ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300'
-                          : pillar.status === 'In Progress'
-                          ? 'border-sky-500/30 bg-sky-500/15 text-sky-300'
-                          : 'border-white/12 bg-[#0B0D14] text-slate-300'
+                          : core.status === 'In Progress'
+                          ? 'border-[#09ADEF]/40 bg-[#09ADEF]/15 text-[#09ADEF]'
+                          : 'border-white/12 bg-[#040507] text-zinc-300'
                       }`}
                     >
                       <option value="Not Started">Not Started</option>
@@ -840,46 +849,220 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                       <option value="Completed">Completed</option>
                     </select>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                    <div className="p-3 rounded-lg bg-rose-500/[0.06] border border-rose-500/15">
-                      <span className="font-semibold text-rose-300 block mb-1">Breaks (Old Belief)</span>
-                      <span className="text-slate-200">{pillar.breaksBelief}</span>
-                    </div>
-                    <div className="p-3 rounded-lg bg-emerald-500/[0.06] border border-emerald-500/15">
-                      <span className="font-semibold text-emerald-300 block mb-1">Installs (New Belief)</span>
-                      <span className="text-slate-200">{pillar.installsBelief}</span>
-                    </div>
-                    <div className="p-3 rounded-lg bg-white/[0.03] border border-white/8">
-                      <span className="font-semibold text-slate-400 block mb-1">Must-Hit Beats</span>
-                      <span className="text-slate-300">{pillar.mustHitBeats}</span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-                    <div className="p-3 rounded-lg bg-[#0B0D14] border border-white/6">
-                      <div className="text-[11px] font-semibold text-sky-400">1. Actionable (How-To)</div>
-                      <div className="text-xs text-slate-100 mt-1">“{pillar.angles.actionable}”</div>
-                    </div>
-                    <div className="p-3 rounded-lg bg-[#0B0D14] border border-white/6">
-                      <div className="text-[11px] font-semibold text-sky-400">2. Analytical (Data)</div>
-                      <div className="text-xs text-slate-100 mt-1">“{pillar.angles.analytical}”</div>
-                    </div>
-                    <div className="p-3 rounded-lg bg-[#0B0D14] border border-white/6">
-                      <div className="text-[11px] font-semibold text-sky-400">3. Psychological</div>
-                      <div className="text-xs text-slate-100 mt-1">“{pillar.angles.psychological}”</div>
-                    </div>
-                    <div className="p-3 rounded-lg bg-[#0B0D14] border border-white/6">
-                      <div className="text-[11px] font-semibold text-sky-400">4. Aspirational (Story)</div>
-                      <div className="text-xs text-slate-100 mt-1">“{pillar.angles.aspirational}”</div>
-                    </div>
-                  </div>
                 </div>
-              ))}
+
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-2.5">
+                  {(['S', 'H', 'I', 'F', 'T'] as const).map(letter => (
+                    <div key={letter} className="p-3.5 rounded-xl bg-[#040507] border border-white/[0.07]">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">{letter} Stage</div>
+                      <p className="text-xs text-zinc-200 mt-1.5 leading-relaxed">{core.shiftStages[letter]}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Bottom Prev / Next Bar */}
+                <div className="pt-4 border-t border-white/[0.07] flex items-center justify-between">
+                  <button
+                    type="button"
+                    disabled={safeCoreIdx === 0}
+                    onClick={() => setCoreSlideIdx(i => Math.max(0, i - 1))}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs font-bold uppercase tracking-[0.14em] text-zinc-300 disabled:opacity-30 cursor-pointer"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    Prev Core Video
+                  </button>
+                  <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+                    {core.code} ({safeCoreIdx + 1} / {totalCore})
+                  </span>
+                  <button
+                    type="button"
+                    disabled={safeCoreIdx >= totalCore - 1}
+                    onClick={() => setCoreSlideIdx(i => Math.min(totalCore - 1, i + 1))}
+                    className="btn-2mm inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-xs disabled:opacity-30 cursor-pointer"
+                  >
+                    Next Core Video
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+
+      {/* TAB 4: CONTENT PLAYBOOK MATRIX (15 PILLARS x 4 ANGLES) — 1-PANEL SLIDER */}
+      {subTab === 'PLAYBOOK' && (() => {
+        const totalPillars = student.playbook.length;
+        const safePillarIdx = Math.min(pillarSlideIdx, Math.max(totalPillars - 1, 0));
+        const pillar = student.playbook[safePillarIdx];
+        if (!pillar) return null;
+
+        return (
+          <div className="space-y-4">
+            <div className="glass-panel rounded-2xl p-6 space-y-5">
+              {/* Top Slider Header */}
+              <div className="p-4 rounded-xl bg-[#000000] border border-white/[0.08] space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                      PILLAR PANEL {safePillarIdx + 1} OF {totalPillars} · {pillar.stage}
+                    </div>
+                    <h2 className="font-display text-2xl uppercase text-white tracking-wide mt-0.5">
+                      Content Playbook Matrix ({totalPillars} Core Pillars · 60 Angles)
+                    </h2>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={safePillarIdx === 0}
+                      onClick={() => setPillarSlideIdx(i => Math.max(0, i - 1))}
+                      className="p-2 rounded-lg bg-white/[0.04] border border-white/10 text-zinc-300 hover:text-white disabled:opacity-30 cursor-pointer"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={safePillarIdx >= totalPillars - 1}
+                      onClick={() => setPillarSlideIdx(i => Math.min(totalPillars - 1, i + 1))}
+                      className="p-2 rounded-lg bg-[#09ADEF]/15 border border-[#09ADEF]/40 text-[#09ADEF] hover:bg-[#09ADEF]/25 disabled:opacity-30 cursor-pointer"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <input
+                  type="range"
+                  min={0}
+                  max={totalPillars - 1}
+                  value={safePillarIdx}
+                  onChange={e => setPillarSlideIdx(Number(e.target.value))}
+                  className="w-full accent-[#09ADEF] h-1.5 bg-white/10 rounded-lg cursor-pointer"
+                />
+
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                  {student.playbook.map((p, idx) => {
+                    const isCurrent = idx === safePillarIdx;
+                    const isDone = p.status === 'Completed';
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setPillarSlideIdx(idx)}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-[0.14em] transition-all cursor-pointer shrink-0 ${
+                          isCurrent
+                            ? 'bg-[#09ADEF] text-white'
+                            : isDone
+                            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                            : 'bg-white/[0.03] text-zinc-400 border border-white/[0.06] hover:text-white'
+                        }`}
+                      >
+                        P{idx + 1} {isDone ? '✓' : ''}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Active Single Pillar Card */}
+              <div key={pillar.id} className="p-5 sm:p-6 rounded-xl bg-[#000000] border border-white/[0.08] space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                      PILLAR #{safePillarIdx + 1} · {pillar.stage}
+                    </span>
+                    <h3 className="font-display text-2xl sm:text-3xl uppercase text-white tracking-wide mt-1">
+                      {pillar.pillar}
+                    </h3>
+                  </div>
+
+                  <select
+                    value={pillar.status}
+                    onChange={e => onUpdatePillarStatus(pillar.id, e.target.value)}
+                    className={`rounded-xl border px-3 py-2 text-xs font-bold uppercase tracking-wider cursor-pointer ${
+                      pillar.status === 'Completed'
+                        ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300'
+                        : pillar.status === 'In Progress'
+                        ? 'border-[#09ADEF]/40 bg-[#09ADEF]/15 text-[#09ADEF]'
+                        : 'border-white/12 bg-[#040507] text-zinc-300'
+                    }`}
+                  >
+                    <option value="Not Started">Not Started</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div className="p-4 rounded-xl bg-rose-500/[0.06] border border-rose-500/20">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-rose-300 block mb-1.5">
+                      Breaks (Old Belief)
+                    </span>
+                    <span className="text-zinc-100 leading-relaxed">{pillar.breaksBelief}</span>
+                  </div>
+                  <div className="p-4 rounded-xl bg-[#09ADEF]/[0.07] border border-[#09ADEF]/25">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF] block mb-1.5">
+                      Installs (New Belief)
+                    </span>
+                    <span className="text-zinc-100 leading-relaxed">{pillar.installsBelief}</span>
+                  </div>
+                  <div className="p-4 rounded-xl bg-[#040507] border border-white/[0.08]">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400 block mb-1.5">
+                      Must-Hit Beats
+                    </span>
+                    <span className="text-zinc-200 leading-relaxed">{pillar.mustHitBeats}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="p-4 rounded-xl bg-[#040507] border border-white/[0.07]">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">1. Actionable (How-To)</div>
+                    <div className="text-xs text-white mt-1.5 leading-relaxed">“{pillar.angles.actionable}”</div>
+                  </div>
+                  <div className="p-4 rounded-xl bg-[#040507] border border-white/[0.07]">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">2. Analytical (Data)</div>
+                    <div className="text-xs text-white mt-1.5 leading-relaxed">“{pillar.angles.analytical}”</div>
+                  </div>
+                  <div className="p-4 rounded-xl bg-[#040507] border border-white/[0.07]">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">3. Psychological</div>
+                    <div className="text-xs text-white mt-1.5 leading-relaxed">“{pillar.angles.psychological}”</div>
+                  </div>
+                  <div className="p-4 rounded-xl bg-[#040507] border border-white/[0.07]">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">4. Aspirational (Story)</div>
+                    <div className="text-xs text-white mt-1.5 leading-relaxed">“{pillar.angles.aspirational}”</div>
+                  </div>
+                </div>
+
+                {/* Bottom Prev / Next Bar */}
+                <div className="pt-4 border-t border-white/[0.07] flex items-center justify-between">
+                  <button
+                    type="button"
+                    disabled={safePillarIdx === 0}
+                    onClick={() => setPillarSlideIdx(i => Math.max(0, i - 1))}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs font-bold uppercase tracking-[0.14em] text-zinc-300 disabled:opacity-30 cursor-pointer"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    Prev Pillar
+                  </button>
+                  <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+                    Pillar {safePillarIdx + 1} of {totalPillars}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={safePillarIdx >= totalPillars - 1}
+                    onClick={() => setPillarSlideIdx(i => Math.min(totalPillars - 1, i + 1))}
+                    className="btn-2mm inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-xs disabled:opacity-30 cursor-pointer"
+                  >
+                    Next Pillar
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Quick Day Switcher Modal */}
       <ModalDialog

@@ -50,21 +50,51 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
 }) => {
   const [selectedLessonNum, setSelectedLessonNum] = useState<number>(student.currentWeek || 1);
   const [activePanel, setActivePanel] = useState<'LESSON' | 'WORKSHEET' | 'RUBRIC'>('LESSON');
-  const [showWorkedExample, setShowWorkedExample] = useState<boolean>(true);
+  const [showWorkedExample, setShowWorkedExample] = useState<boolean>(false);
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
-  const [selectedSection, setSelectedSection] = useState<string>('ALL');
+  const [worksheetSlideIdx, setWorksheetSlideIdx] = useState<number>(0);
+  const [figureSlideIdx, setFigureSlideIdx] = useState<number>(0);
 
   const activeLesson = lessons.find(w => w.weekNumber === selectedLessonNum) || lessons[0];
   const lessonsInCurrentPhase = lessons.filter(w => w.phase === activeLesson.phase);
 
-  // Extract unique field sections for the active lesson
-  const worksheetSections = Array.from(
-    new Set(activeLesson.fields.map(f => f.section || 'Worksheet Prompts'))
-  );
-  const activeSectionFilter =
-    selectedSection === 'ALL' || !worksheetSections.includes(selectedSection)
-      ? 'ALL'
-      : selectedSection;
+  // Build 1-Panel Worksheet Slides (each section is 1 panel; if a section has >5 fields, chunk by 5)
+  const worksheetSlides = React.useMemo(() => {
+    const rawSections = Array.from(
+      new Set(activeLesson.fields.map(f => f.section || 'Worksheet Prompts'))
+    );
+    const slides: { title: string; fields: typeof activeLesson.fields }[] = [];
+
+    rawSections.forEach(secName => {
+      const secFields = activeLesson.fields.filter(
+        f => (f.section || 'Worksheet Prompts') === secName
+      );
+      if (secFields.length <= 5) {
+        slides.push({ title: secName, fields: secFields });
+      } else {
+        const chunkSize = 5;
+        const totalParts = Math.ceil(secFields.length / chunkSize);
+        for (let i = 0; i < secFields.length; i += chunkSize) {
+          const partNum = Math.floor(i / chunkSize) + 1;
+          slides.push({
+            title: `${secName} · Part ${partNum}/${totalParts}`,
+            fields: secFields.slice(i, i + chunkSize)
+          });
+        }
+      }
+    });
+
+    return slides.length > 0
+      ? slides
+      : [{ title: 'Worksheet Prompts', fields: activeLesson.fields }];
+  }, [activeLesson.fields]);
+
+  const safeSlideIdx = Math.min(worksheetSlideIdx, Math.max(0, worksheetSlides.length - 1));
+  const currentWorksheetSlide = worksheetSlides[safeSlideIdx] || worksheetSlides[0];
+
+  const refFigures = activeLesson.referenceFigures || [];
+  const safeFigureIdx = Math.min(figureSlideIdx, Math.max(0, refFigures.length - 1));
+  const currentFigure = refFigures[safeFigureIdx];
 
   // Draft state for editing a lesson
   const [draftLesson, setDraftLesson] = useState<WorkbookWeek>(activeLesson);
@@ -80,17 +110,19 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
     setShowEditModal(false);
   };
 
-  const totalTasksCount = lessons.reduce((acc, l) => acc + l.tasks.length, 0);
-  const totalFieldsCount = lessons.reduce((acc, l) => acc + l.fields.length, 0);
-  const completedTasksCount = Object.values(student.tasksCompleted).filter(Boolean).length;
-  const filledFieldsCount = Object.values(student.worksheetAnswers).filter(v => v && v.trim().length > 0).length;
-
   const lessonTasksDoneCount = activeLesson.tasks.filter(
     (_, idx) => student.tasksCompleted[`${activeLesson.weekNumber}-${idx}`]
   ).length;
   const lessonFieldsFilledCount = activeLesson.fields.filter(
     f => (student.worksheetAnswers[f.id] || '').trim().length > 0
   ).length;
+
+  const selectLesson = (num: number) => {
+    setSelectedLessonNum(num);
+    setWorksheetSlideIdx(0);
+    setFigureSlideIdx(0);
+    setActivePanel('LESSON');
+  };
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -104,11 +136,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               <button
                 key={p.num}
                 type="button"
-                onClick={() => {
-                  setSelectedLessonNum(firstLesson);
-                  setSelectedSection('ALL');
-                  setActivePanel('LESSON');
-                }}
+                onClick={() => selectLesson(firstLesson)}
                 className={`px-3.5 py-2 rounded-lg border text-left transition-all cursor-pointer flex items-center gap-2 shrink-0 text-[11px] font-bold uppercase tracking-[0.08em] ${
                   isSelectedPhase
                     ? 'bg-[#09ADEF] text-white border-[#09ADEF] shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
@@ -138,11 +166,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
         <button
           type="button"
           disabled={selectedLessonNum <= 1}
-          onClick={() => {
-            setSelectedLessonNum(n => Math.max(1, n - 1));
-            setSelectedSection('ALL');
-            setActivePanel('LESSON');
-          }}
+          onClick={() => selectLesson(Math.max(1, selectedLessonNum - 1))}
           className="p-2 rounded-lg bg-[#0A0C10] border border-white/10 text-neutral-300 disabled:opacity-30 shrink-0"
           aria-label="Previous Lesson"
         >
@@ -151,11 +175,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
 
         <select
           value={selectedLessonNum}
-          onChange={e => {
-            setSelectedLessonNum(Number(e.target.value));
-            setSelectedSection('ALL');
-            setActivePanel('LESSON');
-          }}
+          onChange={e => selectLesson(Number(e.target.value))}
           aria-label="Select lesson"
           className="flex-1 min-w-0 rounded-lg bg-black border border-white/15 px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-[#09ADEF]"
         >
@@ -169,11 +189,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
         <button
           type="button"
           disabled={selectedLessonNum >= 26}
-          onClick={() => {
-            setSelectedLessonNum(n => Math.min(26, n + 1));
-            setSelectedSection('ALL');
-            setActivePanel('LESSON');
-          }}
+          onClick={() => selectLesson(Math.min(26, selectedLessonNum + 1))}
           className="p-2 rounded-lg bg-[#0A0C10] border border-white/10 text-neutral-300 disabled:opacity-30 shrink-0"
           aria-label="Next Lesson"
         >
@@ -195,11 +211,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 <button
                   key={lesson.weekNumber}
                   type="button"
-                  onClick={() => {
-                    setSelectedLessonNum(lesson.weekNumber);
-                    setSelectedSection('ALL');
-                    setActivePanel('LESSON');
-                  }}
+                  onClick={() => selectLesson(lesson.weekNumber)}
                   className={`w-full text-left p-2.5 rounded-xl border transition-all cursor-pointer flex items-start justify-between gap-2 ${
                     isSelected
                       ? 'bg-[#09ADEF]/12 border-[#09ADEF] text-white'
@@ -235,11 +247,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
           <div className="pt-2.5 border-t border-white/[0.07]">
             <select
               value={selectedLessonNum}
-              onChange={e => {
-                setSelectedLessonNum(Number(e.target.value));
-                setSelectedSection('ALL');
-                setActivePanel('LESSON');
-              }}
+              onChange={e => selectLesson(Number(e.target.value))}
               aria-label="Jump to lesson"
               className="w-full rounded-lg bg-[#040507] border border-white/12 px-2.5 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#09ADEF]"
             >
@@ -273,11 +281,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 <button
                   type="button"
                   disabled={selectedLessonNum <= 1}
-                  onClick={() => {
-                    setSelectedLessonNum(n => Math.max(1, n - 1));
-                    setSelectedSection('ALL');
-                    setActivePanel('LESSON');
-                  }}
+                  onClick={() => selectLesson(Math.max(1, selectedLessonNum - 1))}
                   className="p-1.5 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-neutral-300 disabled:opacity-30 cursor-pointer"
                   title="Previous Lesson"
                 >
@@ -286,11 +290,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 <button
                   type="button"
                   disabled={selectedLessonNum >= 26}
-                  onClick={() => {
-                    setSelectedLessonNum(n => Math.min(26, n + 1));
-                    setSelectedSection('ALL');
-                    setActivePanel('LESSON');
-                  }}
+                  onClick={() => selectLesson(Math.min(26, selectedLessonNum + 1))}
                   className="p-1.5 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-neutral-300 disabled:opacity-30 cursor-pointer"
                   title="Next Lesson"
                 >
@@ -347,7 +347,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
             </div>
           </div>
 
-          {/* SEQUENTIAL PANEL 1: THE LESSON, REFERENCE FIGURES & ACTION CHECKLIST */}
+          {/* SEQUENTIAL PANEL 1: THE LESSON, 1-PANEL REFERENCE FIGURE SLIDER & ACTION CHECKLIST */}
           {activePanel === 'LESSON' && (
             <div className="glass-panel rounded-2xl p-5 sm:p-7 space-y-5 sm:space-y-6">
               <div>
@@ -369,96 +369,128 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 </ul>
               </div>
 
-              {/* 1-to-1 PDF Reference Figures (FIG. 00 through FIG. 28) — Collapsible on mobile */}
-              {activeLesson.referenceFigures && activeLesson.referenceFigures.length > 0 && (
+              {/* 1-Panel Reference Figure Slider when figures exist */}
+              {refFigures.length > 0 && currentFigure && (
                 <div className="pt-4 border-t border-white/[0.07] space-y-3">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF] block">
-                    WORKBOOK REFERENCE FIGURES ({activeLesson.referenceFigures.length})
-                  </span>
-                  {activeLesson.referenceFigures.map((fig, fIdx) => (
-                    <details
-                      key={`${fig.figNumber}-${fIdx}`}
-                      open={fIdx === 0}
-                      className="group rounded-xl bg-[#040507] border border-white/[0.08] p-3.5 sm:p-5 space-y-3"
-                    >
-                      <summary className="flex flex-wrap items-center justify-between gap-2 cursor-pointer list-none">
-                        <div className="flex items-center gap-2">
-                          <span className="badge-2mm px-2.5 py-0.5 rounded-full text-[10px]">
-                            {fig.figNumber}
-                          </span>
-                          <h4 className="text-xs sm:text-sm font-semibold text-white">{fig.title}</h4>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {fig.caption && (
-                            <span className="hidden sm:inline text-xs text-neutral-400">{fig.caption}</span>
-                          )}
-                          <span className="text-xs text-[#09ADEF] group-open:rotate-90 transition-transform">▸</span>
-                        </div>
-                      </summary>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                      WORKBOOK REFERENCE FIGURE ({safeFigureIdx + 1} OF {refFigures.length})
+                    </span>
 
-                      {fig.cards && fig.cards.length > 0 && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                          {fig.cards.map((card, cIdx) => (
-                            <div
-                              key={cIdx}
-                              className="p-3.5 rounded-xl bg-black border border-white/[0.07] space-y-1"
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs font-semibold text-white">{card.title}</span>
-                                {card.badge && (
-                                  <span className="badge-2mm px-2 py-0.5 rounded-full text-[9px]">
-                                    {card.badge}
-                                  </span>
-                                )}
-                              </div>
-                              {card.subtitle && (
-                                <div className="text-[11px] font-medium text-[#09ADEF]">{card.subtitle}</div>
-                              )}
-                              <p className="text-xs text-neutral-300 leading-relaxed">{card.body}</p>
-                            </div>
-                          ))}
-                        </div>
+                    {refFigures.length > 1 && (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          disabled={safeFigureIdx === 0}
+                          onClick={() => setFigureSlideIdx(i => Math.max(0, i - 1))}
+                          className="p-1.5 rounded-lg bg-[#0A0C10] border border-white/10 text-neutral-300 disabled:opacity-30 cursor-pointer"
+                          title="Previous Figure"
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                        </button>
+                        {refFigures.map((f, fIdx) => (
+                          <button
+                            key={`${f.figNumber}-${fIdx}`}
+                            type="button"
+                            onClick={() => setFigureSlideIdx(fIdx)}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all ${
+                              fIdx === safeFigureIdx
+                                ? 'bg-[#09ADEF] text-white'
+                                : 'bg-[#07090D] border border-white/10 text-neutral-400 hover:text-white'
+                            }`}
+                          >
+                            {f.figNumber}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          disabled={safeFigureIdx >= refFigures.length - 1}
+                          onClick={() => setFigureSlideIdx(i => Math.min(refFigures.length - 1, i + 1))}
+                          className="p-1.5 rounded-lg bg-[#0A0C10] border border-white/10 text-neutral-300 disabled:opacity-30 cursor-pointer"
+                          title="Next Figure"
+                        >
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Single Active Reference Figure Card */}
+                  <div className="rounded-xl bg-[#040507] border border-white/[0.08] p-4 sm:p-5 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="badge-2mm px-2.5 py-0.5 rounded-full text-[10px]">
+                          {currentFigure.figNumber}
+                        </span>
+                        <h4 className="text-xs sm:text-sm font-semibold text-white">{currentFigure.title}</h4>
+                      </div>
+                      {currentFigure.caption && (
+                        <span className="text-xs text-neutral-400">{currentFigure.caption}</span>
                       )}
+                    </div>
 
-                      {fig.headers && fig.rows && (
-                        <div className="overflow-x-auto rounded-xl border border-white/8">
-                          <table className="w-full text-left border-collapse text-xs">
-                            <thead>
-                              <tr className="bg-white/[0.04] border-b border-white/10 text-slate-300">
-                                {fig.headers.map((h, hIdx) => (
-                                  <th key={hIdx} className="p-3 font-semibold">
-                                    {h}
-                                  </th>
+                    {currentFigure.cards && currentFigure.cards.length > 0 && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                        {currentFigure.cards.map((card, cIdx) => (
+                          <div
+                            key={cIdx}
+                            className="p-3.5 rounded-xl bg-black border border-white/[0.07] space-y-1"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-semibold text-white">{card.title}</span>
+                              {card.badge && (
+                                <span className="badge-2mm px-2 py-0.5 rounded-full text-[9px]">
+                                  {card.badge}
+                                </span>
+                              )}
+                            </div>
+                            {card.subtitle && (
+                              <div className="text-[11px] font-medium text-[#09ADEF]">{card.subtitle}</div>
+                            )}
+                            <p className="text-xs text-neutral-300 leading-relaxed">{card.body}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {currentFigure.headers && currentFigure.rows && (
+                      <div className="overflow-x-auto rounded-xl border border-white/8">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-white/[0.04] border-b border-white/10 text-neutral-300">
+                              {currentFigure.headers.map((h, hIdx) => (
+                                <th key={hIdx} className="p-3 font-semibold">
+                                  {h}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/8">
+                            {currentFigure.rows.map((row, rIdx) => (
+                              <tr key={rIdx} className="hover:bg-white/[0.02]">
+                                {row.map((cell, cellIdx) => (
+                                  <td
+                                    key={cellIdx}
+                                    className={`p-3 leading-relaxed ${
+                                      cellIdx === 0 ? 'font-semibold text-white' : 'text-neutral-300'
+                                    }`}
+                                  >
+                                    {cell}
+                                  </td>
                                 ))}
                               </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/8">
-                              {fig.rows.map((row, rIdx) => (
-                                <tr key={rIdx} className="hover:bg-white/[0.02]">
-                                  {row.map((cell, cellIdx) => (
-                                    <td
-                                      key={cellIdx}
-                                      className={`p-3 leading-relaxed ${
-                                        cellIdx === 0 ? 'font-semibold text-white' : 'text-slate-300'
-                                      }`}
-                                    >
-                                      {cell}
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </details>
-                  ))}
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
-              <div className="pt-4 border-t border-white/8">
-                <span className="text-xs font-semibold uppercase tracking-wider text-sky-400 block mb-3">
-                  Part 2 · Do The Work (Action Checklist)
+              <div className="pt-4 border-t border-white/[0.07]">
+                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF] block mb-3">
+                  PART 2 · DO THE WORK (ACTION CHECKLIST)
                 </span>
                 <div className="space-y-2">
                   {activeLesson.tasks.map((taskText, idx) => {
@@ -471,16 +503,16 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                         onClick={() => onToggleTask(activeLesson.weekNumber, idx)}
                         className={`w-full text-left p-3.5 sm:p-4 rounded-xl border transition-all flex items-start gap-3 cursor-pointer ${
                           isChecked
-                            ? 'bg-emerald-500/10 border-emerald-500/30 text-slate-300'
-                            : 'bg-white/[0.02] border-white/8 hover:border-sky-400/50 text-white'
+                            ? 'bg-[#09ADEF]/10 border-[#09ADEF]/30 text-neutral-300'
+                            : 'bg-[#040507] border-white/[0.07] hover:border-[#09ADEF]/50 text-white'
                         }`}
                       >
                         {isChecked ? (
-                          <CheckSquare className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                          <CheckSquare className="w-5 h-5 text-[#09ADEF] shrink-0 mt-0.5" />
                         ) : (
-                          <Square className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+                          <Square className="w-5 h-5 text-neutral-500 shrink-0 mt-0.5" />
                         )}
-                        <span className={`text-xs sm:text-sm leading-relaxed ${isChecked ? 'line-through text-slate-400' : ''}`}>
+                        <span className={`text-xs sm:text-sm leading-relaxed ${isChecked ? 'line-through text-neutral-400' : ''}`}>
                           {taskText}
                         </span>
                       </button>
@@ -490,45 +522,49 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               </div>
 
               {/* Coaching Prompt & Failure Trap Callout */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 pt-4 border-t border-white/8">
-                <div className="p-3.5 sm:p-4 rounded-xl bg-sky-500/[0.06] border border-sky-500/20">
-                  <div className="text-[11px] sm:text-xs font-semibold text-sky-300 uppercase tracking-wider mb-1">
-                    Coaching Reflection Prompt
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 pt-4 border-t border-white/[0.07]">
+                <div className="p-4 rounded-xl bg-[#040507] border-l-2 border-[#09ADEF] space-y-1">
+                  <div className="text-[10px] font-bold text-[#09ADEF] uppercase tracking-[0.16em]">
+                    THE SHIFT · COACHING PROMPT
                   </div>
-                  <p className="text-xs sm:text-sm italic text-slate-200 leading-relaxed">
+                  <p className="text-xs sm:text-sm italic text-neutral-200 leading-relaxed">
                     “{activeLesson.coachingPrompt}”
                   </p>
                 </div>
-                <div className="p-3.5 sm:p-4 rounded-xl bg-rose-500/[0.06] border border-rose-500/20">
-                  <div className="text-[11px] sm:text-xs font-semibold text-rose-300 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5" /> Where It Fails
+                <div className="p-4 rounded-xl bg-[#040507] border border-rose-500/20 space-y-1">
+                  <div className="text-[10px] font-bold text-rose-400 uppercase tracking-[0.16em] flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" /> WHERE IT FAILS
                   </div>
-                  <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">{activeLesson.whereItFails}</p>
+                  <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">{activeLesson.whereItFails}</p>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-white/8 flex justify-end">
+              <div className="pt-4 border-t border-white/[0.07] flex justify-end">
                 <button
                   type="button"
-                  onClick={() => setActivePanel('WORKSHEET')}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-sm transition-all cursor-pointer shadow-lg shadow-sky-500/20"
+                  onClick={() => {
+                    setWorksheetSlideIdx(0);
+                    setActivePanel('WORKSHEET');
+                  }}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg btn-2mm text-xs cursor-pointer"
                 >
-                  <span>Continue to Lesson {activeLesson.weekNumber} Worksheet</span>
+                  <span>Open Lesson {activeLesson.weekNumber} Worksheet</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* SEQUENTIAL PANEL 2: INTERACTIVE WORKSHEET (WITH SECTION ORGANIZER) */}
-          {activePanel === 'WORKSHEET' && (
-            <div className="glass-panel rounded-2xl p-4 sm:p-8 space-y-4 sm:space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3.5 sm:pb-4 border-b border-white/8">
+          {/* SEQUENTIAL PANEL 2: 1-PANEL WORKSHEET SLIDER (NO LONG VERTICAL SCROLLS) */}
+          {activePanel === 'WORKSHEET' && currentWorksheetSlide && (
+            <div className="glass-panel rounded-2xl p-5 sm:p-7 space-y-5">
+              {/* Top Header */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5 pb-4 border-b border-white/[0.07]">
                 <div>
-                  <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-sky-400">
-                    Lesson {activeLesson.weekNumber} Worksheet · {activeLesson.fields.length} Fields
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                    LESSON {activeLesson.weekNumber} WORKSHEET · {lessonFieldsFilledCount}/{activeLesson.fields.length} FIELDS COMPLETED
                   </span>
-                  <h2 className="text-lg sm:text-xl font-semibold text-white mt-0.5">
+                  <h2 className="font-display text-2xl sm:text-3xl text-white mt-0.5 tracking-wide">
                     {activeLesson.moduleTitle}
                   </h2>
                 </div>
@@ -537,7 +573,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowWorkedExample(v => !v)}
-                    className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-[11px] sm:text-xs font-medium text-sky-300 cursor-pointer"
+                    className="badge-2mm px-3 py-1.5 rounded-full text-[10px] cursor-pointer"
                   >
                     {showWorkedExample ? 'Hide Example' : 'Worked Example'}
                   </button>
@@ -545,148 +581,189 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               </div>
 
               {activeLesson.workedExample && showWorkedExample && (
-                <div className="p-3.5 sm:p-5 rounded-xl bg-sky-500/[0.05] border border-sky-500/20 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-semibold text-sky-300">
+                <div className="p-4 rounded-xl bg-[#040507] border border-[#09ADEF]/25 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[#09ADEF]">
                     <span>◆ Worked Example · {activeLesson.workedExample.title}</span>
-                    <span className="text-slate-400">{activeLesson.workedExample.company}</span>
+                    <span className="text-neutral-400">{activeLesson.workedExample.company}</span>
                   </div>
                   <div className="space-y-1.5 pt-1">
                     {activeLesson.workedExample.items.map((item, i) => (
                       <div key={i} className="grid grid-cols-1 sm:grid-cols-12 gap-0.5 sm:gap-1 text-xs">
-                        <span className="sm:col-span-4 font-semibold text-slate-400">{item.label}</span>
-                        <span className="sm:col-span-8 text-slate-200">{item.value}</span>
+                        <span className="sm:col-span-4 font-semibold text-neutral-400">{item.label}</span>
+                        <span className="sm:col-span-8 text-neutral-200">{item.value}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Section Filter Bar when a worksheet has multiple sections (Horizontal scroll strip on mobile) */}
-              {worksheetSections.length > 1 && (
-                <div className="space-y-1.5">
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                    Worksheet Sections ({worksheetSections.length} parts):
+              {/* 1-Panel Slider Controls when there are multiple worksheet panels */}
+              {worksheetSlides.length > 1 && (
+                <div className="p-3.5 sm:p-4 rounded-xl bg-[#040507] border border-white/[0.08] space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF] block">
+                        PANEL {safeSlideIdx + 1} OF {worksheetSlides.length}
+                      </span>
+                      <h3 className="text-sm sm:text-base font-bold text-white truncate mt-0.5">
+                        {currentWorksheetSlide.title}
+                      </h3>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        disabled={safeSlideIdx === 0}
+                        onClick={() => setWorksheetSlideIdx(i => Math.max(0, i - 1))}
+                        className="px-2.5 py-1.5 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/12 text-xs font-semibold text-white disabled:opacity-30 cursor-pointer flex items-center gap-1"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Prev</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={safeSlideIdx >= worksheetSlides.length - 1}
+                        onClick={() => setWorksheetSlideIdx(i => Math.min(worksheetSlides.length - 1, i + 1))}
+                        className="px-2.5 py-1.5 rounded-lg bg-[#09ADEF] hover:bg-[#09B3F8] text-xs font-bold uppercase tracking-wider text-white disabled:opacity-30 cursor-pointer flex items-center gap-1"
+                      >
+                        <span className="hidden sm:inline">Next</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex overflow-x-auto no-scrollbar gap-1.5 pb-1">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedSection('ALL')}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-medium border whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
-                        activeSectionFilter === 'ALL'
-                          ? 'bg-sky-500/20 border-sky-400 text-white'
-                          : 'bg-white/[0.03] border-white/10 text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      All ({activeLesson.fields.length})
-                    </button>
-                    {worksheetSections.map(sec => {
-                      const secFields = activeLesson.fields.filter(
-                        f => (f.section || 'Worksheet Prompts') === sec
-                      );
-                      const secDone = secFields.filter(
-                        f => (student.worksheetAnswers[f.id] || '').trim().length > 0
-                      ).length;
-                      return (
-                        <button
-                          key={sec}
-                          type="button"
-                          onClick={() => setSelectedSection(sec)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-medium border whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1.5 shrink-0 ${
-                            activeSectionFilter === sec
-                              ? 'bg-sky-500/20 border-sky-400 text-white'
-                              : 'bg-white/[0.03] border-white/10 text-slate-300 hover:text-white'
-                          }`}
-                        >
-                          <span>{sec}</span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/10 text-sky-300">
-                            {secDone}/{secFields.length}
-                          </span>
-                        </button>
-                      );
-                    })}
+
+                  {/* Interactive Range Slider + Step Pills */}
+                  <div className="space-y-2">
+                    <input
+                      type="range"
+                      min={0}
+                      max={worksheetSlides.length - 1}
+                      value={safeSlideIdx}
+                      onChange={e => setWorksheetSlideIdx(Number(e.target.value))}
+                      aria-label="Slide between worksheet panels"
+                      className="w-full accent-[#09ADEF] cursor-pointer h-1.5 bg-white/10 rounded-lg"
+                    />
+
+                    <div className="flex overflow-x-auto no-scrollbar gap-1.5 pt-0.5">
+                      {worksheetSlides.map((slide, sIdx) => {
+                        const slideDoneCount = slide.fields.filter(
+                          f => (student.worksheetAnswers[f.id] || '').trim().length > 0
+                        ).length;
+                        const isSlideComplete = slideDoneCount === slide.fields.length && slide.fields.length > 0;
+                        const isCurrent = sIdx === safeSlideIdx;
+                        return (
+                          <button
+                            key={slide.title}
+                            type="button"
+                            onClick={() => setWorksheetSlideIdx(sIdx)}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                              isCurrent
+                                ? 'bg-[#09ADEF] text-white shadow-[0_2px_12px_rgba(9,173,239,0.35)]'
+                                : isSlideComplete
+                                ? 'bg-[#09ADEF]/15 border border-[#09ADEF]/35 text-[#09ADEF]'
+                                : 'bg-[#0A0C10] border border-white/10 text-neutral-400 hover:text-white'
+                            }`}
+                          >
+                            <span>Panel {sIdx + 1}</span>
+                            {isSlideComplete && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Render Grouped Sections */}
-              <div className="space-y-4 sm:space-y-6">
-                {worksheetSections
-                  .filter(sec => activeSectionFilter === 'ALL' || sec === activeSectionFilter)
-                  .map(sectionName => {
-                    const sectionFields = activeLesson.fields.filter(
-                      f => (f.section || 'Worksheet Prompts') === sectionName
-                    );
-                    return (
-                      <div
-                        key={sectionName}
-                        className="p-3.5 sm:p-5 rounded-2xl bg-white/[0.02] border border-white/8 space-y-3.5 sm:space-y-4"
-                      >
-                        <div className="flex items-center justify-between border-b border-white/8 pb-2.5">
-                          <h3 className="text-xs font-bold uppercase tracking-wider text-sky-400">
-                            {sectionName}
-                          </h3>
-                          <span className="text-[11px] text-slate-400">
-                            {
-                              sectionFields.filter(
-                                f => (student.worksheetAnswers[f.id] || '').trim().length > 0
-                              ).length
-                            }{' '}
-                            of {sectionFields.length} completed
-                          </span>
-                        </div>
+              {/* SINGLE ACTIVE WORKSHEET PANEL (Max 5 fields on screen at once) */}
+              <div className="p-4 sm:p-6 rounded-2xl bg-[#040507] border border-white/[0.08] space-y-4">
+                <div className="flex items-center justify-between border-b border-white/[0.07] pb-3">
+                  <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                    {currentWorksheetSlide.title}
+                  </h3>
+                  <span className="text-[11px] text-neutral-400">
+                    {
+                      currentWorksheetSlide.fields.filter(
+                        f => (student.worksheetAnswers[f.id] || '').trim().length > 0
+                      ).length
+                    }{' '}
+                    of {currentWorksheetSlide.fields.length} completed
+                  </span>
+                </div>
 
-                        <div className="space-y-4">
-                          {sectionFields.map(field => {
-                            const val = student.worksheetAnswers[field.id] || '';
-                            return (
-                              <div key={field.id} className="space-y-1.5">
-                                <label htmlFor={field.id} className="block text-xs font-semibold text-slate-200">
-                                  {field.label}
-                                </label>
-                                {field.multiline ? (
-                                  <textarea
-                                    id={field.id}
-                                    rows={3}
-                                    value={val}
-                                    onChange={e => onUpdateField(field.id, e.target.value)}
-                                    placeholder={field.placeholder}
-                                    className="w-full rounded-xl bg-[#0B0D14] border border-white/12 focus:border-sky-400 p-3.5 text-sm text-white placeholder:text-slate-500 focus:outline-none leading-relaxed"
-                                  />
-                                ) : (
-                                  <input
-                                    id={field.id}
-                                    type="text"
-                                    value={val}
-                                    onChange={e => onUpdateField(field.id, e.target.value)}
-                                    placeholder={field.placeholder}
-                                    className="w-full rounded-xl bg-[#0B0D14] border border-white/12 focus:border-sky-400 p-3 text-sm text-white placeholder:text-slate-500 focus:outline-none"
-                                  />
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
+                <div className="space-y-4">
+                  {currentWorksheetSlide.fields.map(field => {
+                    const val = student.worksheetAnswers[field.id] || '';
+                    return (
+                      <div key={field.id} className="space-y-1.5">
+                        <label htmlFor={field.id} className="block text-xs font-semibold text-neutral-200">
+                          {field.label}
+                        </label>
+                        {field.multiline ? (
+                          <textarea
+                            id={field.id}
+                            rows={3}
+                            value={val}
+                            onChange={e => onUpdateField(field.id, e.target.value)}
+                            placeholder={field.placeholder}
+                            className="w-full rounded-lg bg-black border border-white/12 focus:border-[#09ADEF] p-3.5 text-sm text-white placeholder:text-neutral-600 focus:outline-none leading-relaxed"
+                          />
+                        ) : (
+                          <input
+                            id={field.id}
+                            type="text"
+                            value={val}
+                            onChange={e => onUpdateField(field.id, e.target.value)}
+                            placeholder={field.placeholder}
+                            className="w-full rounded-lg bg-black border border-white/12 focus:border-[#09ADEF] p-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none"
+                          />
+                        )}
                       </div>
                     );
                   })}
+                </div>
               </div>
 
-              <div className="pt-4 border-t border-white/8 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setActivePanel('LESSON')}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-xs font-medium text-slate-300 cursor-pointer"
-                >
-                  <ChevronLeft className="w-4 h-4" /> Back to Lesson
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActivePanel('RUBRIC')}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-sm transition-all cursor-pointer shadow-lg shadow-sky-500/20"
-                >
-                  <span>Next: Done-When Test & Gate Review</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+              {/* Bottom Slider Navigation Bar */}
+              <div className="pt-4 border-t border-white/[0.07] flex items-center justify-between gap-2">
+                {safeSlideIdx > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setWorksheetSlideIdx(i => Math.max(0, i - 1))}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-neutral-200 cursor-pointer"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>Prev Panel ({safeSlideIdx} of {worksheetSlides.length})</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setActivePanel('LESSON')}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-neutral-300 cursor-pointer"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>Back to Lesson</span>
+                  </button>
+                )}
+
+                {safeSlideIdx < worksheetSlides.length - 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => setWorksheetSlideIdx(i => Math.min(worksheetSlides.length - 1, i + 1))}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-lg btn-2mm text-xs cursor-pointer"
+                  >
+                    <span>Next Panel ({safeSlideIdx + 2} of {worksheetSlides.length})</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setActivePanel('RUBRIC')}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-lg btn-2mm text-xs cursor-pointer"
+                  >
+                    <span>Next: Gate Check</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           )}
