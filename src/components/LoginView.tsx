@@ -115,11 +115,14 @@ export const LoginView: React.FC<LoginViewProps> = ({
       {/* Subtle top-center cyan ambient glow matching joshbeechraft.com */}
       <div className="w-[500px] h-[360px] rounded-full bg-[#09ADEF]/10 blur-[130px] pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2" />
 
-      {/* Top Brand Wordmark Bar */}
+      {/* Top Brand Logo Bar */}
       <header className="w-full max-w-6xl mx-auto flex items-center justify-between z-10">
-        <div className="font-display text-2xl sm:text-3xl tracking-wide select-none">
-          <span className="text-[#09ADEF]">JOSH</span>{' '}
-          <span className="text-white">BEECHRAFT</span>
+        <div className="flex items-center gap-3">
+          <img
+            src="/2mmshift-logo-wide.png"
+            alt="The 2mm Shift Logo"
+            className="h-10 sm:h-12 w-auto object-contain select-none"
+          />
         </div>
         <span className="eyebrow-pill px-3.5 py-1 rounded-full text-[10px]">
           2MMSHIFT OS

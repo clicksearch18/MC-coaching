@@ -787,16 +787,17 @@ export function App() {
       {/* Minimal Left Navigation Rail (Desktop) */}
       <aside className="hidden md:flex w-60 shrink-0 flex-col justify-between border-r border-white/[0.07] bg-[#040507] p-5 sticky top-0 h-dvh">
         <div className="space-y-7">
-          {/* Signature JOSH BEECHRAFT Brand Header */}
-          <div className="px-1 pt-1 space-y-1">
-            <div className="font-display text-2xl tracking-wide leading-none select-none">
-              <span className="text-[#09ADEF]">JOSH</span>{' '}
-              <span className="text-white">BEECHRAFT</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-4 h-[1.5px] bg-[#09ADEF]" />
+          {/* Official THE 2MM SHIFT Logo & JOSH BEECHRAFT Brand Header */}
+          <div className="px-1 pt-1 space-y-2.5">
+            <img
+              src="/2mmshift-logo-wide.png"
+              alt="The 2mm Shift"
+              className="h-12 w-auto object-contain select-none"
+            />
+            <div className="flex items-center gap-2 pl-0.5">
+              <span className="w-3.5 h-[1.5px] bg-[#09ADEF]" />
               <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-neutral-400">
-                2MMSHIFT ARCHITECT
+                JOSH BEECHRAFT · ARCHITECT
               </span>
             </div>
           </div>
@@ -895,10 +896,11 @@ export function App() {
         <header className="border-b border-white/[0.07] bg-black/90 backdrop-blur-md sticky top-0 z-20">
           <div className="max-w-5xl mx-auto px-3.5 sm:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="md:hidden font-display text-lg tracking-wide shrink-0 mr-1">
-                <span className="text-[#09ADEF]">JOSH</span>{' '}
-                <span className="text-white">BEECHRAFT</span>
-              </div>
+              <img
+                src="/2mmshift-logo-wide.png"
+                alt="The 2mm Shift"
+                className="md:hidden h-8 w-auto object-contain shrink-0 mr-1 select-none"
+              />
               <div className="w-7 h-7 rounded-lg bg-[#09ADEF]/15 border border-[#09ADEF]/30 text-[#09ADEF] font-bold text-xs flex items-center justify-center shrink-0">
                 {currentStudent.avatar}
               </div>

@@ -222,11 +222,9 @@ export function buildBrandedEmailHtml(
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#040507;border:1px solid rgba(255,255,255,0.09);border-radius:16px;padding:36px 32px;">
           <tr>
             <td style="padding-bottom:24px;border-bottom:1px solid rgba(255,255,255,0.07);">
-              <div style="font-size:22px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;">
-                <span style="color:#09ADEF;">JOSH</span> <span style="color:#FFFFFF;">BEECHRAFT</span>
-              </div>
-              <div style="font-size:10px;font-weight:700;letter-spacing:0.22em;color:#8E95A5;text-transform:uppercase;margin-top:4px;">
-                2MMSHIFT ARCHITECT · ${senderEmail}
+              <img src="https://mc-coaching-swart.vercel.app/2mmshift-logo-wide.png" alt="The 2mm Shift" width="150" style="display:block;height:auto;border:0;margin-bottom:8px;" />
+              <div style="font-size:10px;font-weight:700;letter-spacing:0.22em;color:#8E95A5;text-transform:uppercase;">
+                JOSH BEECHRAFT · 2MMSHIFT ARCHITECT · ${senderEmail}
               </div>
             </td>
           </tr>

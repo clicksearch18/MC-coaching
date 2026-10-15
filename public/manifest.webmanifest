@@ -1,17 +1,17 @@
 {
-  "name": "Market Concussion Coaching App (CAM-005)",
-  "short_name": "Market Concussion",
-  "description": "26-Week Build The Machine Workbook, <10-Min Daily Concussion Content & Coach Command OS",
+  "name": "THE 2MM SHIFT · Market Concussion Coaching OS",
+  "short_name": "2mmShift",
+  "description": "26-Lesson Build The Machine Workbook, <10-Min Daily Concussion Content & Coach Command OS",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#090A0F",
-  "theme_color": "#38BDF8",
+  "background_color": "#000000",
+  "theme_color": "#09ADEF",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/2mmshift-logo.png",
+      "sizes": "500x500",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
