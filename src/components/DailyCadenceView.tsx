@@ -146,22 +146,22 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
       : student.supportingVideos.filter(v => v.pillarStage === stageFilter);
 
   const steps = [
-    { num: 1 as const, title: 'Choose Hook', shortTitle: 'Hook', subtitle: 'Pick 1 of 3 angles' },
-    { num: 2 as const, title: 'Belief & CTA', shortTitle: 'Beats', subtitle: 'Beats + Shift Magnet' },
-    { num: 3 as const, title: 'Shoot Studio', shortTitle: 'Shoot', subtitle: '5-Take Teleprompter' },
-    { num: 4 as const, title: 'Verify Link', shortTitle: 'Verify', subtitle: 'Paste social URL' }
+    { num: 1 as const, title: 'Hook', shortTitle: 'Hook' },
+    { num: 2 as const, title: 'Talking Beats', shortTitle: 'Beats' },
+    { num: 3 as const, title: 'Teleprompter', shortTitle: 'Shoot' },
+    { num: 4 as const, title: 'Verify Link', shortTitle: 'Verify' }
   ];
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Sleek Segmented Sub-Navigation & Metrics Bar */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        <div className="flex overflow-x-auto no-scrollbar p-1 rounded-xl bg-white/[0.04] border border-white/8 w-full lg:w-auto">
+      {/* Clean Sub-Navigation & Day Switcher */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex overflow-x-auto no-scrollbar p-1 rounded-xl bg-white/[0.04] border border-white/8 w-full sm:w-auto">
           {[
-            { id: 'STUDIO' as const, label: 'Today’s 10-Min Studio', shortLabel: 'Studio', icon: Sparkles },
-            { id: 'QUEUE' as const, label: `Concussion Content (${completedSupportingCount}/50)`, shortLabel: `50 Videos (${completedSupportingCount})`, icon: ListVideo },
-            { id: 'CORE5' as const, label: `5 Core Videos (${completedCoreCount}/5)`, shortLabel: `Core 5 (${completedCoreCount}/5)`, icon: Award },
-            { id: 'PLAYBOOK' as const, label: `Playbook Matrix (${completedPillarCount}/15)`, shortLabel: `Playbook (${completedPillarCount})`, icon: Layers }
+            { id: 'STUDIO' as const, label: 'Studio', icon: Sparkles },
+            { id: 'QUEUE' as const, label: `50 Videos (${completedSupportingCount})`, icon: ListVideo },
+            { id: 'CORE5' as const, label: `5 Core (${completedCoreCount}/5)`, icon: Award },
+            { id: 'PLAYBOOK' as const, label: `Playbook (${completedPillarCount})`, icon: Layers }
           ].map(tab => {
             const Icon = tab.icon;
             const active = subTab === tab.id;
@@ -170,67 +170,51 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                 key={tab.id}
                 type="button"
                 onClick={() => setSubTab(tab.id)}
-                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
                   active
                     ? 'bg-sky-500 text-slate-950 font-semibold shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
-                <span className="sm:hidden">{tab.shortLabel}</span>
-                <span className="hidden sm:inline">{tab.label}</span>
+                <span>{tab.label}</span>
               </button>
             );
           })}
         </div>
 
-        <div className="flex items-center justify-between sm:justify-start gap-2">
-          <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] sm:text-xs font-medium">
+        <div className="flex items-center justify-between sm:justify-end gap-2">
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-medium">
             <Flame className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
-            <span>{student.streakDays}d Streak</span>
+            <span>{student.streakDays}d</span>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setShowQueueDrawer(true)}
-              className="px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-[11px] sm:text-xs font-medium text-slate-200 transition-colors cursor-pointer"
-            >
-              Day #{currentVideo?.dayNumber} ▾
-            </button>
-
-            <button
-              type="button"
-              onClick={onOpenImportModal}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/25 text-[11px] sm:text-xs font-medium text-sky-300 transition-colors cursor-pointer"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden sm:inline">Import Plan (.xlsx)</span>
-              <span className="sm:hidden">.xlsx</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowQueueDrawer(true)}
+            className="px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-slate-200 transition-colors cursor-pointer"
+          >
+            Day #{currentVideo?.dayNumber} ▾
+          </button>
         </div>
       </div>
 
       {/* TAB 1: SEQUENTIAL 4-STEP DAILY STUDIO */}
       {subTab === 'STUDIO' && currentVideo && (
-        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
-          {/* Current Day Hero Header Card */}
-          <div className="glass-panel rounded-2xl p-4 sm:p-8">
-            <div className="flex items-center justify-between gap-2 mb-2.5 sm:mb-4">
-              <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                <span className="px-2.5 py-0.5 sm:py-1 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30 text-[11px] sm:text-xs font-semibold">
-                  Day #{currentVideo.dayNumber}/{student.supportingVideos.length}
+        <div className="max-w-3xl mx-auto space-y-4">
+          {/* Clean Current Day Header + 4-Step Segmented Bar */}
+          <div className="glass-panel rounded-2xl p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-md bg-sky-500/15 text-sky-300 text-xs font-semibold">
+                  Day #{currentVideo.dayNumber}
                 </span>
-                <span className="px-2.5 py-0.5 sm:py-1 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/25 text-[11px] sm:text-xs truncate">
+                <span className="text-xs text-slate-400">
                   {shiftDay.day} · {shiftDay.stage}
-                </span>
-                <span className="hidden sm:inline-block px-2.5 py-1 rounded-full bg-white/[0.05] text-slate-300 text-xs">
-                  {currentVideo.pillarStage}
                 </span>
               </div>
 
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex items-center gap-1">
                 <button
                   type="button"
                   disabled={selectedIndex === 0}
@@ -238,7 +222,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     setSelectedIndex(i => Math.max(0, i - 1));
                     setActiveStep(1);
                   }}
-                  className="p-1.5 sm:p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/8 text-slate-300 disabled:opacity-30 cursor-pointer"
+                  className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/8 text-slate-300 disabled:opacity-30 cursor-pointer"
                   title="Previous Day"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -250,7 +234,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     setSelectedIndex(i => Math.min(student.supportingVideos.length - 1, i + 1));
                     setActiveStep(1);
                   }}
-                  className="p-1.5 sm:p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/8 text-slate-300 disabled:opacity-30 cursor-pointer"
+                  className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/8 text-slate-300 disabled:opacity-30 cursor-pointer"
                   title="Next Day"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -258,13 +242,12 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
               </div>
             </div>
 
-            <h1 className="text-lg sm:text-3xl font-bold tracking-tight text-white leading-snug">
+            <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-white leading-snug">
               “{currentVideo.title}”
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">{shiftDay.objective}</p>
 
-            {/* Horizontal 4-Step Sequential Stepper (Single compact row on mobile, full cards on desktop) */}
-            <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 mt-4 sm:mt-7 pt-4 sm:pt-6 border-t border-white/8">
+            {/* Clean Single-Row 4-Step Stepper */}
+            <div className="grid grid-cols-4 gap-1.5 mt-4 pt-4 border-t border-white/8">
               {steps.map(s => {
                 const isCurrent = activeStep === s.num;
                 const isPassed = activeStep > s.num || currentVideo.status === 'Completed';
@@ -273,32 +256,23 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     key={s.num}
                     type="button"
                     onClick={() => setActiveStep(s.num)}
-                    className={`text-center sm:text-left p-2 sm:p-3 rounded-xl border transition-all cursor-pointer flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 ${
+                    className={`py-2 px-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs font-semibold ${
                       isCurrent
-                        ? 'bg-sky-500/15 border-sky-400 text-white shadow-sm'
+                        ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-sm'
                         : isPassed
-                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'
-                        : 'bg-white/[0.02] border-white/8 text-slate-400 hover:bg-white/[0.05]'
+                        ? 'bg-emerald-500/12 border-emerald-500/30 text-emerald-300'
+                        : 'bg-white/[0.02] border-white/8 text-slate-400 hover:text-white'
                     }`}
                   >
-                    <div
-                      className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold shrink-0 ${
-                        isCurrent
-                          ? 'bg-sky-400 text-slate-950'
-                          : isPassed
-                          ? 'bg-emerald-500 text-slate-950'
-                          : 'bg-white/10 text-slate-300'
-                      }`}
-                    >
-                      {isPassed && !isCurrent ? <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[3]" /> : s.num}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-[11px] sm:text-xs font-semibold truncate">
-                        <span className="sm:hidden">{s.shortTitle}</span>
-                        <span className="hidden sm:inline">{s.title}</span>
-                      </div>
-                      <div className="hidden sm:block text-[11px] opacity-75 truncate">{s.subtitle}</div>
-                    </div>
+                    {isPassed && !isCurrent ? (
+                      <Check className="w-3.5 h-3.5 stroke-[3] shrink-0" />
+                    ) : (
+                      <span>{s.num}.</span>
+                    )}
+                    <span className="truncate">
+                      <span className="sm:hidden">{s.shortTitle}</span>
+                      <span className="hidden sm:inline">{s.title}</span>
+                    </span>
                   </button>
                 );
               })}
@@ -306,27 +280,19 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
           </div>
 
           {/* SEQUENTIAL PANEL CONTENT */}
-          <div className="glass-panel rounded-2xl p-4 sm:p-8 transition-all">
+          <div className="glass-panel rounded-2xl p-4 sm:p-6 transition-all">
             {/* PANEL 1: CHOOSE YOUR HOOK */}
             {activeStep === 1 && (
-              <div className="space-y-4 sm:space-y-5">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-sky-400">
-                      Step 1 of 4 · 0:00–0:15 Signal
-                    </span>
-                    <h2 className="text-lg sm:text-xl font-semibold text-white mt-0.5">
-                      Choose your opening hook
-                    </h2>
-                  </div>
-                  <span className="hidden sm:inline text-xs text-slate-400">Select one option to continue</span>
-                </div>
+              <div className="space-y-4">
+                <h2 className="text-base sm:text-lg font-semibold text-white">
+                  1. Select Opening Hook
+                </h2>
 
-                <div className="grid grid-cols-1 gap-2.5 sm:gap-3.5">
+                <div className="grid grid-cols-1 gap-2.5">
                   {[
-                    { num: 1 as const, badge: 'Option 1 · Outcome & Reputation', text: currentVideo.hook1 },
-                    { num: 2 as const, badge: 'Option 2 · Contrarian & Curiosity', text: currentVideo.hook2 },
-                    { num: 3 as const, badge: 'Option 3 · Status & Risk', text: currentVideo.hook3 }
+                    { num: 1 as const, badge: 'Option 1 · Outcome', text: currentVideo.hook1 },
+                    { num: 2 as const, badge: 'Option 2 · Contrarian', text: currentVideo.hook2 },
+                    { num: 3 as const, badge: 'Option 3 · Status', text: currentVideo.hook3 }
                   ].map(h => {
                     const isSelected = selectedHookNum === h.num;
                     return (

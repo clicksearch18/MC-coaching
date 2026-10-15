@@ -176,61 +176,39 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
   const completedSupporting = activeStudent.supportingVideos.filter(v => v.status === 'Completed');
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Admin / Coach Action Header Banner */}
-      <div className="glass-panel rounded-2xl px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2 min-w-0">
-          <span className="px-2.5 py-0.5 rounded-full bg-sky-500/15 text-sky-300 text-[11px] font-semibold">
-            Coach & Admin Center
-          </span>
-          <span className="hidden sm:inline text-xs text-slate-400">
-            Onboard new students, upload their custom <code className="text-sky-300">.xlsx</code> content plan, edit their specifics, and manage daily accountability.
-          </span>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setShowAddStudentModal(true)}
-          className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs transition-all cursor-pointer shadow-lg shadow-sky-500/20 shrink-0"
-        >
-          <UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          <span className="hidden sm:inline">+ Onboard New Student</span>
-          <span className="sm:hidden">+ New Student</span>
-        </button>
-      </div>
-
-      {/* Top Sleek KPI Summary Row (Compact on mobile) */}
+    <div className="space-y-4 sm:space-y-5">
+      {/* Top Sleek KPI Summary Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        <div className="glass-panel rounded-2xl p-3.5 sm:p-5 flex items-center justify-between">
+        <div className="glass-panel rounded-2xl p-3.5 sm:p-4 flex items-center justify-between">
           <div>
-            <div className="text-[11px] sm:text-xs font-medium text-slate-400">Active Cohort</div>
-            <div className="text-lg sm:text-2xl font-bold text-white mt-0.5 sm:mt-1">{students.length} Operators</div>
+            <div className="text-[11px] font-medium text-slate-400">Active Cohort</div>
+            <div className="text-lg sm:text-xl font-bold text-white mt-0.5">{students.length} Operators</div>
           </div>
-          <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-sky-500/15 text-sky-400 flex items-center justify-center text-xs sm:text-base font-bold">
+          <span className="w-8 h-8 rounded-xl bg-sky-500/15 text-sky-400 flex items-center justify-center text-xs font-bold">
             {students.length}
           </span>
         </div>
 
-        <div className="glass-panel rounded-2xl p-3.5 sm:p-5 flex items-center justify-between">
+        <div className="glass-panel rounded-2xl p-3.5 sm:p-4 flex items-center justify-between">
           <div>
-            <div className="text-[11px] sm:text-xs font-medium text-emerald-300">Posted Today</div>
-            <div className="text-lg sm:text-2xl font-bold text-emerald-400 mt-0.5 sm:mt-1">{onCadenceCount} Verified</div>
+            <div className="text-[11px] font-medium text-emerald-300">Posted Today</div>
+            <div className="text-lg sm:text-xl font-bold text-emerald-400 mt-0.5">{onCadenceCount} Verified</div>
           </div>
-          <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/50" />
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
         </div>
 
-        <div className="glass-panel rounded-2xl p-3.5 sm:p-5 flex items-center justify-between">
+        <div className="glass-panel rounded-2xl p-3.5 sm:p-4 flex items-center justify-between">
           <div>
-            <div className="text-[11px] sm:text-xs font-medium text-amber-300">Due Today</div>
-            <div className="text-lg sm:text-2xl font-bold text-amber-400 mt-0.5 sm:mt-1">{pendingCount} Pending</div>
+            <div className="text-[11px] font-medium text-amber-300">Due Today</div>
+            <div className="text-lg sm:text-xl font-bold text-amber-400 mt-0.5">{pendingCount} Pending</div>
           </div>
-          <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-amber-400 shadow-lg shadow-amber-400/50" />
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
         </div>
 
-        <div className="glass-panel rounded-2xl p-3.5 sm:p-5 flex items-center justify-between">
+        <div className="glass-panel rounded-2xl p-3.5 sm:p-4 flex items-center justify-between">
           <div>
-            <div className="text-[11px] sm:text-xs font-medium text-rose-300">Missed Video</div>
-            <div className="text-lg sm:text-2xl font-bold text-rose-400 mt-0.5 sm:mt-1">{missedCount} At Risk</div>
+            <div className="text-[11px] font-medium text-rose-300">Missed Video</div>
+            <div className="text-lg sm:text-xl font-bold text-rose-400 mt-0.5">{missedCount} At Risk</div>
           </div>
           <button
             type="button"
@@ -238,18 +216,15 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
               const missedStudent = students.find(s => s.todayVideoStatus === 'MISSED') || activeStudent;
               onTriggerMissedAlertPush(missedStudent);
             }}
-            className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-[10px] sm:text-[11px] font-semibold text-rose-300 cursor-pointer"
+            className="px-2.5 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-[10px] font-semibold text-rose-300 cursor-pointer"
           >
             Alert
           </button>
         </div>
       </div>
 
-      {/* Mobile-Only Compact Student Switcher Bar (Replaces bulky roster stack on mobile) */}
+      {/* Mobile-Only Compact Student Switcher Bar */}
       <div className="lg:hidden glass-panel rounded-xl p-2.5 flex items-center justify-between gap-2">
-        <label htmlFor="mobile-student-select" className="text-[11px] font-semibold text-slate-400 shrink-0 pl-1">
-          Student:
-        </label>
         <select
           id="mobile-student-select"
           value={activeStudent.id}
@@ -262,11 +237,18 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
             </option>
           ))}
         </select>
+        <button
+          type="button"
+          onClick={() => setShowAddStudentModal(true)}
+          className="px-2.5 py-2 rounded-lg bg-sky-500 text-slate-950 text-[11px] font-semibold shrink-0 cursor-pointer"
+        >
+          + New
+        </button>
         {onPreviewStudentDashboard && (
           <button
             type="button"
             onClick={() => onPreviewStudentDashboard(activeStudent.id)}
-            className="px-2.5 py-2 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-300 text-[11px] font-semibold shrink-0"
+            className="px-2.5 py-2 rounded-lg bg-white/[0.06] border border-white/15 text-slate-200 text-[11px] font-semibold shrink-0 cursor-pointer"
           >
             Preview
           </button>
