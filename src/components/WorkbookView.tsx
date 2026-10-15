@@ -109,10 +109,10 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                   setSelectedSection('ALL');
                   setActivePanel('LESSON');
                 }}
-                className={`px-3 py-2 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2 shrink-0 text-xs font-semibold ${
+                className={`px-3.5 py-2 rounded-lg border text-left transition-all cursor-pointer flex items-center gap-2 shrink-0 text-[11px] font-bold uppercase tracking-[0.08em] ${
                   isSelectedPhase
-                    ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-sm'
-                    : 'bg-white/[0.03] border-white/8 text-slate-400 hover:text-white'
+                    ? 'bg-[#09ADEF] text-white border-[#09ADEF] shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
+                    : 'bg-[#07090D] border-white/[0.08] text-neutral-400 hover:text-white'
                 }`}
               >
                 <span>Phase {p.num}: {p.name}</span>
@@ -125,7 +125,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
           <button
             type="button"
             onClick={openEditor}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs font-semibold text-sky-300 transition-colors cursor-pointer shrink-0"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-[11px] font-bold uppercase tracking-wider text-[#09ADEF] transition-colors cursor-pointer shrink-0"
           >
             <Pencil className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Edit Lesson</span>
@@ -143,7 +143,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
             setSelectedSection('ALL');
             setActivePanel('LESSON');
           }}
-          className="p-2 rounded-lg bg-white/[0.04] border border-white/8 text-slate-300 disabled:opacity-30 shrink-0"
+          className="p-2 rounded-lg bg-[#0A0C10] border border-white/10 text-neutral-300 disabled:opacity-30 shrink-0"
           aria-label="Previous Lesson"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -157,7 +157,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
             setActivePanel('LESSON');
           }}
           aria-label="Select lesson"
-          className="flex-1 min-w-0 rounded-lg bg-[#0B0D14] border border-white/12 px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-sky-400"
+          className="flex-1 min-w-0 rounded-lg bg-black border border-white/15 px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-[#09ADEF]"
         >
           {lessons.map(l => (
             <option key={l.weekNumber} value={l.weekNumber}>
@@ -174,7 +174,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
             setSelectedSection('ALL');
             setActivePanel('LESSON');
           }}
-          className="p-2 rounded-lg bg-white/[0.04] border border-white/8 text-slate-300 disabled:opacity-30 shrink-0"
+          className="p-2 rounded-lg bg-[#0A0C10] border border-white/10 text-neutral-300 disabled:opacity-30 shrink-0"
           aria-label="Next Lesson"
         >
           <ChevronRight className="w-4 h-4" />
@@ -202,27 +202,27 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                   }}
                   className={`w-full text-left p-2.5 rounded-xl border transition-all cursor-pointer flex items-start justify-between gap-2 ${
                     isSelected
-                      ? 'bg-sky-500/15 border-sky-400 text-white'
-                      : 'bg-white/[0.02] border-transparent hover:bg-white/[0.05] text-slate-300'
+                      ? 'bg-[#09ADEF]/12 border-[#09ADEF] text-white'
+                      : 'bg-[#040507] border-transparent hover:bg-white/[0.04] text-neutral-300'
                   }`}
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-bold text-sky-400">
-                        Lesson {String(lesson.weekNumber).padStart(2, '0')}
+                      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#09ADEF]">
+                        LESSON {String(lesson.weekNumber).padStart(2, '0')}
                       </span>
                       {lesson.isPhaseGate && (
-                        <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-semibold">
-                          Gate
+                        <span className="badge-2mm px-1.5 py-0.5 rounded-full text-[9px]">
+                          GATE
                         </span>
                       )}
                     </div>
-                    <div className="text-xs font-medium text-slate-100 mt-0.5 line-clamp-1">
+                    <div className="text-xs font-medium text-white mt-0.5 line-clamp-1">
                       {lesson.title}
                     </div>
                   </div>
                   {allTasksDone && (
-                    <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="w-4 h-4 rounded-full bg-[#09ADEF]/20 text-[#09ADEF] flex items-center justify-center shrink-0 mt-0.5">
                       <Check className="w-2.5 h-2.5 stroke-[3]" />
                     </span>
                   )}
@@ -232,7 +232,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
           </div>
 
           {/* All 26 Lessons Quick Dropdown */}
-          <div className="pt-2.5 border-t border-white/8">
+          <div className="pt-2.5 border-t border-white/[0.07]">
             <select
               value={selectedLessonNum}
               onChange={e => {
@@ -241,7 +241,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 setActivePanel('LESSON');
               }}
               aria-label="Jump to lesson"
-              className="w-full rounded-xl bg-[#0B0D14] border border-white/12 px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-400"
+              className="w-full rounded-lg bg-[#040507] border border-white/12 px-2.5 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#09ADEF]"
             >
               {lessons.map(l => (
                 <option key={l.weekNumber} value={l.weekNumber}>
@@ -255,15 +255,16 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
         {/* Right 9 Columns: Active Lesson */}
         <div className="lg:col-span-9 space-y-4">
           {/* Clean Lesson Header & 3-Tab Switcher */}
-          <div className="glass-panel rounded-2xl p-4 sm:p-6">
-            <div className="flex items-center justify-between gap-2 mb-1.5">
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md bg-sky-500/15 text-sky-300 text-xs font-semibold">
-                  Lesson {activeLesson.weekNumber} of 26
+          <div className="glass-panel rounded-2xl p-5 sm:p-7">
+            <div className="flex items-center justify-between gap-2 mb-2.5">
+              <div className="flex items-center gap-2.5">
+                <span className="w-5 h-[1.5px] bg-[#09ADEF]" />
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#09ADEF]">
+                  LESSON {activeLesson.weekNumber} OF 26 · PHASE 0{activeLesson.phase}
                 </span>
                 {activeLesson.isPhaseGate && (
-                  <span className="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 text-xs font-semibold">
-                    Phase Gate
+                  <span className="badge-2mm px-2.5 py-0.5 rounded-full text-[9px]">
+                    PHASE GATE
                   </span>
                 )}
               </div>
@@ -277,7 +278,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                     setSelectedSection('ALL');
                     setActivePanel('LESSON');
                   }}
-                  className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/8 text-slate-300 disabled:opacity-30 cursor-pointer"
+                  className="p-1.5 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-neutral-300 disabled:opacity-30 cursor-pointer"
                   title="Previous Lesson"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -290,7 +291,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                     setSelectedSection('ALL');
                     setActivePanel('LESSON');
                   }}
-                  className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/8 text-slate-300 disabled:opacity-30 cursor-pointer"
+                  className="p-1.5 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-neutral-300 disabled:opacity-30 cursor-pointer"
                   title="Next Lesson"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -298,20 +299,20 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               </div>
             </div>
 
-            <h1 className="text-lg sm:text-2xl font-bold text-white tracking-tight">
+            <h1 className="font-display text-2xl sm:text-4xl text-white tracking-wide">
               {activeLesson.title}
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">{activeLesson.subtitle}</p>
+            <p className="text-xs sm:text-sm text-neutral-400 mt-1.5 leading-relaxed">{activeLesson.subtitle}</p>
 
             {/* Clean Single-Row 3-Tab Switcher */}
-            <div className="grid grid-cols-3 gap-1.5 mt-4 pt-4 border-t border-white/8">
+            <div className="grid grid-cols-3 gap-1.5 mt-5 pt-4 border-t border-white/[0.07]">
               <button
                 type="button"
                 onClick={() => setActivePanel('LESSON')}
-                className={`py-2 px-3 rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs font-semibold ${
+                className={`py-2 px-3 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] ${
                   activePanel === 'LESSON'
-                    ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-sm'
-                    : 'bg-white/[0.02] border-white/8 text-slate-400 hover:text-white'
+                    ? 'bg-[#09ADEF] text-white border-[#09ADEF] shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
+                    : 'bg-[#07090D] border-white/[0.07] text-neutral-400 hover:text-white'
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5 shrink-0" />
@@ -321,10 +322,10 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               <button
                 type="button"
                 onClick={() => setActivePanel('WORKSHEET')}
-                className={`py-2 px-3 rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs font-semibold ${
+                className={`py-2 px-3 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] ${
                   activePanel === 'WORKSHEET'
-                    ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-sm'
-                    : 'bg-white/[0.02] border-white/8 text-slate-400 hover:text-white'
+                    ? 'bg-[#09ADEF] text-white border-[#09ADEF] shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
+                    : 'bg-[#07090D] border-white/[0.07] text-neutral-400 hover:text-white'
                 }`}
               >
                 <FileEdit className="w-3.5 h-3.5 shrink-0" />
@@ -334,10 +335,10 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               <button
                 type="button"
                 onClick={() => setActivePanel('RUBRIC')}
-                className={`py-2 px-3 rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs font-semibold ${
+                className={`py-2 px-3 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] ${
                   activePanel === 'RUBRIC'
-                    ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-sm'
-                    : 'bg-white/[0.02] border-white/8 text-slate-400 hover:text-white'
+                    ? 'bg-[#09ADEF] text-white border-[#09ADEF] shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
+                    : 'bg-[#07090D] border-white/[0.07] text-neutral-400 hover:text-white'
                 }`}
               >
                 <Award className="w-3.5 h-3.5 shrink-0" />
@@ -348,18 +349,18 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
 
           {/* SEQUENTIAL PANEL 1: THE LESSON, REFERENCE FIGURES & ACTION CHECKLIST */}
           {activePanel === 'LESSON' && (
-            <div className="glass-panel rounded-2xl p-4 sm:p-8 space-y-5 sm:space-y-6">
+            <div className="glass-panel rounded-2xl p-5 sm:p-7 space-y-5 sm:space-y-6">
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-sky-400">
-                  Part 1 · Core Lesson Principles
+                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                  PART 1 · CORE LESSON PRINCIPLES
                 </span>
-                <ul className="space-y-2.5 sm:space-y-3 mt-3">
+                <ul className="space-y-2.5 mt-3">
                   {activeLesson.lessonBullets.map((b, idx) => (
                     <li
                       key={idx}
-                      className="p-3.5 sm:p-4 rounded-xl bg-white/[0.02] border border-white/8 text-xs sm:text-sm text-slate-200 flex items-start gap-3 leading-relaxed"
+                      className="p-3.5 sm:p-4 rounded-xl bg-[#040507] border border-white/[0.07] text-xs sm:text-sm text-neutral-200 flex items-start gap-3 leading-relaxed"
                     >
-                      <span className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-300 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="w-5 h-5 rounded-full bg-[#09ADEF]/15 text-[#09ADEF] text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
                         {idx + 1}
                       </span>
                       <span>{b}</span>
@@ -370,28 +371,28 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
 
               {/* 1-to-1 PDF Reference Figures (FIG. 00 through FIG. 28) — Collapsible on mobile */}
               {activeLesson.referenceFigures && activeLesson.referenceFigures.length > 0 && (
-                <div className="pt-4 border-t border-white/8 space-y-3">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-sky-400 block">
-                    Workbook Reference Figures & Frameworks ({activeLesson.referenceFigures.length})
+                <div className="pt-4 border-t border-white/[0.07] space-y-3">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF] block">
+                    WORKBOOK REFERENCE FIGURES ({activeLesson.referenceFigures.length})
                   </span>
                   {activeLesson.referenceFigures.map((fig, fIdx) => (
                     <details
                       key={`${fig.figNumber}-${fIdx}`}
                       open={fIdx === 0}
-                      className="group rounded-xl bg-white/[0.02] border border-white/10 p-3.5 sm:p-5 space-y-3"
+                      className="group rounded-xl bg-[#040507] border border-white/[0.08] p-3.5 sm:p-5 space-y-3"
                     >
                       <summary className="flex flex-wrap items-center justify-between gap-2 cursor-pointer list-none">
                         <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[11px] font-bold">
+                          <span className="badge-2mm px-2.5 py-0.5 rounded-full text-[10px]">
                             {fig.figNumber}
                           </span>
                           <h4 className="text-xs sm:text-sm font-semibold text-white">{fig.title}</h4>
                         </div>
                         <div className="flex items-center gap-2">
                           {fig.caption && (
-                            <span className="hidden sm:inline text-xs text-slate-400">{fig.caption}</span>
+                            <span className="hidden sm:inline text-xs text-neutral-400">{fig.caption}</span>
                           )}
-                          <span className="text-xs text-sky-400 group-open:rotate-90 transition-transform">▸</span>
+                          <span className="text-xs text-[#09ADEF] group-open:rotate-90 transition-transform">▸</span>
                         </div>
                       </summary>
 
@@ -400,20 +401,20 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                           {fig.cards.map((card, cIdx) => (
                             <div
                               key={cIdx}
-                              className="p-3.5 rounded-xl bg-[#0B0D14] border border-white/8 space-y-1"
+                              className="p-3.5 rounded-xl bg-black border border-white/[0.07] space-y-1"
                             >
                               <div className="flex items-center justify-between gap-2">
                                 <span className="text-xs font-semibold text-white">{card.title}</span>
                                 {card.badge && (
-                                  <span className="px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 text-[10px] font-semibold">
+                                  <span className="badge-2mm px-2 py-0.5 rounded-full text-[9px]">
                                     {card.badge}
                                   </span>
                                 )}
                               </div>
                               {card.subtitle && (
-                                <div className="text-[11px] font-medium text-sky-400">{card.subtitle}</div>
+                                <div className="text-[11px] font-medium text-[#09ADEF]">{card.subtitle}</div>
                               )}
-                              <p className="text-xs text-slate-300 leading-relaxed">{card.body}</p>
+                              <p className="text-xs text-neutral-300 leading-relaxed">{card.body}</p>
                             </div>
                           ))}
                         </div>

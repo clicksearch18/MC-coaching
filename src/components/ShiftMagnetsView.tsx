@@ -127,7 +127,7 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
     <div className="space-y-4 sm:space-y-6">
       {/* Segmented Sub-Nav + Add Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex overflow-x-auto no-scrollbar p-1 rounded-xl bg-white/[0.04] border border-white/8 w-full sm:w-auto">
+        <div className="flex overflow-x-auto no-scrollbar p-1 rounded-xl bg-[#07090D] border border-white/[0.08] w-full sm:w-auto">
           {[
             { id: 'MAGNETS' as const, label: `Shift Magnets (${student.shiftMagnets.length})`, shortLabel: `Magnets (${student.shiftMagnets.length})`, icon: Magnet },
             { id: 'DM_MATRIX' as const, label: 'S.H.I.F.T. DM Playbook', shortLabel: 'DM Playbook', icon: MessageSquare },
@@ -140,10 +140,10 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
                 key={t.id}
                 type="button"
                 onClick={() => setSubTab(t.id)}
-                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-[0.08em] whitespace-nowrap transition-all cursor-pointer ${
                   active
-                    ? 'bg-sky-500 text-slate-950 font-semibold shadow-sm'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-[#09ADEF] text-white shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
+                    : 'text-neutral-400 hover:text-white'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -157,72 +157,70 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
         <button
           type="button"
           onClick={() => setShowAddModal(true)}
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs transition-all cursor-pointer shadow-lg shadow-sky-500/20"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg btn-2mm text-xs cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>New Shift Magnet</span>
         </button>
       </div>
 
-      {/* PANEL 1: SHIFT MAGNETS REPOSITORY */}
+      {/* PANEL 1: SHIFT MAGNETS REPOSITORY (Styled after Results Over Rhetoric cards) */}
       {subTab === 'MAGNETS' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
           {student.shiftMagnets.map(mag => (
             <div
               key={mag.id}
-              className="glass-panel rounded-2xl p-4 sm:p-6 flex flex-col justify-between space-y-4 sm:space-y-5"
+              className="glass-panel rounded-2xl p-5 sm:p-6 flex flex-col justify-between space-y-5"
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="px-3 py-1 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-300 text-xs font-semibold">
-                    Keyword: “{mag.keywordTrigger}”
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                    KEYWORD: “{mag.keywordTrigger}” · {mag.deliveryFormat}
                   </span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">{mag.deliveryFormat}</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onUpdateShiftMagnet(mag.id, { status: mag.status === 'Live' ? 'Draft' : 'Live' })
-                      }
-                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium cursor-pointer ${
-                        mag.status === 'Live'
-                          ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                          : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                      }`}
-                    >
-                      {mag.status}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onUpdateShiftMagnet(mag.id, { status: mag.status === 'Live' ? 'Draft' : 'Live' })
+                    }
+                    className="badge-2mm px-2.5 py-0.5 rounded-full text-[9px] cursor-pointer"
+                  >
+                    {mag.status}
+                  </button>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold text-white leading-snug">{mag.workingTitle}</h3>
-                  <p className="text-xs text-slate-400 mt-1">{mag.specificAudience}</p>
+                  <h3 className="font-display text-2xl text-white tracking-wide leading-tight">
+                    {mag.workingTitle}
+                  </h3>
+                  <p className="text-xs text-neutral-400 mt-1">{mag.specificAudience}</p>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-sky-500/[0.06] border border-sky-500/20">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-sky-300 block mb-1">
-                    Belief It Shifts
+                {/* Signature Vertical Left-Border THE SHIFT Callout */}
+                <div className="border-l-2 border-[#09ADEF]/60 pl-3.5 py-0.5 space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400 block">
+                    THE SHIFT:
                   </span>
-                  <p className="text-xs text-slate-100 leading-relaxed">{mag.beliefItShifts}</p>
+                  <p className="text-xs text-white leading-relaxed">{mag.beliefItShifts}</p>
                 </div>
 
                 <div>
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-1">
-                    Immediate Win ({mag.completionTime})
+                  <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-500 block mb-1">
+                    IMMEDIATE WIN ({mag.completionTime}):
                   </span>
-                  <p className="text-xs text-slate-300 leading-relaxed">{mag.promiseOneSentence}</p>
+                  <p className="text-xs text-white font-semibold leading-relaxed">{mag.promiseOneSentence}</p>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-white/8 space-y-3">
-                <div className="p-3.5 rounded-xl bg-[#0B0D14] border border-white/8 text-xs">
+              <div className="pt-4 border-t border-white/[0.07] space-y-3">
+                <div className="p-3.5 rounded-xl bg-[#040507] border border-white/[0.07] text-xs">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-semibold text-emerald-400">DM Handoff Opener</span>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#09ADEF]">
+                      DM Handoff Opener
+                    </span>
                     <button
                       type="button"
                       onClick={() => handleCopy(mag.id, mag.dmHandoffScript)}
-                      className="text-sky-400 hover:text-sky-300 font-medium flex items-center gap-1 cursor-pointer"
+                      className="text-[#09ADEF] hover:underline font-medium flex items-center gap-1 cursor-pointer"
                     >
                       {copiedId === mag.id ? (
                         <>
@@ -230,20 +228,20 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
                         </>
                       ) : (
                         <>
-                          <Copy className="w-3.5 h-3.5" /> Copy Script
+                          <Copy className="w-3.5 h-3.5" /> Copy
                         </>
                       )}
                     </button>
                   </div>
-                  <p className="text-slate-300 leading-relaxed">“{mag.dmHandoffScript}”</p>
+                  <p className="text-neutral-300 leading-relaxed">“{mag.dmHandoffScript}”</p>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+                <div className="flex items-center justify-between text-xs text-neutral-500 px-1">
                   <span className="truncate max-w-[200px]">{mag.trackingLink}</span>
                   <button
                     type="button"
                     onClick={() => handleCopy(`${mag.id}-link`, mag.trackingLink)}
-                    className="text-sky-400 hover:underline font-medium cursor-pointer"
+                    className="badge-2mm px-2.5 py-1 rounded-full text-[9px] cursor-pointer"
                   >
                     {copiedId === `${mag.id}-link` ? 'Copied!' : 'Copy Link'}
                   </button>

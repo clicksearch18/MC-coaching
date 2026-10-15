@@ -601,7 +601,7 @@ export function App() {
     : allNavItems.filter(item => item.role === 'STUDENT');
 
   return (
-    <div className="min-h-dvh flex bg-[#090A0F] text-slate-100">
+    <div className="min-h-dvh flex bg-black text-white">
       {/* Live Push Notification Toast Stack */}
       {pushBanners.length > 0 && (
         <div className="fixed bottom-20 md:bottom-5 right-3.5 md:right-5 z-50 w-[92vw] max-w-sm space-y-2.5">
@@ -610,25 +610,25 @@ export function App() {
               key={b.id}
               className={`rounded-2xl border p-3.5 sm:p-4 shadow-2xl backdrop-blur-xl flex items-start justify-between gap-3 ${
                 b.type === 'MISSED_ALERT'
-                  ? 'border-rose-500/40 bg-[#1B1016]/95 text-white'
+                  ? 'border-rose-500/40 bg-[#14070B]/95 text-white'
                   : b.type === 'COACH_NUDGE'
-                  ? 'border-sky-500/40 bg-[#0F1826]/95 text-white'
-                  : 'border-emerald-500/40 bg-[#0E1B18]/95 text-white'
+                  ? 'border-[#09ADEF]/40 bg-[#050C14]/95 text-white'
+                  : 'border-emerald-500/40 bg-[#06130E]/95 text-white'
               }`}
             >
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-xl bg-sky-500/15 text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-8 h-8 rounded-xl bg-[#09ADEF]/15 text-[#09ADEF] flex items-center justify-center shrink-0 mt-0.5">
                   <Smartphone className="w-4 h-4" />
                 </div>
                 <div>
                   <div className="text-sm font-semibold text-white">{b.title}</div>
-                  <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">{b.body}</p>
+                  <p className="text-xs text-neutral-300 mt-0.5 leading-relaxed">{b.body}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setPushBanners(prev => prev.filter(x => x.id !== b.id))}
-                className="text-xs text-slate-400 hover:text-white cursor-pointer"
+                className="text-xs text-neutral-400 hover:text-white cursor-pointer"
               >
                 ✕
               </button>
@@ -638,20 +638,24 @@ export function App() {
       )}
 
       {/* Minimal Left Navigation Rail (Desktop) */}
-      <aside className="hidden md:flex w-56 shrink-0 flex-col justify-between border-r border-white/8 bg-[#0C0E16] p-4 sticky top-0 h-dvh">
-        <div className="space-y-6">
-          {/* Brand Header */}
-          <div className="flex items-center gap-2.5 px-2 pt-1">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-slate-950 font-black text-xs shadow-md shadow-sky-500/15">
-              MC
+      <aside className="hidden md:flex w-60 shrink-0 flex-col justify-between border-r border-white/[0.07] bg-[#040507] p-5 sticky top-0 h-dvh">
+        <div className="space-y-7">
+          {/* Signature JOSH BEECHRAFT Brand Header */}
+          <div className="px-1 pt-1 space-y-1">
+            <div className="font-display text-2xl tracking-wide leading-none select-none">
+              <span className="text-[#09ADEF]">JOSH</span>{' '}
+              <span className="text-white">BEECHRAFT</span>
             </div>
-            <div className="text-sm font-bold text-white tracking-tight">
-              Market Concussion
+            <div className="flex items-center gap-2">
+              <span className="w-4 h-[1.5px] bg-[#09ADEF]" />
+              <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-neutral-400">
+                2MMSHIFT ARCHITECT
+              </span>
             </div>
           </div>
 
           {/* Primary Navigation Menu */}
-          <nav className="space-y-1">
+          <nav className="space-y-1.5">
             {navItems.map(item => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -672,10 +676,10 @@ export function App() {
                       // ignore
                     }
                   }}
-                  className={`w-full text-left px-3 py-2.5 rounded-xl transition-all flex items-center gap-2.5 text-xs font-semibold cursor-pointer ${
+                  className={`w-full text-left px-3.5 py-2.5 rounded-lg transition-all flex items-center gap-2.5 text-xs font-bold uppercase tracking-[0.08em] cursor-pointer ${
                     isActive
-                      ? 'bg-sky-500 text-slate-950 shadow-sm'
-                      : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                      ? 'bg-[#09ADEF] text-white shadow-[0_6px_24px_rgba(9,173,239,0.35)]'
+                      : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
                   }`}
                 >
                   <Icon className="w-4 h-4 shrink-0" />
@@ -687,13 +691,13 @@ export function App() {
         </div>
 
         {/* Bottom Active Profile Switcher (Admin Only) + Logout */}
-        <div className="pt-4 border-t border-white/8 space-y-2">
+        <div className="pt-4 border-t border-white/[0.07] space-y-2">
           {isAdminSession && (
             <select
               value={activeStudentId}
               onChange={e => setActiveStudentId(e.target.value)}
               aria-label="Select active student profile"
-              className="w-full rounded-xl bg-[#141722] border border-white/10 text-xs font-medium text-white px-3 py-2 focus:outline-none focus:border-sky-400"
+              className="w-full rounded-lg bg-[#080A0E] border border-white/10 text-xs font-medium text-white px-3 py-2 focus:outline-none focus:border-[#09ADEF]"
             >
               {students.map(s => (
                 <option key={s.id} value={s.id}>
@@ -706,7 +710,7 @@ export function App() {
           <button
             type="button"
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-white/[0.03] hover:bg-rose-500/15 border border-white/8 hover:border-rose-500/30 text-xs font-medium text-slate-400 hover:text-rose-300 transition-colors cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] hover:bg-rose-500/15 border border-white/[0.07] hover:border-rose-500/30 text-xs font-medium text-neutral-400 hover:text-rose-300 transition-colors cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>
@@ -718,8 +722,8 @@ export function App() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Admin Preview Banner when viewing Student Tabs */}
         {isAdminSession && activeTab !== 'COACH' && (
-          <div className="bg-amber-500/12 border-b border-amber-500/25 px-3.5 sm:px-8 py-1.5 flex items-center justify-between gap-2 text-xs">
-            <span className="text-amber-200 truncate">
+          <div className="bg-[#09ADEF]/12 border-b border-[#09ADEF]/25 px-3.5 sm:px-8 py-1.5 flex items-center justify-between gap-2 text-xs">
+            <span className="text-neutral-200 truncate">
               Viewing <strong className="text-white">{currentStudent.name}</strong>
             </span>
             <button
@@ -733,7 +737,7 @@ export function App() {
                   // ignore
                 }
               }}
-              className="px-2.5 py-1 rounded-lg bg-amber-400 text-slate-950 font-semibold text-[11px] hover:bg-amber-300 transition-colors cursor-pointer shrink-0"
+              className="px-2.5 py-1 rounded-full bg-[#09ADEF] text-white font-bold uppercase tracking-wider text-[10px] hover:bg-[#09B3F8] transition-colors cursor-pointer shrink-0"
             >
               ← Back to Admin
             </button>
@@ -741,18 +745,21 @@ export function App() {
         )}
 
         {/* Clean Single-Row Top Header */}
-        <header className="border-b border-white/8 bg-[#090A0F]/85 backdrop-blur-md sticky top-0 z-20">
+        <header className="border-b border-white/[0.07] bg-black/90 backdrop-blur-md sticky top-0 z-20">
           <div className="max-w-5xl mx-auto px-3.5 sm:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-500/25 text-sky-300 font-semibold text-xs flex items-center justify-center shrink-0">
+              <div className="md:hidden font-display text-lg tracking-wide shrink-0 mr-1">
+                <span className="text-[#09ADEF]">JOSH</span>{' '}
+                <span className="text-white">BEECHRAFT</span>
+              </div>
+              <div className="w-7 h-7 rounded-lg bg-[#09ADEF]/15 border border-[#09ADEF]/30 text-[#09ADEF] font-bold text-xs flex items-center justify-center shrink-0">
                 {currentStudent.avatar}
               </div>
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-xs sm:text-sm font-semibold text-white truncate">
                   {currentStudent.name}
                 </span>
-                <span className="text-xs text-slate-500">·</span>
-                <span className="text-xs text-slate-400 shrink-0">
+                <span className="badge-2mm px-2.5 py-0.5 rounded-full text-[10px] shrink-0">
                   Lesson {currentStudent.currentWeek}
                 </span>
               </div>
@@ -772,7 +779,7 @@ export function App() {
                       'DAILY_LESSON'
                     );
                   }}
-                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-slate-300 transition-colors cursor-pointer"
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-[11px] font-medium text-neutral-300 transition-colors cursor-pointer"
                 >
                   <span>Copy Student Link</span>
                 </button>
@@ -781,12 +788,12 @@ export function App() {
               <button
                 type="button"
                 onClick={() => setShowStudentInboxModal(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-slate-200 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-neutral-200 transition-colors cursor-pointer"
               >
-                <MessageSquare className="w-3.5 h-3.5 text-sky-400" />
+                <MessageSquare className="w-3.5 h-3.5 text-[#09ADEF]" />
                 <span className="hidden sm:inline">Messages</span>
                 {currentStudent.messages.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-sky-500/20 text-sky-300 text-[10px] font-bold">
+                  <span className="px-1.5 py-0.2 rounded-full bg-[#09ADEF]/20 text-[#09ADEF] text-[10px] font-bold">
                     {currentStudent.messages.length}
                   </span>
                 )}
@@ -795,7 +802,7 @@ export function App() {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="md:hidden flex items-center justify-center p-1.5 rounded-lg bg-white/[0.04] border border-white/10 text-slate-300 cursor-pointer"
+                className="md:hidden flex items-center justify-center p-1.5 rounded-lg bg-[#0A0C10] border border-white/10 text-neutral-300 cursor-pointer"
                 title="Sign Out"
               >
                 <LogOut className="w-3.5 h-3.5" />
@@ -873,7 +880,7 @@ export function App() {
         </main>
 
         {/* Native-Style Fixed Bottom Navigation Bar for Mobile (< md) */}
-        <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-[#0B0D15]/95 backdrop-blur-xl border-t border-white/10 px-2 pt-1.5 pb-safe">
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-[#040507]/95 backdrop-blur-xl border-t border-white/[0.08] px-2 pt-1.5 pb-safe">
           <div className="grid grid-flow-col auto-cols-fr gap-1 max-w-md mx-auto">
             {navItems.map(item => {
               const Icon = item.icon;
@@ -889,11 +896,11 @@ export function App() {
                   }}
                   className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all cursor-pointer ${
                     isActive
-                      ? 'text-sky-400 bg-sky-500/12 font-semibold'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'text-[#09ADEF] bg-[#09ADEF]/12 font-semibold'
+                      : 'text-neutral-400 hover:text-neutral-200'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-sky-400' : 'text-slate-400'}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-[#09ADEF]' : 'text-neutral-400'}`} />
                   <span className="text-[10px] mt-1 tracking-tight">{item.shortLabel}</span>
                 </button>
               );
@@ -910,11 +917,11 @@ export function App() {
         subtitle="Spreadsheet Ingestion (.xlsx)"
       >
         <div className="space-y-4 text-xs">
-          <p className="text-slate-300 leading-relaxed">
+          <p className="text-neutral-300 leading-relaxed">
             Upload a student’s strategy spreadsheet (such as{' '}
-            <code className="text-sky-400">josh_content_tracking-v2.xlsx</code>) to automatically populate:
+            <code className="text-[#09ADEF]">josh_content_tracking-v2.xlsx</code>) to automatically populate:
           </p>
-          <ul className="space-y-1.5 text-slate-300 list-disc pl-5">
+          <ul className="space-y-1.5 text-neutral-300 list-disc pl-5">
             <li>
               <strong>Content Playbook:</strong> 15 Core Pillars, Old/New Beliefs, Must-Hit Beats, and 4 Teaching Angles.
             </li>
@@ -923,12 +930,12 @@ export function App() {
             </li>
           </ul>
 
-          <label className="mt-4 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-sky-500/40 hover:border-sky-400 bg-[#0B0D14] p-8 cursor-pointer transition-colors">
-            <Upload className="w-8 h-8 text-sky-400 mb-2" />
+          <label className="mt-4 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#09ADEF]/40 hover:border-[#09ADEF] bg-[#05070A] p-8 cursor-pointer transition-colors">
+            <Upload className="w-8 h-8 text-[#09ADEF] mb-2" />
             <span className="text-sm font-semibold text-white">
               Select Student .xlsx Spreadsheet
             </span>
-            <span className="text-slate-400 mt-1">Supports .xlsx and .xls files</span>
+            <span className="text-neutral-400 mt-1">Supports .xlsx and .xls files</span>
             <input type="file" accept=".xlsx,.xls" onChange={handleSpreadsheetUpload} className="hidden" />
           </label>
 
@@ -942,7 +949,7 @@ export function App() {
             <button
               type="button"
               onClick={() => setShowImportModal(false)}
-              className="rounded-xl bg-sky-500 text-slate-950 font-semibold px-5 py-2.5 cursor-pointer"
+              className="rounded-lg btn-2mm px-5 py-2.5 text-xs cursor-pointer"
             >
               Done
             </button>
@@ -958,7 +965,7 @@ export function App() {
         subtitle="Direct In-App Accountability"
       >
         <div className="space-y-4">
-          <div className="rounded-2xl bg-[#0B0D14] border border-white/8 p-4 space-y-3 max-h-80 overflow-y-auto">
+          <div className="rounded-2xl bg-[#05070A] border border-white/[0.07] p-4 space-y-3 max-h-80 overflow-y-auto">
             {currentStudent.messages.map(m => (
               <div
                 key={m.id}
@@ -966,12 +973,12 @@ export function App() {
                   m.isAlert
                     ? 'border-rose-500/30 bg-rose-500/10 text-rose-200'
                     : m.senderRole === 'COACH'
-                    ? 'border-sky-500/30 bg-sky-500/10 text-white mr-6'
+                    ? 'border-[#09ADEF]/30 bg-[#09ADEF]/10 text-white mr-6'
                     : 'border-emerald-500/30 bg-emerald-500/10 text-white ml-6'
                 }`}
               >
-                <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
-                  <span className="text-sky-400 font-semibold">{m.senderName}</span>
+                <div className="flex items-center justify-between text-[11px] text-neutral-400 mb-1">
+                  <span className="text-[#09ADEF] font-semibold">{m.senderName}</span>
                   <span>{m.timestamp}</span>
                 </div>
                 <p className="leading-relaxed text-sm">{m.text}</p>
@@ -997,11 +1004,11 @@ export function App() {
                   ? `Message ${currentStudent.name}...`
                   : 'Reply to Coach Josh...'
               }
-              className="flex-1 rounded-xl bg-[#0B0D14] border border-white/15 px-4 py-3 text-sm text-white focus:outline-none focus:border-sky-400"
+              className="flex-1 rounded-lg bg-[#05070A] border border-white/15 px-4 py-3 text-sm text-white focus:outline-none focus:border-[#09ADEF]"
             />
             <button
               type="submit"
-              className="rounded-xl bg-sky-500 text-slate-950 font-semibold text-xs px-5 py-3 flex items-center gap-1.5 cursor-pointer"
+              className="rounded-lg btn-2mm text-xs px-5 py-3 flex items-center gap-1.5 cursor-pointer"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Send</span>

@@ -179,36 +179,36 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
     <div className="space-y-4 sm:space-y-5">
       {/* Top Sleek KPI Summary Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        <div className="glass-panel rounded-2xl p-3.5 sm:p-4 flex items-center justify-between">
+        <div className="glass-panel rounded-2xl p-4 flex items-center justify-between">
           <div>
-            <div className="text-[11px] font-medium text-slate-400">Active Cohort</div>
-            <div className="text-lg sm:text-xl font-bold text-white mt-0.5">{students.length} Operators</div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">ACTIVE COHORT</div>
+            <div className="font-display text-2xl sm:text-3xl text-white mt-0.5">{students.length} OPERATORS</div>
           </div>
-          <span className="w-8 h-8 rounded-xl bg-sky-500/15 text-sky-400 flex items-center justify-center text-xs font-bold">
+          <span className="badge-2mm px-2.5 py-1 rounded-full text-xs">
             {students.length}
           </span>
         </div>
 
-        <div className="glass-panel rounded-2xl p-3.5 sm:p-4 flex items-center justify-between">
+        <div className="glass-panel rounded-2xl p-4 flex items-center justify-between">
           <div>
-            <div className="text-[11px] font-medium text-emerald-300">Posted Today</div>
-            <div className="text-lg sm:text-xl font-bold text-emerald-400 mt-0.5">{onCadenceCount} Verified</div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">POSTED TODAY</div>
+            <div className="font-display text-2xl sm:text-3xl text-[#09ADEF] mt-0.5">{onCadenceCount} VERIFIED</div>
           </div>
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#09ADEF] shadow-[0_0_12px_#09ADEF]" />
         </div>
 
-        <div className="glass-panel rounded-2xl p-3.5 sm:p-4 flex items-center justify-between">
+        <div className="glass-panel rounded-2xl p-4 flex items-center justify-between">
           <div>
-            <div className="text-[11px] font-medium text-amber-300">Due Today</div>
-            <div className="text-lg sm:text-xl font-bold text-amber-400 mt-0.5">{pendingCount} Pending</div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">DUE TODAY</div>
+            <div className="font-display text-2xl sm:text-3xl text-white mt-0.5">{pendingCount} PENDING</div>
           </div>
           <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
         </div>
 
-        <div className="glass-panel rounded-2xl p-3.5 sm:p-4 flex items-center justify-between">
+        <div className="glass-panel rounded-2xl p-4 flex items-center justify-between">
           <div>
-            <div className="text-[11px] font-medium text-rose-300">Missed Video</div>
-            <div className="text-lg sm:text-xl font-bold text-rose-400 mt-0.5">{missedCount} At Risk</div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-rose-400">MISSED VIDEO</div>
+            <div className="font-display text-2xl sm:text-3xl text-rose-400 mt-0.5">{missedCount} AT RISK</div>
           </div>
           <button
             type="button"
@@ -216,7 +216,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
               const missedStudent = students.find(s => s.todayVideoStatus === 'MISSED') || activeStudent;
               onTriggerMissedAlertPush(missedStudent);
             }}
-            className="px-2.5 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-[10px] font-semibold text-rose-300 cursor-pointer"
+            className="px-2.5 py-1 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-[10px] font-bold uppercase tracking-wider text-rose-300 cursor-pointer"
           >
             Alert
           </button>
@@ -229,7 +229,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
           id="mobile-student-select"
           value={activeStudent.id}
           onChange={e => onSelectStudent(e.target.value)}
-          className="flex-1 min-w-0 rounded-lg bg-[#0B0D14] border border-white/12 px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-sky-400"
+          className="flex-1 min-w-0 rounded-lg bg-black border border-white/15 px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-[#09ADEF]"
         >
           {students.map(st => (
             <option key={st.id} value={st.id}>
@@ -240,7 +240,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
         <button
           type="button"
           onClick={() => setShowAddStudentModal(true)}
-          className="px-2.5 py-2 rounded-lg bg-sky-500 text-slate-950 text-[11px] font-semibold shrink-0 cursor-pointer"
+          className="px-3 py-2 rounded-lg btn-2mm text-[10px] shrink-0 cursor-pointer"
         >
           + New
         </button>
@@ -248,7 +248,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
           <button
             type="button"
             onClick={() => onPreviewStudentDashboard(activeStudent.id)}
-            className="px-2.5 py-2 rounded-lg bg-white/[0.06] border border-white/15 text-slate-200 text-[11px] font-semibold shrink-0 cursor-pointer"
+            className="px-2.5 py-2 rounded-lg bg-[#0A0C10] border border-white/15 text-neutral-200 text-[11px] font-semibold shrink-0 cursor-pointer"
           >
             Preview
           </button>
@@ -260,13 +260,15 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
         {/* Left 4 Cols: Sleek Student Roster + Add Student Button (Desktop Only) */}
         <div className="hidden lg:block lg:col-span-4 glass-panel rounded-2xl p-4 space-y-2.5">
           <div className="px-2 py-1 flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-300">Student Roster ({students.length})</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
+              STUDENT ROSTER ({students.length})
+            </span>
             <button
               type="button"
               onClick={() => setShowAddStudentModal(true)}
-              className="text-xs font-semibold text-sky-400 hover:text-sky-300 flex items-center gap-1 cursor-pointer"
+              className="badge-2mm px-2.5 py-1 rounded-full text-[9px] flex items-center gap-1 cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" /> Add Student
+              <Plus className="w-3 h-3" /> Add Student
             </button>
           </div>
 
@@ -281,28 +283,28 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                 onClick={() => onSelectStudent(st.id)}
                 className={`w-full text-left p-4 rounded-xl border transition-all cursor-pointer ${
                   isSelected
-                    ? 'bg-sky-500/15 border-sky-400 text-white shadow-sm'
-                    : 'bg-white/[0.02] border-white/6 hover:bg-white/[0.05] text-slate-200'
+                    ? 'bg-[#09ADEF]/10 border-[#09ADEF] text-white shadow-[0_8px_28px_rgba(9,173,239,0.12)]'
+                    : 'bg-[#040507] border-white/[0.06] hover:border-white/15 text-neutral-200'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center font-semibold text-sm text-sky-300 shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-[#09ADEF]/15 border border-[#09ADEF]/30 flex items-center justify-center font-bold text-sm text-[#09ADEF] shrink-0">
                       {st.avatar}
                     </div>
                     <div className="min-w-0">
                       <div className="text-sm font-semibold text-white truncate">{st.name}</div>
-                      <div className="text-xs text-slate-400 truncate">{st.company}</div>
+                      <div className="text-xs text-neutral-400 truncate">{st.company}</div>
                     </div>
                   </div>
 
                   <span
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 ${
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${
                       st.todayVideoStatus === 'COMPLETED'
-                        ? 'bg-emerald-500/15 text-emerald-300'
+                        ? 'badge-2mm'
                         : st.todayVideoStatus === 'PENDING'
-                        ? 'bg-amber-500/15 text-amber-300'
-                        : 'bg-rose-500/15 text-rose-300'
+                        ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                        : 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
                     }`}
                   >
                     {st.todayVideoStatus === 'COMPLETED'
@@ -313,10 +315,10 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-slate-400 mt-3 pt-2.5 border-t border-white/6">
+                <div className="flex items-center justify-between text-xs text-neutral-400 mt-3 pt-2.5 border-t border-white/[0.06]">
                   <span>Lesson {st.currentWeek} · Phase {st.currentPhase}</span>
                   <span>{st.streakDays}d Streak</span>
-                  <span className="text-sky-400 font-medium">
+                  <span className="text-[#09ADEF] font-semibold">
                     {doneVideos}/{st.supportingVideos.length} Videos
                   </span>
                 </div>
@@ -326,19 +328,18 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
         </div>
 
         {/* Right 8 Cols: Selected Student Workspace with 4 Admin & Coaching Tabs */}
-        <div className="lg:col-span-8 glass-panel rounded-2xl p-4 sm:p-8 space-y-4 sm:space-y-6">
+        <div className="lg:col-span-8 glass-panel rounded-2xl p-5 sm:p-7 space-y-5">
           {/* Student Header */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-4 sm:pb-5 border-b border-white/8">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/[0.07]">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-sky-400">
-                  Lesson {activeStudent.currentWeek} · Phase 0{activeStudent.currentPhase}
+                <span className="w-4 h-[1.5px] bg-[#09ADEF]" />
+                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                  LESSON {activeStudent.currentWeek} · PHASE 0{activeStudent.currentPhase} · {activeStudent.niche}
                 </span>
-                <span className="text-xs text-slate-500">·</span>
-                <span className="text-xs text-slate-400">{activeStudent.niche}</span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-bold text-white mt-0.5">
-                {activeStudent.name} — {activeStudent.company}
+              <h2 className="font-display text-2xl sm:text-4xl text-white mt-1 tracking-wide">
+                {activeStudent.name} <span className="text-[#09ADEF]">— {activeStudent.company}</span>
               </h2>
             </div>
 
@@ -347,35 +348,35 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                 <button
                   type="button"
                   onClick={() => onPreviewStudentDashboard(activeStudent.id)}
-                  className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 text-xs font-semibold text-white cursor-pointer"
+                  className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/12 text-xs font-semibold text-white cursor-pointer"
                 >
-                  <ExternalLink className="w-3.5 h-3.5 text-sky-400" />
-                  <span>Preview Student Dashboard</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-[#09ADEF]" />
+                  <span>Preview Student</span>
                 </button>
               )}
 
               <button
                 type="button"
                 onClick={onOpenImportModal}
-                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-[11px] sm:text-xs font-semibold text-sky-300 cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg badge-2mm text-[10px] cursor-pointer"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
-                <span>Upload .xlsx Plan</span>
+                <span>Upload .xlsx</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => onApproveGate(activeStudent.id, activeStudent.currentPhase)}
-                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-[11px] sm:text-xs font-semibold text-emerald-300 cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg btn-2mm text-[10px] cursor-pointer"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Approve Phase {activeStudent.currentPhase} Gate</span>
+                <span>Approve Phase {activeStudent.currentPhase}</span>
               </button>
             </div>
           </div>
 
           {/* 4 Clean Workspace Tabs (Single horizontal scroll row on mobile) */}
-          <div className="flex overflow-x-auto no-scrollbar gap-1.5 p-1 rounded-xl bg-white/[0.04] border border-white/8">
+          <div className="flex overflow-x-auto no-scrollbar gap-1.5 p-1 rounded-xl bg-[#07090D] border border-white/[0.08]">
             {[
               { id: 'SETUP' as const, label: 'Student Setup & Specifics', shortLabel: 'Setup', icon: Settings },
               { id: 'MESSAGE' as const, label: 'Direct Chat & Push Nudge', shortLabel: 'Chat & Push', icon: MessageSquare },
@@ -389,10 +390,10 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                   key={tab.id}
                   type="button"
                   onClick={() => setCoachSubTab(tab.id)}
-                  className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+                  className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-[0.08em] whitespace-nowrap transition-all cursor-pointer ${
                     active
-                      ? 'bg-sky-500 text-slate-950 font-semibold shadow-sm'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-[#09ADEF] text-white shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
+                      : 'text-neutral-400 hover:text-white'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -404,12 +405,12 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
           </div>
 
           {saveBanner && (
-            <div className="p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-xs font-medium text-emerald-300 flex items-center justify-between">
+            <div className="p-3.5 rounded-xl bg-[#09ADEF]/15 border border-[#09ADEF]/30 text-xs font-medium text-[#09ADEF] flex items-center justify-between">
               <span>✓ {saveBanner}</span>
               <button
                 type="button"
                 onClick={() => setSaveBanner(null)}
-                className="text-emerald-200 hover:text-white cursor-pointer"
+                className="text-neutral-300 hover:text-white cursor-pointer"
               >
                 ✕
               </button>
@@ -420,27 +421,27 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
           {coachSubTab === 'SETUP' && (
             <div className="space-y-6">
               {/* Step 1: Upload Student Specific Content Plan (.xlsx) */}
-              <div className="p-5 rounded-2xl bg-sky-500/[0.06] border border-sky-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="p-5 rounded-2xl bg-[#040507] border border-[#09ADEF]/25 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
-                  <div className="text-xs font-bold uppercase tracking-wider text-sky-400">
-                    1. Student Content Plan Spreadsheet (.xlsx)
+                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                    1. STUDENT CONTENT PLAN SPREADSHEET (.XLSX)
                   </div>
-                  <p className="text-xs text-slate-300 leading-relaxed">
+                  <p className="text-xs text-neutral-300 leading-relaxed">
                     Currently loaded for <strong>{activeStudent.name}</strong>:{' '}
                     <span className="text-white font-semibold">{activeStudent.playbook.length} Core Pillars</span> &{' '}
                     <span className="text-white font-semibold">
                       {activeStudent.supportingVideos.length} Daily Concussion Content Videos
                     </span>
-                    . Upload a new <code className="text-sky-300">.xlsx</code> sheet anytime to replace or update their plan.
+                    .
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={onOpenImportModal}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs shrink-0 cursor-pointer shadow-lg shadow-sky-500/20"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg btn-2mm text-xs shrink-0 cursor-pointer"
                 >
                   <Upload className="w-4 h-4" />
-                  <span>Upload .xlsx for {activeStudent.name.split(' ')[0]}</span>
+                  <span>Upload .xlsx</span>
                 </button>
               </div>
 
