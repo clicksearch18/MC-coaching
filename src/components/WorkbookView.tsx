@@ -93,38 +93,38 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
   ).length;
 
   return (
-    <div className="space-y-6">
-      {/* Self-Paced Framing Banner */}
-      <div className="glass-panel rounded-2xl px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full bg-sky-500/15 text-sky-300 text-[11px] font-semibold">
-              26 Self-Paced Lessons · 1-to-1 CAM-005 Workbook
-            </span>
-            <span className="text-xs text-slate-400">
-              Pace on the gate, not the calendar — 26 weeks is just a relaxed 1-lesson/week baseline. Move as fast as your execution allows.
-            </span>
-          </div>
+    <div className="space-y-4 sm:space-y-6">
+      {/* Self-Paced Framing Banner (Compact on mobile, full on desktop) */}
+      <div className="glass-panel rounded-2xl px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <span className="px-2.5 py-0.5 rounded-full bg-sky-500/15 text-sky-300 text-[11px] font-semibold">
+            26 Self-Paced Lessons
+          </span>
+          <span className="hidden sm:inline text-xs text-slate-400">
+            Pace on the gate, not the calendar — 26 weeks is just a relaxed 1-lesson/week baseline.
+          </span>
+          <span className="sm:hidden text-[11px] text-slate-400 truncate">
+            Tasks {completedTasksCount}/{totalTasksCount} · Fields {filledFieldsCount}/{totalFieldsCount}
+          </span>
         </div>
 
         {isCoachMode && (
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={openEditor}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-xs font-semibold text-sky-300 transition-colors cursor-pointer"
-            >
-              <Pencil className="w-3.5 h-3.5" />
-              <span>Edit Lesson {activeLesson.weekNumber} (Admin CMS)</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={openEditor}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-[11px] sm:text-xs font-semibold text-sky-300 transition-colors cursor-pointer shrink-0"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Edit Lesson {activeLesson.weekNumber} (Admin CMS)</span>
+            <span className="sm:hidden">Edit CMS</span>
+          </button>
         )}
       </div>
 
       {/* Top Sleek Phase Navigation & Global Progress Pills */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        {/* 5 Phase Selector Pills */}
-        <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        {/* 5 Phase Selector Pills (Horizontal swipe strip on mobile) */}
+        <div className="flex overflow-x-auto no-scrollbar gap-2 pb-0.5">
           {PHASES.map(p => {
             const isSelectedPhase = activeLesson.phase === p.num;
             const firstLesson = lessons.find(w => w.phase === p.num)?.weekNumber || 1;
@@ -137,14 +137,14 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                   setSelectedSection('ALL');
                   setActivePanel('LESSON');
                 }}
-                className={`px-4 py-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-3 ${
+                className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 shrink-0 ${
                   isSelectedPhase
                     ? 'bg-sky-500/15 border-sky-400 text-white shadow-sm'
                     : 'bg-white/[0.03] border-white/8 text-slate-400 hover:text-white hover:bg-white/[0.06]'
                 }`}
               >
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                  className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold ${
                     isSelectedPhase ? 'bg-sky-400 text-slate-950' : 'bg-white/10 text-slate-300'
                   }`}
                 >
@@ -152,15 +152,15 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 </div>
                 <div>
                   <div className="text-xs font-semibold leading-none">{p.name}</div>
-                  <div className="text-[10px] opacity-70 mt-0.5">{p.range} · {p.desc}</div>
+                  <div className="text-[10px] opacity-70 mt-0.5">{p.range}</div>
                 </div>
               </button>
             );
           })}
         </div>
 
-        {/* Compact Global Counters */}
-        <div className="flex items-center gap-2.5 self-start lg:self-auto">
+        {/* Compact Global Counters (Desktop Only — shown inline in top banner on mobile) */}
+        <div className="hidden sm:flex items-center gap-2.5 self-start lg:self-auto">
           <div className="px-3.5 py-2 rounded-xl bg-white/[0.03] border border-white/8 text-xs">
             <span className="text-slate-400 mr-1.5">Tasks:</span>
             <span className="font-semibold text-white">{completedTasksCount}/{totalTasksCount}</span>
@@ -176,10 +176,58 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
         </div>
       </div>
 
-      {/* Main Split Layout: Left Lessons Menu + Right Sequential Lesson/Worksheet/Gate Canvas */}
+      {/* Mobile-Only Compact Lesson Switcher Bar (Replaces bulky sidebar on mobile) */}
+      <div className="lg:hidden glass-panel rounded-xl p-2.5 flex items-center gap-2">
+        <button
+          type="button"
+          disabled={selectedLessonNum <= 1}
+          onClick={() => {
+            setSelectedLessonNum(n => Math.max(1, n - 1));
+            setSelectedSection('ALL');
+            setActivePanel('LESSON');
+          }}
+          className="p-2 rounded-lg bg-white/[0.04] border border-white/8 text-slate-300 disabled:opacity-30 shrink-0"
+          aria-label="Previous Lesson"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+
+        <select
+          value={selectedLessonNum}
+          onChange={e => {
+            setSelectedLessonNum(Number(e.target.value));
+            setSelectedSection('ALL');
+            setActivePanel('LESSON');
+          }}
+          aria-label="Select lesson"
+          className="flex-1 min-w-0 rounded-lg bg-[#0B0D14] border border-white/12 px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-sky-400"
+        >
+          {lessons.map(l => (
+            <option key={l.weekNumber} value={l.weekNumber}>
+              Lesson {String(l.weekNumber).padStart(2, '0')}: {l.title} {l.isPhaseGate ? '◆ Gate' : ''}
+            </option>
+          ))}
+        </select>
+
+        <button
+          type="button"
+          disabled={selectedLessonNum >= 26}
+          onClick={() => {
+            setSelectedLessonNum(n => Math.min(26, n + 1));
+            setSelectedSection('ALL');
+            setActivePanel('LESSON');
+          }}
+          className="p-2 rounded-lg bg-white/[0.04] border border-white/8 text-slate-300 disabled:opacity-30 shrink-0"
+          aria-label="Next Lesson"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Main Split Layout: Left Lessons Menu (Desktop) + Right Sequential Lesson/Worksheet/Gate Canvas */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left 3 Columns: Clean Lesson Menu for Active Phase */}
-        <div className="lg:col-span-3 glass-panel rounded-2xl p-4 space-y-3">
+        {/* Left 3 Columns: Clean Lesson Menu for Active Phase (Desktop Only) */}
+        <div className="hidden lg:block lg:col-span-3 glass-panel rounded-2xl p-4 space-y-3">
           <div className="px-2 py-1 flex items-center justify-between">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-wider text-sky-400">
@@ -262,22 +310,22 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
         </div>
 
         {/* Right 9 Columns: Sequential Stepper for Active Lesson (1. Lesson -> 2. Worksheet -> 3. Gate Rubric) */}
-        <div className="lg:col-span-9 space-y-5">
+        <div className="lg:col-span-9 space-y-4 sm:space-y-5">
           {/* Lesson Header & 3-Step Sequential Panel Switcher */}
-          <div className="glass-panel rounded-2xl p-6 sm:p-8">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30 text-xs font-semibold">
-                  Lesson {activeLesson.weekNumber} of 26 · Worksheet {activeLesson.moduleNumber}
+          <div className="glass-panel rounded-2xl p-4 sm:p-8">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2 sm:mb-3">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <span className="px-2.5 py-0.5 sm:py-1 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30 text-[11px] sm:text-xs font-semibold">
+                  Lesson {activeLesson.weekNumber}/26 · Mod {activeLesson.moduleNumber}
                 </span>
                 {activeLesson.isPhaseGate && (
-                  <span className="px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-semibold">
-                    ◆ Phase Gate Lesson
+                  <span className="px-2.5 py-0.5 sm:py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[11px] sm:text-xs font-semibold">
+                    ◆ Phase Gate
                   </span>
                 )}
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="hidden lg:flex items-center gap-1.5">
                 <button
                   type="button"
                   disabled={selectedLessonNum <= 1}
@@ -307,33 +355,36 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               </div>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+            <h1 className="text-xl sm:text-3xl font-bold text-white tracking-tight">
               Lesson {activeLesson.weekNumber}: {activeLesson.title}
             </h1>
-            <p className="text-sm text-slate-300 mt-1.5 leading-relaxed">{activeLesson.subtitle}</p>
+            <p className="text-xs sm:text-sm text-slate-300 mt-1 sm:mt-1.5 leading-relaxed">{activeLesson.subtitle}</p>
 
-            {/* 3-Step Sequential Module Tabs */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-6 border-t border-white/8">
+            {/* 3-Step Sequential Module Tabs (Single compact 3-col row on mobile!) */}
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-3 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-white/8">
               <button
                 type="button"
                 onClick={() => setActivePanel('LESSON')}
-                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-3 ${
+                className={`p-2.5 sm:p-3.5 rounded-xl border text-center sm:text-left transition-all cursor-pointer flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 ${
                   activePanel === 'LESSON'
                     ? 'bg-sky-500/15 border-sky-400 text-white'
                     : 'bg-white/[0.02] border-white/8 text-slate-400 hover:bg-white/[0.05]'
                 }`}
               >
                 <div
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${
                     activePanel === 'LESSON' ? 'bg-sky-400 text-slate-950' : 'bg-white/8 text-slate-300'
                   }`}
                 >
-                  <BookOpen className="w-4 h-4" />
+                  <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
-                <div>
-                  <div className="text-xs font-semibold">1. Lesson & Action Tasks</div>
-                  <div className="text-[11px] opacity-75">
-                    {lessonTasksDoneCount} of {activeLesson.tasks.length} tasks checked
+                <div className="min-w-0">
+                  <div className="text-[11px] sm:text-xs font-semibold truncate">
+                    <span className="sm:hidden">1. Lesson</span>
+                    <span className="hidden sm:inline">1. Lesson & Action Tasks</span>
+                  </div>
+                  <div className="text-[10px] sm:text-[11px] opacity-75 truncate">
+                    {lessonTasksDoneCount}/{activeLesson.tasks.length} tasks
                   </div>
                 </div>
               </button>
@@ -341,23 +392,26 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               <button
                 type="button"
                 onClick={() => setActivePanel('WORKSHEET')}
-                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-3 ${
+                className={`p-2.5 sm:p-3.5 rounded-xl border text-center sm:text-left transition-all cursor-pointer flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 ${
                   activePanel === 'WORKSHEET'
                     ? 'bg-sky-500/15 border-sky-400 text-white'
                     : 'bg-white/[0.02] border-white/8 text-slate-400 hover:bg-white/[0.05]'
                 }`}
               >
                 <div
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${
                     activePanel === 'WORKSHEET' ? 'bg-sky-400 text-slate-950' : 'bg-white/8 text-slate-300'
                   }`}
                 >
-                  <FileEdit className="w-4 h-4" />
+                  <FileEdit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
-                <div>
-                  <div className="text-xs font-semibold">2. Interactive Worksheet</div>
-                  <div className="text-[11px] opacity-75">
-                    {lessonFieldsFilledCount} of {activeLesson.fields.length} fields filled
+                <div className="min-w-0">
+                  <div className="text-[11px] sm:text-xs font-semibold truncate">
+                    <span className="sm:hidden">2. Worksheet</span>
+                    <span className="hidden sm:inline">2. Interactive Worksheet</span>
+                  </div>
+                  <div className="text-[10px] sm:text-[11px] opacity-75 truncate">
+                    {lessonFieldsFilledCount}/{activeLesson.fields.length} fields
                   </div>
                 </div>
               </button>
@@ -365,23 +419,26 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               <button
                 type="button"
                 onClick={() => setActivePanel('RUBRIC')}
-                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-3 ${
+                className={`p-2.5 sm:p-3.5 rounded-xl border text-center sm:text-left transition-all cursor-pointer flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 ${
                   activePanel === 'RUBRIC'
                     ? 'bg-sky-500/15 border-sky-400 text-white'
                     : 'bg-white/[0.02] border-white/8 text-slate-400 hover:bg-white/[0.05]'
                 }`}
               >
                 <div
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${
                     activePanel === 'RUBRIC' ? 'bg-sky-400 text-slate-950' : 'bg-white/8 text-slate-300'
                   }`}
                 >
-                  <Award className="w-4 h-4" />
+                  <Award className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
-                <div>
-                  <div className="text-xs font-semibold">3. Done-When & Gate</div>
-                  <div className="text-[11px] opacity-75">
-                    {activeLesson.rubric ? 'Self-Score Rubric' : 'Deliverable Check'}
+                <div className="min-w-0">
+                  <div className="text-[11px] sm:text-xs font-semibold truncate">
+                    <span className="sm:hidden">3. Gate Check</span>
+                    <span className="hidden sm:inline">3. Done-When & Gate</span>
+                  </div>
+                  <div className="text-[10px] sm:text-[11px] opacity-75 truncate">
+                    {activeLesson.rubric ? 'Rubric' : 'Deliverable'}
                   </div>
                 </div>
               </button>
@@ -390,16 +447,16 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
 
           {/* SEQUENTIAL PANEL 1: THE LESSON, REFERENCE FIGURES & ACTION CHECKLIST */}
           {activePanel === 'LESSON' && (
-            <div className="glass-panel rounded-2xl p-6 sm:p-8 space-y-6">
+            <div className="glass-panel rounded-2xl p-4 sm:p-8 space-y-5 sm:space-y-6">
               <div>
                 <span className="text-xs font-semibold uppercase tracking-wider text-sky-400">
                   Part 1 · Core Lesson Principles
                 </span>
-                <ul className="space-y-3 mt-3">
+                <ul className="space-y-2.5 sm:space-y-3 mt-3">
                   {activeLesson.lessonBullets.map((b, idx) => (
                     <li
                       key={idx}
-                      className="p-4 rounded-xl bg-white/[0.02] border border-white/8 text-sm text-slate-200 flex items-start gap-3 leading-relaxed"
+                      className="p-3.5 sm:p-4 rounded-xl bg-white/[0.02] border border-white/8 text-xs sm:text-sm text-slate-200 flex items-start gap-3 leading-relaxed"
                     >
                       <span className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-300 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
                         {idx + 1}
@@ -410,28 +467,32 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 </ul>
               </div>
 
-              {/* 1-to-1 PDF Reference Figures (FIG. 00 through FIG. 28) */}
+              {/* 1-to-1 PDF Reference Figures (FIG. 00 through FIG. 28) — Collapsible on mobile */}
               {activeLesson.referenceFigures && activeLesson.referenceFigures.length > 0 && (
-                <div className="pt-4 border-t border-white/8 space-y-4">
+                <div className="pt-4 border-t border-white/8 space-y-3">
                   <span className="text-xs font-semibold uppercase tracking-wider text-sky-400 block">
-                    Workbook Reference Figures & Frameworks
+                    Workbook Reference Figures & Frameworks ({activeLesson.referenceFigures.length})
                   </span>
                   {activeLesson.referenceFigures.map((fig, fIdx) => (
-                    <div
+                    <details
                       key={`${fig.figNumber}-${fIdx}`}
-                      className="p-5 rounded-xl bg-white/[0.02] border border-white/10 space-y-3"
+                      open={fIdx === 0}
+                      className="group rounded-xl bg-white/[0.02] border border-white/10 p-3.5 sm:p-5 space-y-3"
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
+                      <summary className="flex flex-wrap items-center justify-between gap-2 cursor-pointer list-none">
                         <div className="flex items-center gap-2">
                           <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[11px] font-bold">
                             {fig.figNumber}
                           </span>
-                          <h4 className="text-sm font-semibold text-white">{fig.title}</h4>
+                          <h4 className="text-xs sm:text-sm font-semibold text-white">{fig.title}</h4>
                         </div>
-                        {fig.caption && (
-                          <span className="text-xs text-slate-400">{fig.caption}</span>
-                        )}
-                      </div>
+                        <div className="flex items-center gap-2">
+                          {fig.caption && (
+                            <span className="hidden sm:inline text-xs text-slate-400">{fig.caption}</span>
+                          )}
+                          <span className="text-xs text-sky-400 group-open:rotate-90 transition-transform">▸</span>
+                        </div>
+                      </summary>
 
                       {fig.cards && fig.cards.length > 0 && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
@@ -488,7 +549,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                           </table>
                         </div>
                       )}
-                    </div>
+                    </details>
                   ))}
                 </div>
               )}
@@ -497,7 +558,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 <span className="text-xs font-semibold uppercase tracking-wider text-sky-400 block mb-3">
                   Part 2 · Do The Work (Action Checklist)
                 </span>
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   {activeLesson.tasks.map((taskText, idx) => {
                     const key = `${activeLesson.weekNumber}-${idx}`;
                     const isChecked = !!student.tasksCompleted[key];
@@ -506,7 +567,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                         key={key}
                         type="button"
                         onClick={() => onToggleTask(activeLesson.weekNumber, idx)}
-                        className={`w-full text-left p-4 rounded-xl border transition-all flex items-start gap-3.5 cursor-pointer ${
+                        className={`w-full text-left p-3.5 sm:p-4 rounded-xl border transition-all flex items-start gap-3 cursor-pointer ${
                           isChecked
                             ? 'bg-emerald-500/10 border-emerald-500/30 text-slate-300'
                             : 'bg-white/[0.02] border-white/8 hover:border-sky-400/50 text-white'
@@ -517,7 +578,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                         ) : (
                           <Square className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
                         )}
-                        <span className={`text-sm leading-relaxed ${isChecked ? 'line-through text-slate-400' : ''}`}>
+                        <span className={`text-xs sm:text-sm leading-relaxed ${isChecked ? 'line-through text-slate-400' : ''}`}>
                           {taskText}
                         </span>
                       </button>
@@ -527,20 +588,20 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               </div>
 
               {/* Coaching Prompt & Failure Trap Callout */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-white/8">
-                <div className="p-4 rounded-xl bg-sky-500/[0.06] border border-sky-500/20">
-                  <div className="text-xs font-semibold text-sky-300 uppercase tracking-wider mb-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 pt-4 border-t border-white/8">
+                <div className="p-3.5 sm:p-4 rounded-xl bg-sky-500/[0.06] border border-sky-500/20">
+                  <div className="text-[11px] sm:text-xs font-semibold text-sky-300 uppercase tracking-wider mb-1">
                     Coaching Reflection Prompt
                   </div>
-                  <p className="text-sm italic text-slate-200 leading-relaxed">
+                  <p className="text-xs sm:text-sm italic text-slate-200 leading-relaxed">
                     “{activeLesson.coachingPrompt}”
                   </p>
                 </div>
-                <div className="p-4 rounded-xl bg-rose-500/[0.06] border border-rose-500/20">
-                  <div className="text-xs font-semibold text-rose-300 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                <div className="p-3.5 sm:p-4 rounded-xl bg-rose-500/[0.06] border border-rose-500/20">
+                  <div className="text-[11px] sm:text-xs font-semibold text-rose-300 uppercase tracking-wider mb-1 flex items-center gap-1.5">
                     <AlertTriangle className="w-3.5 h-3.5" /> Where It Fails
                   </div>
-                  <p className="text-sm text-slate-200 leading-relaxed">{activeLesson.whereItFails}</p>
+                  <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">{activeLesson.whereItFails}</p>
                 </div>
               </div>
 
@@ -548,7 +609,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setActivePanel('WORKSHEET')}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-sm transition-all cursor-pointer shadow-lg shadow-sky-500/20"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-sm transition-all cursor-pointer shadow-lg shadow-sky-500/20"
                 >
                   <span>Continue to Lesson {activeLesson.weekNumber} Worksheet</span>
                   <ChevronRight className="w-4 h-4" />
@@ -559,13 +620,13 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
 
           {/* SEQUENTIAL PANEL 2: INTERACTIVE WORKSHEET (WITH SECTION ORGANIZER) */}
           {activePanel === 'WORKSHEET' && (
-            <div className="glass-panel rounded-2xl p-6 sm:p-8 space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/8">
+            <div className="glass-panel rounded-2xl p-4 sm:p-8 space-y-4 sm:space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3.5 sm:pb-4 border-b border-white/8">
                 <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-sky-400">
-                    Lesson {activeLesson.weekNumber} Deliverable Worksheet · {activeLesson.fields.length} Fields
+                  <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-sky-400">
+                    Lesson {activeLesson.weekNumber} Worksheet · {activeLesson.fields.length} Fields
                   </span>
-                  <h2 className="text-xl font-semibold text-white mt-0.5">
+                  <h2 className="text-lg sm:text-xl font-semibold text-white mt-0.5">
                     {activeLesson.moduleTitle}
                   </h2>
                 </div>
@@ -574,22 +635,22 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowWorkedExample(v => !v)}
-                    className="px-3.5 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-sky-300 cursor-pointer"
+                    className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-[11px] sm:text-xs font-medium text-sky-300 cursor-pointer"
                   >
-                    {showWorkedExample ? 'Hide Worked Example' : 'Show Worked Example'}
+                    {showWorkedExample ? 'Hide Example' : 'Worked Example'}
                   </button>
                 )}
               </div>
 
               {activeLesson.workedExample && showWorkedExample && (
-                <div className="p-5 rounded-xl bg-sky-500/[0.05] border border-sky-500/20 space-y-2.5">
+                <div className="p-3.5 sm:p-5 rounded-xl bg-sky-500/[0.05] border border-sky-500/20 space-y-2">
                   <div className="flex items-center justify-between text-xs font-semibold text-sky-300">
                     <span>◆ Worked Example · {activeLesson.workedExample.title}</span>
                     <span className="text-slate-400">{activeLesson.workedExample.company}</span>
                   </div>
-                  <div className="space-y-2 pt-1">
+                  <div className="space-y-1.5 pt-1">
                     {activeLesson.workedExample.items.map((item, i) => (
-                      <div key={i} className="grid grid-cols-1 sm:grid-cols-12 gap-1 text-xs">
+                      <div key={i} className="grid grid-cols-1 sm:grid-cols-12 gap-0.5 sm:gap-1 text-xs">
                         <span className="sm:col-span-4 font-semibold text-slate-400">{item.label}</span>
                         <span className="sm:col-span-8 text-slate-200">{item.value}</span>
                       </div>
@@ -598,23 +659,23 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 </div>
               )}
 
-              {/* Section Filter Bar when a worksheet has multiple sections */}
+              {/* Section Filter Bar when a worksheet has multiple sections (Horizontal scroll strip on mobile) */}
               {worksheetSections.length > 1 && (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                    Worksheet Sections ({worksheetSections.length} parts) — Click to focus or view all:
+                    Worksheet Sections ({worksheetSections.length} parts):
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex overflow-x-auto no-scrollbar gap-1.5 pb-1">
                     <button
                       type="button"
                       onClick={() => setSelectedSection('ALL')}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium border whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
                         activeSectionFilter === 'ALL'
                           ? 'bg-sky-500/20 border-sky-400 text-white'
                           : 'bg-white/[0.03] border-white/10 text-slate-400 hover:text-white'
                       }`}
                     >
-                      All Sections ({activeLesson.fields.length})
+                      All ({activeLesson.fields.length})
                     </button>
                     {worksheetSections.map(sec => {
                       const secFields = activeLesson.fields.filter(
@@ -628,7 +689,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                           key={sec}
                           type="button"
                           onClick={() => setSelectedSection(sec)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors cursor-pointer flex items-center gap-1.5 ${
+                          className={`px-3 py-1.5 rounded-xl text-xs font-medium border whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1.5 shrink-0 ${
                             activeSectionFilter === sec
                               ? 'bg-sky-500/20 border-sky-400 text-white'
                               : 'bg-white/[0.03] border-white/10 text-slate-300 hover:text-white'
@@ -646,7 +707,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               )}
 
               {/* Render Grouped Sections */}
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {worksheetSections
                   .filter(sec => activeSectionFilter === 'ALL' || sec === activeSectionFilter)
                   .map(sectionName => {
@@ -656,7 +717,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                     return (
                       <div
                         key={sectionName}
-                        className="p-5 rounded-2xl bg-white/[0.02] border border-white/8 space-y-4"
+                        className="p-3.5 sm:p-5 rounded-2xl bg-white/[0.02] border border-white/8 space-y-3.5 sm:space-y-4"
                       >
                         <div className="flex items-center justify-between border-b border-white/8 pb-2.5">
                           <h3 className="text-xs font-bold uppercase tracking-wider text-sky-400">

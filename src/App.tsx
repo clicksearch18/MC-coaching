@@ -590,10 +590,10 @@ export function App() {
   const isAdminSession = authSession.role === 'ADMIN';
 
   const allNavItems = [
-    { id: 'CADENCE' as const, label: 'Daily Studio', sub: '10-Min Cadence', icon: Video, role: 'STUDENT' as const },
-    { id: 'WORKBOOK' as const, label: 'Lessons 1–26', sub: 'Self-Paced Workbook', icon: BookOpen, role: 'STUDENT' as const },
-    { id: 'MAGNETS' as const, label: 'Shift Magnets', sub: 'Lead Magnets & DMs', icon: Magnet, role: 'STUDENT' as const },
-    { id: 'COACH' as const, label: 'Coach & Admin', sub: 'Student Setup & Cohort', icon: UserCheck, role: 'COACH' as const }
+    { id: 'CADENCE' as const, label: 'Daily Studio', shortLabel: 'Studio', sub: '10-Min Cadence', icon: Video, role: 'STUDENT' as const },
+    { id: 'WORKBOOK' as const, label: 'Lessons 1–26', shortLabel: 'Lessons', sub: 'Self-Paced Workbook', icon: BookOpen, role: 'STUDENT' as const },
+    { id: 'MAGNETS' as const, label: 'Shift Magnets', shortLabel: 'Magnets', sub: 'Lead Magnets & DMs', icon: Magnet, role: 'STUDENT' as const },
+    { id: 'COACH' as const, label: 'Coach & Admin', shortLabel: 'Admin', sub: 'Student Setup & Cohort', icon: UserCheck, role: 'COACH' as const }
   ];
 
   const navItems = isAdminSession
@@ -603,14 +603,14 @@ export function App() {
   const completedSupportingCount = currentStudent.supportingVideos.filter(v => v.status === 'Completed').length;
 
   return (
-    <div className="min-h-screen flex bg-[#090A0F] text-slate-100">
+    <div className="min-h-dvh flex bg-[#090A0F] text-slate-100">
       {/* Live Push Notification Toast Stack */}
       {pushBanners.length > 0 && (
-        <div className="fixed bottom-5 right-5 z-50 w-[90vw] max-w-sm space-y-2.5">
+        <div className="fixed bottom-20 md:bottom-5 right-3.5 md:right-5 z-50 w-[92vw] max-w-sm space-y-2.5">
           {pushBanners.map(b => (
             <div
               key={b.id}
-              className={`rounded-2xl border p-4 shadow-2xl backdrop-blur-xl flex items-start justify-between gap-3 ${
+              className={`rounded-2xl border p-3.5 sm:p-4 shadow-2xl backdrop-blur-xl flex items-start justify-between gap-3 ${
                 b.type === 'MISSED_ALERT'
                   ? 'border-rose-500/40 bg-[#1B1016]/95 text-white'
                   : b.type === 'COACH_NUDGE'
@@ -643,7 +643,7 @@ export function App() {
       )}
 
       {/* Sleek Left Navigation Rail (Desktop) */}
-      <aside className="hidden md:flex w-64 shrink-0 flex-col justify-between border-r border-white/8 bg-[#0C0E16] p-5 sticky top-0 h-screen">
+      <aside className="hidden md:flex w-64 shrink-0 flex-col justify-between border-r border-white/8 bg-[#0C0E16] p-5 sticky top-0 h-dvh">
         <div className="space-y-7">
           {/* Brand Header */}
           <div className="flex items-center gap-3 px-1">
@@ -785,12 +785,12 @@ export function App() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Admin Preview Banner when viewing Student Tabs */}
         {isAdminSession && activeTab !== 'COACH' && (
-          <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 sm:px-8 py-2 flex items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2 text-amber-200">
-              <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>
-                <strong>Admin Preview Mode:</strong> Viewing Student Dashboard for{' '}
-                <span className="underline font-semibold">{currentStudent.name}</span>
+          <div className="bg-amber-500/15 border-b border-amber-500/30 px-3.5 sm:px-8 py-2 flex items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-1.5 text-amber-200 min-w-0 truncate">
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="truncate">
+                <strong className="hidden sm:inline">Admin Preview:</strong> Viewing{' '}
+                <span className="underline font-semibold">{currentStudent.name.split(' ')[0]}</span>
               </span>
             </div>
             <button
@@ -806,23 +806,23 @@ export function App() {
               }}
               className="px-2.5 py-1 rounded-lg bg-amber-400 text-slate-950 font-bold text-[11px] hover:bg-amber-300 transition-colors cursor-pointer shrink-0"
             >
-              ← Return to Admin Dashboard
+              ← Admin
             </button>
           </div>
         )}
 
-        {/* Clean Minimal Top Header */}
-        <header className="border-b border-white/8 bg-[#090A0F]/80 backdrop-blur-md sticky top-0 z-20">
-          <div className="max-w-6xl mx-auto px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
+        {/* Clean Single-Row Top Header */}
+        <header className="border-b border-white/8 bg-[#090A0F]/85 backdrop-blur-md sticky top-0 z-20">
+          <div className="max-w-6xl mx-auto px-3.5 sm:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-300 font-semibold text-xs flex items-center justify-center shrink-0">
                 {currentStudent.avatar}
               </div>
               <div className="min-w-0">
-                <div className="text-sm font-semibold text-white truncate flex items-center gap-2">
-                  <span>{currentStudent.name}</span>
+                <div className="text-xs sm:text-sm font-semibold text-white truncate flex items-center gap-1.5">
+                  <span className="truncate">{currentStudent.name}</span>
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    className={`hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${
                       isAdminSession
                         ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                         : 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
@@ -831,14 +831,14 @@ export function App() {
                     {isAdminSession ? 'Admin Mode' : 'Student Portal'}
                   </span>
                 </div>
-                <div className="text-xs text-slate-400 truncate">
-                  {currentStudent.company} · Lesson {currentStudent.currentWeek} of 26 (Phase 0{currentStudent.currentPhase})
+                <div className="text-[11px] text-slate-400 truncate">
+                  Lesson {currentStudent.currentWeek}/26 · {currentStudent.minutesAvailableCurrent}m/420m
                 </div>
               </div>
             </div>
 
-            {/* Right Action Pills */}
-            <div className="flex items-center gap-2">
+            {/* Right Action Pills (Compact on Mobile) */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <span
                 className={`hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-semibold ${
                   dbSyncStatus === 'SYNCED'
@@ -877,7 +877,7 @@ export function App() {
               <button
                 type="button"
                 onClick={() => setShowStudentInboxModal(true)}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-slate-200 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-slate-200 transition-colors cursor-pointer"
               >
                 <MessageSquare className="w-3.5 h-3.5 text-sky-400" />
                 <span className="hidden sm:inline">Coach Inbox</span>
@@ -902,7 +902,7 @@ export function App() {
                     );
                   }
                 }}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-xs font-medium text-amber-300 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-xs font-medium text-amber-300 transition-colors cursor-pointer"
                 title="Test Daily Push Notification"
               >
                 <Bell className="w-3.5 h-3.5" />
@@ -912,41 +912,17 @@ export function App() {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="md:hidden flex items-center gap-1 px-2.5 py-2 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-slate-300 cursor-pointer"
+                className="md:hidden flex items-center justify-center p-2 rounded-xl bg-white/[0.04] border border-white/10 text-slate-300 cursor-pointer"
                 title="Sign Out"
               >
                 <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
-
-          {/* Mobile Navigation Bar */}
-          <div className="flex md:hidden border-t border-white/8 px-3 py-2 gap-1 overflow-x-auto">
-            {navItems.map(item => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setRoleMode(item.role);
-                    setActiveTab(item.id);
-                  }}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium shrink-0 cursor-pointer ${
-                    isActive ? 'bg-sky-500 text-slate-950 font-semibold' : 'text-slate-400'
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
         </header>
 
-        {/* Main Workspace Canvas */}
-        <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-8 py-7">
+        {/* Main Workspace Canvas (Generous Bottom Padding for Mobile Fixed Nav) */}
+        <main className="flex-1 max-w-6xl w-full mx-auto px-3.5 sm:px-8 py-4 sm:py-7 pb-24 md:pb-8">
           {activeTab === 'CADENCE' && (
             <DailyCadenceView
               student={currentStudent}
@@ -1012,6 +988,35 @@ export function App() {
             />
           )}
         </main>
+
+        {/* Native-Style Fixed Bottom Navigation Bar for Mobile (< md) */}
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-[#0B0D15]/95 backdrop-blur-xl border-t border-white/10 px-2 pt-1.5 pb-safe">
+          <div className="grid grid-flow-col auto-cols-fr gap-1 max-w-md mx-auto">
+            {navItems.map(item => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setRoleMode(item.role);
+                    setActiveTab(item.id);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all cursor-pointer ${
+                    isActive
+                      ? 'text-sky-400 bg-sky-500/12 font-semibold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-sky-400' : 'text-slate-400'}`} />
+                  <span className="text-[10px] mt-1 tracking-tight">{item.shortLabel}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
       </div>
 
       {/* Modal 1: Ingest Student Content Plan (.xlsx) */}

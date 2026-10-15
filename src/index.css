@@ -58,3 +58,18 @@ dialog::backdrop {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(56, 189, 248, 0.45);
 }
+
+/* Hide scrollbars on horizontal mobile pill strips while preserving touch scrolling */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* iOS / PWA home indicator safe area padding */
+.pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+

@@ -124,14 +124,14 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Segmented Sub-Nav + Add Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="inline-flex p-1 rounded-xl bg-white/[0.04] border border-white/8 self-start">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex overflow-x-auto no-scrollbar p-1 rounded-xl bg-white/[0.04] border border-white/8 w-full sm:w-auto">
           {[
-            { id: 'MAGNETS' as const, label: `Shift Magnets (${student.shiftMagnets.length})`, icon: Magnet },
-            { id: 'DM_MATRIX' as const, label: 'S.H.I.F.T. DM Playbook', icon: MessageSquare },
-            { id: 'REENGAGE' as const, label: '4-Step Re-Engagement Loop', icon: Repeat }
+            { id: 'MAGNETS' as const, label: `Shift Magnets (${student.shiftMagnets.length})`, shortLabel: `Magnets (${student.shiftMagnets.length})`, icon: Magnet },
+            { id: 'DM_MATRIX' as const, label: 'S.H.I.F.T. DM Playbook', shortLabel: 'DM Playbook', icon: MessageSquare },
+            { id: 'REENGAGE' as const, label: '4-Step Re-Engagement Loop', shortLabel: 'Re-Engage', icon: Repeat }
           ].map(t => {
             const Icon = t.icon;
             const active = subTab === t.id;
@@ -140,14 +140,15 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
                 key={t.id}
                 type="button"
                 onClick={() => setSubTab(t.id)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
                   active
                     ? 'bg-sky-500 text-slate-950 font-semibold shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{t.label}</span>
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <span className="sm:hidden">{t.shortLabel}</span>
+                <span className="hidden sm:inline">{t.label}</span>
               </button>
             );
           })}
@@ -156,7 +157,7 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
         <button
           type="button"
           onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs transition-all cursor-pointer shadow-lg shadow-sky-500/20"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs transition-all cursor-pointer shadow-lg shadow-sky-500/20"
         >
           <Plus className="w-4 h-4" />
           <span>New Shift Magnet</span>
@@ -165,11 +166,11 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
 
       {/* PANEL 1: SHIFT MAGNETS REPOSITORY */}
       {subTab === 'MAGNETS' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
           {student.shiftMagnets.map(mag => (
             <div
               key={mag.id}
-              className="glass-panel rounded-2xl p-6 flex flex-col justify-between space-y-5"
+              className="glass-panel rounded-2xl p-4 sm:p-6 flex flex-col justify-between space-y-4 sm:space-y-5"
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between gap-2">
