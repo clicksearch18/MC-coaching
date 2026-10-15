@@ -14,7 +14,7 @@ import {
   Trash2,
   Save
 } from 'lucide-react';
-import { StudentProfile, PlaybookPillar, SupportingVideoItem } from '../types';
+import { StudentProfile, PlaybookPillar, SupportingVideoItem, CoachReviewStatus } from '../types';
 import { ModalDialog } from './ModalDialog';
 import { parseStudentSpreadsheet } from '../utils/excelParser';
 
@@ -46,6 +46,13 @@ interface CoachDashboardViewProps {
   ) => void;
   onDeleteStudent: (studentId: string) => void;
   onSendMessage: (studentId: string, text: string, triggerPush?: boolean) => void;
+  onReviewStudentVideo: (
+    studentId: string,
+    videoType: 'SUPPORTING' | 'CORE',
+    videoId: string,
+    reviewStatus: CoachReviewStatus,
+    feedback: string
+  ) => void;
   onTriggerMissedAlertPush: (student: StudentProfile) => void;
   onApproveGate: (studentId: string, phaseNum: number) => void;
   onOpenImportModal: () => void;
@@ -58,6 +65,13 @@ const QUICK_FOLLOWUP_TEMPLATES = [
   "Awesome streak this week! Keep protecting the daily post and the monthly event."
 ];
 
+const QUICK_REVIEW_NOTES = [
+  "Strong hook & delivery — approved!",
+  "Great energy! Tighten the first 3 seconds on the opening hook next time.",
+  "Make sure to verbally call out the Shift Magnet keyword at the end.",
+  "Pacing and framing are spot on — ready for $5/day Andromeda boost."
+];
+
 export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
   students,
   selectedStudentId,
@@ -68,12 +82,18 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
   onAddCustomVideoToStudent,
   onDeleteStudent,
   onSendMessage,
+  onReviewStudentVideo,
   onTriggerMissedAlertPush,
   onApproveGate,
   onOpenImportModal
 }) => {
   const [messageInput, setMessageInput] = useState('');
   const [coachSubTab, setCoachSubTab] = useState<'SETUP' | 'MESSAGE' | 'LINKS' | 'TELEMETRY'>('SETUP');
+  const [reviewScope, setReviewScope] = useState<'STUDENT' | 'ALL'>('ALL');
+  const [reviewFilter, setReviewFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REVISION'>('ALL');
+  const [expandedReviewKey, setExpandedReviewKey] = useState<string | null>(null);
+  const [reviewDraftNotes, setReviewDraftNotes] = useState<Record<string, string>>({});
+  const [reviewDraftStatus, setReviewDraftStatus] = useState<Record<string, CoachReviewStatus>>({});
 
   // New Student Onboarding Modal State
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
@@ -173,7 +193,65 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
     setTimeout(() => setSaveBanner(null), 3500);
   };
 
-  const completedSupporting = activeStudent.supportingVideos.filter(v => v.status === 'Completed');
+  const buildStudentReviewItems = (st: StudentProfile) => {
+    const dailyItems = st.supportingVideos
+      .filter(v => v.status === 'Completed')
+      .slice()
+      .reverse()
+      .map(v => ({
+        key: `${st.id}-SUPPORTING-${v.id}`,
+        studentId: st.id,
+        studentName: st.name,
+        studentCompany: st.company,
+        videoType: 'SUPPORTING' as const,
+        videoId: v.id,
+        badge: `DAY #${String(v.dayNumber).padStart(2, '0')}`,
+        stage: v.pillarStage,
+        title: v.title,
+        hookUsed:
+          v.customHook ||
+          (v.selectedHook === 2 ? v.hook2 : v.selectedHook === 3 ? v.hook3 : v.hook1),
+        videoUrl: v.videoUrl,
+        completedAt: v.completedAt || 'Completed',
+        reviewStatus: (v.coachReviewStatus || 'Pending Review') as CoachReviewStatus,
+        coachFeedback: v.coachFeedback || '',
+        coachReviewedAt: v.coachReviewedAt
+      }));
+
+    const coreItems = st.coreVideos
+      .filter(c => c.status === 'Completed')
+      .map(c => ({
+        key: `${st.id}-CORE-${c.id}`,
+        studentId: st.id,
+        studentName: st.name,
+        studentCompany: st.company,
+        videoType: 'CORE' as const,
+        videoId: c.id,
+        badge: `CORE ${c.code}`,
+        stage: c.week,
+        title: c.name,
+        hookUsed: c.purpose,
+        videoUrl: c.videoUrl,
+        completedAt: 'Core Brand Video',
+        reviewStatus: (c.coachReviewStatus || 'Pending Review') as CoachReviewStatus,
+        coachFeedback: c.coachFeedback || '',
+        coachReviewedAt: c.coachReviewedAt
+      }));
+
+    return [...dailyItems, ...coreItems];
+  };
+
+  const allCohortReviewItems = students.flatMap(buildStudentReviewItems);
+  const activeStudentReviewItems = buildStudentReviewItems(activeStudent);
+  const scopedReviewItems = reviewScope === 'ALL' ? allCohortReviewItems : activeStudentReviewItems;
+  const pendingReviewTotal = allCohortReviewItems.filter(i => i.reviewStatus === 'Pending Review').length;
+
+  const filteredReviewItems = scopedReviewItems.filter(item => {
+    if (reviewFilter === 'PENDING') return item.reviewStatus === 'Pending Review';
+    if (reviewFilter === 'APPROVED') return item.reviewStatus === 'Approved';
+    if (reviewFilter === 'REVISION') return item.reviewStatus === 'Needs Revision';
+    return true;
+  });
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -189,6 +267,22 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
           </span>
         </div>
 
+        <button
+          type="button"
+          onClick={() => setCoachSubTab('LINKS')}
+          className="glass-panel rounded-2xl p-4 flex items-center justify-between text-left hover:border-[#09ADEF]/50 transition-all cursor-pointer"
+        >
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">VIDEO REVIEW QUEUE</div>
+            <div className="font-display text-2xl sm:text-3xl text-white mt-0.5">
+              {pendingReviewTotal > 0 ? `${pendingReviewTotal} TO REVIEW` : `${allCohortReviewItems.length} COMPLETED`}
+            </div>
+          </div>
+          <span className="badge-2mm px-2.5 py-1 rounded-full text-[10px]">
+            Open Queue
+          </span>
+        </button>
+
         <div className="glass-panel rounded-2xl p-4 flex items-center justify-between">
           <div>
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">POSTED TODAY</div>
@@ -199,16 +293,10 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
 
         <div className="glass-panel rounded-2xl p-4 flex items-center justify-between">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">DUE TODAY</div>
-            <div className="font-display text-2xl sm:text-3xl text-white mt-0.5">{pendingCount} PENDING</div>
-          </div>
-          <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-        </div>
-
-        <div className="glass-panel rounded-2xl p-4 flex items-center justify-between">
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-rose-400">MISSED VIDEO</div>
-            <div className="font-display text-2xl sm:text-3xl text-rose-400 mt-0.5">{missedCount} AT RISK</div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-rose-400">MISSED / DUE</div>
+            <div className="font-display text-2xl sm:text-3xl text-white mt-0.5">
+              {missedCount > 0 ? `${missedCount} MISSED` : `${pendingCount} DUE`}
+            </div>
           </div>
           <button
             type="button"
@@ -379,8 +467,13 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
           <div className="flex overflow-x-auto no-scrollbar gap-1.5 p-1 rounded-xl bg-[#07090D] border border-white/[0.08]">
             {[
               { id: 'SETUP' as const, label: 'Student Setup & Specifics', shortLabel: 'Setup', icon: Settings },
+              {
+                id: 'LINKS' as const,
+                label: `Video Review Queue (${allCohortReviewItems.length})`,
+                shortLabel: `Review (${allCohortReviewItems.length})`,
+                icon: Link2
+              },
               { id: 'MESSAGE' as const, label: 'Direct Chat & Push Nudge', shortLabel: 'Chat & Push', icon: MessageSquare },
-              { id: 'LINKS' as const, label: `Verified Links (${completedSupporting.length})`, shortLabel: `Links (${completedSupporting.length})`, icon: Link2 },
               { id: 'TELEMETRY' as const, label: '7-Hour Metrics & Workbook', shortLabel: 'Metrics', icon: Activity }
             ].map(tab => {
               const Icon = tab.icon;
@@ -800,41 +893,306 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
             </div>
           )}
 
-          {/* TAB 2: VERIFIED SOCIAL PROOF LINKS */}
+          {/* TAB 2: COMPLETED VIDEO REVIEW QUEUE */}
           {coachSubTab === 'LINKS' && (
-            <div className="space-y-3">
-              {completedSupporting.length === 0 ? (
-                <div className="p-8 text-center text-sm text-slate-400">
-                  No verified social links submitted yet.
+            <div className="space-y-4">
+              {/* Top Filter & Scope Controls */}
+              <div className="p-4 rounded-xl bg-[#000000] border border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                    COACH REVIEW QUEUE · CLICK ANY VIDEO TO REVIEW & SEND NOTES
+                  </div>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    Every completed student video lands here. Click a video to watch, approve or request a revision, and send notes directly back to the student.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setReviewScope('ALL')}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-[0.12em] cursor-pointer ${
+                      reviewScope === 'ALL'
+                        ? 'bg-[#09ADEF] text-white'
+                        : 'bg-white/[0.04] text-zinc-400 border border-white/10 hover:text-white'
+                    }`}
+                  >
+                    All Students ({allCohortReviewItems.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReviewScope('STUDENT')}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-[0.12em] cursor-pointer ${
+                      reviewScope === 'STUDENT'
+                        ? 'bg-[#09ADEF] text-white'
+                        : 'bg-white/[0.04] text-zinc-400 border border-white/10 hover:text-white'
+                    }`}
+                  >
+                    {activeStudent.name.split(' ')[0]} ({activeStudentReviewItems.length})
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Filter Pills */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { id: 'ALL' as const, label: `All Completed (${scopedReviewItems.length})` },
+                  {
+                    id: 'PENDING' as const,
+                    label: `Needs Review (${scopedReviewItems.filter(i => i.reviewStatus === 'Pending Review').length})`
+                  },
+                  {
+                    id: 'REVISION' as const,
+                    label: `Needs Revision (${scopedReviewItems.filter(i => i.reviewStatus === 'Needs Revision').length})`
+                  },
+                  {
+                    id: 'APPROVED' as const,
+                    label: `Approved (${scopedReviewItems.filter(i => i.reviewStatus === 'Approved').length})`
+                  }
+                ].map(f => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setReviewFilter(f.id)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-[0.14em] transition-all cursor-pointer ${
+                      reviewFilter === f.id
+                        ? 'badge-2mm'
+                        : 'bg-[#040507] text-zinc-400 border border-white/[0.07] hover:text-white'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Completed Videos List */}
+              {filteredReviewItems.length === 0 ? (
+                <div className="p-8 rounded-xl bg-[#000000] border border-white/[0.07] text-center space-y-2">
+                  <div className="text-sm font-semibold text-white">No Completed Videos in Queue Yet</div>
+                  <p className="text-xs text-zinc-400 max-w-md mx-auto">
+                    As soon as a student submits a verified video link in their Studio or 5 Core Brand Videos tab, it will automatically appear here for you to click, review, and send feedback notes.
+                  </p>
                 </div>
               ) : (
-                completedSupporting
-                  .slice()
-                  .reverse()
-                  .map(v => (
-                    <div
-                      key={v.id}
-                      className="p-4 rounded-xl bg-white/[0.02] border border-white/8 flex items-center justify-between gap-4"
-                    >
-                      <div className="min-w-0">
-                        <div className="text-xs font-semibold text-sky-400">
-                          Day #{v.dayNumber} · {v.pillarStage}
-                        </div>
-                        <div className="text-sm font-medium text-white truncate mt-0.5">{v.title}</div>
-                      </div>
-                      {v.videoUrl && (
-                        <a
-                          href={v.videoUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 text-xs font-medium shrink-0"
+                <div className="space-y-3">
+                  {filteredReviewItems.map(item => {
+                    const isExpanded = expandedReviewKey === item.key;
+                    const draftNote =
+                      reviewDraftNotes[item.key] !== undefined
+                        ? reviewDraftNotes[item.key]
+                        : item.coachFeedback;
+                    const draftStatus =
+                      reviewDraftStatus[item.key] !== undefined
+                        ? reviewDraftStatus[item.key]
+                        : item.reviewStatus === 'Pending Review'
+                        ? 'Approved'
+                        : item.reviewStatus;
+
+                    return (
+                      <div
+                        key={item.key}
+                        className={`rounded-xl border transition-all ${
+                          isExpanded
+                            ? 'bg-[#000000] border-[#09ADEF]/50 shadow-[0_10px_32px_rgba(9,173,239,0.12)]'
+                            : 'bg-[#000000] border-white/[0.08] hover:border-white/20'
+                        }`}
+                      >
+                        {/* Clickable Summary Header */}
+                        <div
+                          onClick={() => setExpandedReviewKey(isExpanded ? null : item.key)}
+                          className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer"
                         >
-                          <span>Open Post</span>
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      )}
-                    </div>
-                  ))
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="badge-2mm px-2 py-0.5 rounded text-[9px]">
+                                {item.badge}
+                              </span>
+                              <span className="text-[11px] font-semibold text-white">
+                                {item.studentName}
+                              </span>
+                              <span className="text-[11px] text-zinc-500">· {item.stage}</span>
+                              <span
+                                className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                                  item.reviewStatus === 'Approved'
+                                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                                    : item.reviewStatus === 'Needs Revision'
+                                    ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                                    : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                                }`}
+                              >
+                                {item.reviewStatus === 'Approved'
+                                  ? '✓ Approved'
+                                  : item.reviewStatus === 'Needs Revision'
+                                  ? '↻ Needs Revision'
+                                  : '⏳ Pending Review'}
+                              </span>
+                            </div>
+                            <div className="text-sm sm:text-base font-bold text-white truncate">
+                              {item.title}
+                            </div>
+                            {item.coachFeedback && !isExpanded && (
+                              <div className="text-xs text-[#09ADEF] truncate">
+                                Coach Note: “{item.coachFeedback}”
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                            {item.videoUrl && (
+                              <a
+                                href={item.videoUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/12 text-xs font-semibold text-white"
+                              >
+                                <span>Watch Video</span>
+                                <ExternalLink className="w-3.5 h-3.5 text-[#09ADEF]" />
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setExpandedReviewKey(isExpanded ? null : item.key)}
+                              className="btn-2mm px-3.5 py-2 rounded-lg text-[10px] cursor-pointer"
+                            >
+                              {isExpanded ? 'Close' : 'Review & Add Notes'}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Expanded Coach Review & Feedback Drawer */}
+                        {isExpanded && (
+                          <div className="px-4 pb-5 sm:px-5 pt-3 border-t border-white/[0.08] space-y-4 bg-[#040507] rounded-b-xl">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                              <div className="p-3 rounded-lg bg-[#000000] border border-white/[0.07]">
+                                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF] block mb-1">
+                                  HOOK / PURPOSE USED
+                                </span>
+                                <p className="text-zinc-200 leading-relaxed">“{item.hookUsed}”</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-[#000000] border border-white/[0.07] flex flex-col justify-between">
+                                <div>
+                                  <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400 block mb-1">
+                                    SUBMITTED VIDEO URL
+                                  </span>
+                                  {item.videoUrl ? (
+                                    <a
+                                      href={item.videoUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-[#09ADEF] hover:underline break-all font-medium inline-flex items-center gap-1"
+                                    >
+                                      <span>{item.videoUrl}</span>
+                                      <ExternalLink className="w-3 h-3 shrink-0" />
+                                    </a>
+                                  ) : (
+                                    <span className="text-zinc-500">No URL provided</span>
+                                  )}
+                                </div>
+                                {item.coachReviewedAt && (
+                                  <span className="text-[10px] text-zinc-500 mt-2">
+                                    Last reviewed: {item.coachReviewedAt}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Step 1: Select Review Status */}
+                            <div className="space-y-2">
+                              <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+                                1. SELECT REVIEW DECISION
+                              </label>
+                              <div className="flex flex-wrap gap-2">
+                                {(['Approved', 'Needs Revision'] as const).map(st => {
+                                  const active = draftStatus === st;
+                                  return (
+                                    <button
+                                      key={st}
+                                      type="button"
+                                      onClick={() =>
+                                        setReviewDraftStatus(prev => ({ ...prev, [item.key]: st }))
+                                      }
+                                      className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all cursor-pointer ${
+                                        active && st === 'Approved'
+                                          ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
+                                          : active && st === 'Needs Revision'
+                                          ? 'bg-rose-500/20 border-rose-400 text-rose-300'
+                                          : 'bg-[#000000] border-white/10 text-zinc-400 hover:text-white'
+                                      }`}
+                                    >
+                                      {st === 'Approved' ? '✓ Approve Video' : '↻ Needs Revision'}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Step 2: 1-Tap Quick Notes + Custom Feedback */}
+                            <div className="space-y-2">
+                              <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+                                2. COACH NOTES (SENT DIRECTLY TO {item.studentName.toUpperCase()})
+                              </label>
+                              <div className="flex flex-wrap gap-1.5">
+                                {QUICK_REVIEW_NOTES.map((preset, i) => (
+                                  <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() =>
+                                      setReviewDraftNotes(prev => ({ ...prev, [item.key]: preset }))
+                                    }
+                                    className="px-2.5 py-1 rounded-lg bg-[#000000] hover:bg-white/[0.06] border border-white/10 text-[11px] text-zinc-300 cursor-pointer"
+                                  >
+                                    + “{preset}”
+                                  </button>
+                                ))}
+                              </div>
+
+                              <textarea
+                                rows={3}
+                                value={draftNote}
+                                onChange={e =>
+                                  setReviewDraftNotes(prev => ({ ...prev, [item.key]: e.target.value }))
+                                }
+                                placeholder={`Write review notes for ${item.studentName} on ${item.badge} ("${item.title}")...`}
+                                className="w-full rounded-xl bg-[#000000] border border-white/15 p-3 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#09ADEF]"
+                              />
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedReviewKey(null)}
+                                className="px-4 py-2 rounded-lg bg-white/[0.04] border border-white/10 text-xs font-semibold text-zinc-300 cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onReviewStudentVideo(
+                                    item.studentId,
+                                    item.videoType,
+                                    item.videoId,
+                                    draftStatus,
+                                    draftNote.trim()
+                                  );
+                                  setSaveBanner(
+                                    `Sent "${draftStatus}" review & notes for ${item.badge} directly to ${item.studentName}!`
+                                  );
+                                  setTimeout(() => setSaveBanner(null), 4000);
+                                  setExpandedReviewKey(null);
+                                }}
+                                className="btn-2mm inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-xs cursor-pointer"
+                              >
+                                <Send className="w-3.5 h-3.5" />
+                                <span>Send Review & Notes to Student</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}

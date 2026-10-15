@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { INITIAL_STUDENTS, createNewStudentProfile } from './data/initialStudents';
 import { WORKBOOK_WEEKS } from './data/workbookData';
-import { StudentProfile, SupportingVideoItem, ShiftMagnet, WorkbookWeek, PlaybookPillar } from './types';
+import { StudentProfile, SupportingVideoItem, ShiftMagnet, WorkbookWeek, PlaybookPillar, CoachReviewStatus } from './types';
 import { DailyCadenceView } from './components/DailyCadenceView';
 import { WorkbookView } from './components/WorkbookView';
 import { ShiftMagnetsView } from './components/ShiftMagnetsView';
@@ -306,7 +306,8 @@ export function App() {
                 ...v,
                 status: 'Completed',
                 videoUrl,
-                completedAt: 'Today · Verified Link'
+                completedAt: 'Today · Verified Link',
+                coachReviewStatus: 'Pending Review'
               }
             : v
         )
@@ -315,7 +316,7 @@ export function App() {
 
     triggerWebPushAndBanner(
       'Daily Video Link Verified!',
-      `Your social link (${videoUrl}) has been logged and your streak is now ${currentStudent.streakDays + 1} days.`,
+      `Your social link (${videoUrl}) has been queued for Coach Review and your streak is now ${currentStudent.streakDays + 1} days.`,
       'DAILY_LESSON'
     );
   };
@@ -335,9 +336,91 @@ export function App() {
     updateStudent(currentStudent.id, st => ({
       ...st,
       coreVideos: st.coreVideos.map(c =>
-        c.id === coreId ? { ...c, status, videoUrl: url !== undefined ? url : c.videoUrl } : c
+        c.id === coreId
+          ? {
+              ...c,
+              status,
+              videoUrl: url !== undefined ? url : c.videoUrl,
+              coachReviewStatus: status === 'Completed' ? c.coachReviewStatus || 'Pending Review' : c.coachReviewStatus
+            }
+          : c
       )
     }));
+  };
+
+  const handleReviewStudentVideo = (
+    studentId: string,
+    videoType: 'SUPPORTING' | 'CORE',
+    videoId: string,
+    reviewStatus: CoachReviewStatus,
+    feedback: string
+  ) => {
+    const reviewedTime = new Date().toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+
+    updateStudent(studentId, st => {
+      let videoLabel = 'Video';
+      const updatedSupporting =
+        videoType === 'SUPPORTING'
+          ? st.supportingVideos.map(v => {
+              if (v.id === videoId) {
+                videoLabel = `Day #${String(v.dayNumber).padStart(2, '0')}: ${v.title}`;
+                return {
+                  ...v,
+                  coachReviewStatus: reviewStatus,
+                  coachFeedback: feedback,
+                  coachReviewedAt: reviewedTime
+                };
+              }
+              return v;
+            })
+          : st.supportingVideos;
+
+      const updatedCore =
+        videoType === 'CORE'
+          ? st.coreVideos.map(c => {
+              if (c.id === videoId) {
+                videoLabel = `${c.code}: ${c.name}`;
+                return {
+                  ...c,
+                  coachReviewStatus: reviewStatus,
+                  coachFeedback: feedback,
+                  coachReviewedAt: reviewedTime
+                };
+              }
+              return c;
+            })
+          : st.coreVideos;
+
+      const statusPrefix = reviewStatus === 'Approved' ? '✓ APPROVED' : '↻ REVISION REQUESTED';
+      const noteMsg = {
+        id: `msg-review-${Date.now()}`,
+        senderRole: 'COACH' as const,
+        senderName: 'Coach Josh Beechraft',
+        text: `[${statusPrefix}] ${videoLabel}${feedback ? ` — "${feedback}"` : ''}`,
+        timestamp: reviewedTime,
+        relatedVideoTitle: videoLabel,
+        isAlert: reviewStatus === 'Needs Revision'
+      };
+
+      return {
+        ...st,
+        supportingVideos: updatedSupporting,
+        coreVideos: updatedCore,
+        messages: [...st.messages, noteMsg]
+      };
+    });
+
+    const recipient = students.find(s => s.id === studentId);
+    triggerWebPushAndBanner(
+      `Review Sent to ${recipient?.name || 'Student'} (${reviewStatus})`,
+      feedback || `Marked video as ${reviewStatus}.`,
+      reviewStatus === 'Needs Revision' ? 'MISSED_ALERT' : 'COACH_NUDGE'
+    );
   };
 
   const handleToggleTask = (lessonNumber: number, taskIdx: number) => {
@@ -876,6 +959,7 @@ export function App() {
               onAddCustomVideoToStudent={handleAddCustomVideoToStudent}
               onDeleteStudent={handleDeleteStudent}
               onSendMessage={handleSendMessage}
+              onReviewStudentVideo={handleReviewStudentVideo}
               onTriggerMissedAlertPush={handleTriggerMissedAlertPush}
               onApproveGate={handleApproveGate}
               onOpenImportModal={() => {

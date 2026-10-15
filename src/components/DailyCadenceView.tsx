@@ -246,6 +246,45 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
               “{currentVideo.title}”
             </h1>
 
+            {/* Coach Review & Feedback Banner (Visible to Student once submitted or reviewed) */}
+            {(currentVideo.coachReviewStatus || currentVideo.coachFeedback) && (
+              <div
+                className={`mt-4 p-3.5 sm:p-4 rounded-xl border ${
+                  currentVideo.coachReviewStatus === 'Approved'
+                    ? 'bg-emerald-500/10 border-emerald-500/30'
+                    : currentVideo.coachReviewStatus === 'Needs Revision'
+                    ? 'bg-rose-500/10 border-rose-500/30'
+                    : 'bg-[#09ADEF]/10 border-[#09ADEF]/30'
+                }`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span
+                    className={`text-[10px] font-bold uppercase tracking-[0.18em] ${
+                      currentVideo.coachReviewStatus === 'Approved'
+                        ? 'text-emerald-300'
+                        : currentVideo.coachReviewStatus === 'Needs Revision'
+                        ? 'text-rose-300'
+                        : 'text-[#09ADEF]'
+                    }`}
+                  >
+                    {currentVideo.coachReviewStatus === 'Approved'
+                      ? '✓ COACH REVIEW: APPROVED'
+                      : currentVideo.coachReviewStatus === 'Needs Revision'
+                      ? '↻ COACH REVIEW: REVISION REQUESTED'
+                      : '⏳ IN COACH REVIEW QUEUE'}
+                  </span>
+                  {currentVideo.coachReviewedAt && (
+                    <span className="text-[10px] text-zinc-400">{currentVideo.coachReviewedAt}</span>
+                  )}
+                </div>
+                {currentVideo.coachFeedback && (
+                  <p className="text-xs sm:text-sm text-white mt-1.5 leading-relaxed">
+                    “{currentVideo.coachFeedback}”
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Clean Single-Row 4-Step Stepper */}
             <div className="grid grid-cols-4 gap-1.5 mt-5 pt-4 border-t border-white/[0.07]">
               {steps.map(s => {
@@ -699,24 +738,47 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                       <span className="text-[11px] text-slate-400 truncate">{item.pillarStage}</span>
                     </div>
                     <div className="text-sm font-medium text-white truncate">{item.title}</div>
-                    {item.videoUrl ? (
+                    {item.coachFeedback ? (
+                      <div className="text-xs text-[#09ADEF] truncate">
+                        Coach Note: “{item.coachFeedback}”
+                      </div>
+                    ) : item.videoUrl ? (
                       <div className="text-xs text-emerald-400 truncate">✓ {item.videoUrl}</div>
                     ) : (
                       <div className="text-xs text-slate-400 truncate">“{item.hook1}”</div>
                     )}
                   </div>
 
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 ${
-                      item.status === 'Completed'
-                        ? 'bg-emerald-500/15 text-emerald-300'
-                        : item.status === 'Missed'
-                        ? 'bg-rose-500/15 text-rose-300'
-                        : 'bg-white/8 text-slate-400'
-                    }`}
-                  >
-                    {item.status}
-                  </span>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${
+                        item.status === 'Completed'
+                          ? 'bg-emerald-500/15 text-emerald-300'
+                          : item.status === 'Missed'
+                          ? 'bg-rose-500/15 text-rose-300'
+                          : 'bg-white/8 text-slate-400'
+                      }`}
+                    >
+                      {item.status}
+                    </span>
+                    {item.coachReviewStatus && (
+                      <span
+                        className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                          item.coachReviewStatus === 'Approved'
+                            ? 'bg-emerald-500/20 text-emerald-300'
+                            : item.coachReviewStatus === 'Needs Revision'
+                            ? 'bg-rose-500/20 text-rose-300'
+                            : 'bg-[#09ADEF]/20 text-[#09ADEF]'
+                        }`}
+                      >
+                        {item.coachReviewStatus === 'Approved'
+                          ? '✓ Approved'
+                          : item.coachReviewStatus === 'Needs Revision'
+                          ? '↻ Revise'
+                          : '⏳ In Review'}
+                      </span>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -850,6 +912,30 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     </select>
                   </div>
                 </div>
+
+                {(core.coachReviewStatus || core.coachFeedback) && (
+                  <div
+                    className={`p-3.5 rounded-xl border ${
+                      core.coachReviewStatus === 'Approved'
+                        ? 'bg-emerald-500/10 border-emerald-500/30'
+                        : core.coachReviewStatus === 'Needs Revision'
+                        ? 'bg-rose-500/10 border-rose-500/30'
+                        : 'bg-[#09ADEF]/10 border-[#09ADEF]/30'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                        COACH REVIEW · {core.coachReviewStatus || 'Pending Review'}
+                      </span>
+                      {core.coachReviewedAt && (
+                        <span className="text-[10px] text-zinc-400">{core.coachReviewedAt}</span>
+                      )}
+                    </div>
+                    {core.coachFeedback && (
+                      <p className="text-xs text-white mt-1 leading-relaxed">“{core.coachFeedback}”</p>
+                    )}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-2.5">
                   {(['S', 'H', 'I', 'F', 'T'] as const).map(letter => (

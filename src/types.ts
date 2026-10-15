@@ -1,4 +1,5 @@
 export type VideoStatus = 'Not Started' | 'In Progress' | 'Completed' | 'Missed';
+export type CoachReviewStatus = 'Pending Review' | 'Approved' | 'Needs Revision';
 
 export interface PlaybookPillar {
   id: string;
@@ -32,6 +33,9 @@ export interface SupportingVideoItem {
   attachedMagnetId?: string;
   completedAt?: string;
   notes?: string;
+  coachReviewStatus?: CoachReviewStatus;
+  coachFeedback?: string;
+  coachReviewedAt?: string;
 }
 
 export interface CoreBrandVideo {
@@ -50,6 +54,9 @@ export interface CoreBrandVideo {
   };
   status: VideoStatus;
   videoUrl?: string;
+  coachReviewStatus?: CoachReviewStatus;
+  coachFeedback?: string;
+  coachReviewedAt?: string;
   scriptDraft?: {
     S: string;
     H: string;
