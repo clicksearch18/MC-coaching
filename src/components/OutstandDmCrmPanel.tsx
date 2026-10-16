@@ -293,9 +293,11 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     igAccId?: string,
     fbAccId?: string
   ) => {
+    const activeIgId = igAccId || outstandConfig.instagramAccountId;
+    const activeFbId = fbAccId || outstandConfig.facebookAccountId;
     const accountIds = [
-      { id: igAccId, platform: 'instagram' as const },
-      { id: fbAccId, platform: 'facebook' as const }
+      { id: activeIgId, platform: 'instagram' as const },
+      { id: activeFbId, platform: 'facebook' as const }
     ].filter(a => Boolean(a.id && !a.id.startsWith('ig_') && !a.id.startsWith('fb_')));
 
     if (accountIds.length === 0) return;
@@ -322,6 +324,8 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           participant_username?: string;
           participant_name?: string;
           lastInboundAt?: string;
+          lastMessageAt?: string;
+          updatedAt?: string;
           updated_at?: string;
           unreadCount?: number;
           last_message_text?: string;
@@ -333,17 +337,123 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
 
         for (const conv of convList) {
           if (!conv?.id) continue;
-          const exists = mergedThreads.some(t => t.outstandConversationId === conv.id);
-          if (!exists) {
+
+          // Fetch live messages for this conversation via GET_MESSAGES
+          let remoteMessages: DmCrmMessage[] = [];
+          try {
+            const msgRes = await fetch('/api/outstand/action', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'GET_MESSAGES',
+                apiKey: outstandConfig.apiKey || undefined,
+                conversationId: conv.id
+              })
+            });
+            const msgJson = await msgRes.json();
+            const rawMsgs: {
+              id: string;
+              direction?: string;
+              content?: string;
+              text?: string;
+              status?: string;
+              scheduledAt?: string | null;
+              platformSentAt?: string | null;
+              createdAt?: string;
+            }[] = Array.isArray(msgJson?.data?.data)
+              ? msgJson.data.data
+              : Array.isArray(msgJson?.data)
+              ? msgJson.data
+              : [];
+
+            // Sort oldest to newest
+            const sortedRaw = [...rawMsgs].sort((a, b) => {
+              const tA = new Date(a.platformSentAt || a.createdAt || 0).getTime();
+              const tB = new Date(b.platformSentAt || b.createdAt || 0).getTime();
+              return tA - tB;
+            });
+
+            remoteMessages = sortedRaw.map(m => {
+              const isInbound = m.direction === 'inbound';
+              return {
+                id: `msg-${m.id}`,
+                outstandMessageId: m.id,
+                direction: isInbound ? 'inbound_dm' : 'outbound_dm',
+                text: m.content || m.text || '',
+                stageTag: isInbound
+                  ? 'Inbound Prospect Reply · 24h Window Open'
+                  : 'Sent via Instagram DM',
+                createdAt: m.platformSentAt || m.createdAt || new Date().toISOString(),
+                scheduledFor: m.scheduledAt || null,
+                deliveryStatus:
+                  m.status === 'scheduled'
+                    ? 'scheduled'
+                    : isInbound
+                    ? 'read'
+                    : m.status === 'sent'
+                    ? 'delivered'
+                    : 'sent'
+              };
+            });
+          } catch {
+            // Ignore per-conversation message fetch failure
+          }
+
+          const rawName =
+            conv.participantDisplayName ||
+            conv.participant_username ||
+            conv.participant_name ||
+            conv.participantId ||
+            'prospect';
+          const handle = String(rawName).replace(/^@/, '');
+          const ts =
+            conv.lastMessageAt ||
+            conv.lastInboundAt ||
+            conv.updatedAt ||
+            conv.updated_at ||
+            new Date().toISOString();
+
+          const hasInboundDm =
+            Boolean(conv.lastInboundAt) ||
+            remoteMessages.some(m => m.direction === 'inbound_dm');
+
+          // Detect if the first outbound message was triggered by a Shift Magnet keyword
+          const firstOutboundText =
+            remoteMessages.find(m => m.direction === 'outbound_dm')?.text || '';
+          const inferredMagnet = student.shiftMagnets.find(mag => {
+            const kw = (mag.keywordTrigger || '').trim();
+            return (
+              (kw && new RegExp(`\\b${kw}\\b`, 'i').test(firstOutboundText)) ||
+              (mag.workingTitle && firstOutboundText.includes(mag.workingTitle))
+            );
+          });
+
+          // Detect if the prospect replied with a constraint choice (A, B, C, Referrals, Paid, etc.)
+          const latestInbound = [...remoteMessages]
+            .reverse()
+            .find(m => m.direction === 'inbound_dm');
+          const inboundUpper = (latestInbound?.text || '').trim().toUpperCase();
+          const detectedConstraint =
+            inboundUpper === 'A' || inboundUpper.startsWith('A)')
+              ? 'Option A'
+              : inboundUpper === 'B' || inboundUpper.startsWith('B)')
+              ? 'Option B'
+              : inboundUpper === 'C' || inboundUpper.startsWith('C)')
+              ? 'Option C'
+              : inboundUpper.includes('REFERRAL')
+              ? 'Referrals'
+              : inboundUpper.includes('PAID') || inboundUpper.includes('ADS')
+              ? 'Paid Traffic'
+              : '';
+
+          const existingIdx = mergedThreads.findIndex(
+            t =>
+              t.outstandConversationId === conv.id ||
+              String(t.prospectHandle).replace(/^@/, '').toLowerCase() === handle.toLowerCase()
+          );
+
+          if (existingIdx === -1) {
             hasChanges = true;
-            const rawName =
-              conv.participantDisplayName ||
-              conv.participant_username ||
-              conv.participant_name ||
-              conv.participantId ||
-              'prospect';
-            const handle = String(rawName).replace(/^@/, '');
-            const ts = conv.lastInboundAt || conv.updated_at || new Date().toISOString();
             mergedThreads.unshift({
               id: `crm-${conv.id}`,
               outstandConversationId: conv.id,
@@ -351,30 +461,74 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
               platform: acc.platform,
               prospectHandle: handle,
               prospectName: conv.participantDisplayName || conv.participant_name || handle,
-              matchedKeyword: 'DIRECT DM',
-              matchedMagnetId: null,
-              matchedMagnetTitle: 'Live Conversation',
+              matchedKeyword: inferredMagnet?.keywordTrigger || 'DIRECT DM',
+              matchedMagnetId: inferredMagnet?.id || null,
+              matchedMagnetTitle: inferredMagnet?.workingTitle || 'Live Conversation',
               sourceCommentId: null,
               sourcePostId: null,
-              stage: 'STAGE_S',
-              constraintPicked: '',
-              windowOpen: Boolean(conv.lastInboundAt),
-              lastUserReplyAt: conv.lastInboundAt || ts,
+              stage: detectedConstraint ? 'STAGE_H' : 'STAGE_S',
+              constraintPicked: detectedConstraint,
+              windowOpen: hasInboundDm,
+              lastUserReplyAt: conv.lastInboundAt || (hasInboundDm ? ts : null),
               scheduledFollowup: null,
               unreadCount: typeof conv.unreadCount === 'number' ? conv.unreadCount : 0,
               updatedAt: ts,
-              messages: conv.last_message_text
-                ? [
-                    {
-                      id: `msg-${conv.id}`,
-                      direction: 'inbound_dm',
-                      text: conv.last_message_text,
-                      createdAt: ts,
-                      deliveryStatus: 'read'
-                    }
-                  ]
-                : []
+              messages: remoteMessages
             });
+          } else {
+            const existing = mergedThreads[existingIdx];
+            const commentMsgs = (existing.messages || []).filter(
+              m => m.direction === 'inbound_comment'
+            );
+            const combinedMessages =
+              remoteMessages.length > 0
+                ? [...commentMsgs, ...remoteMessages]
+                : existing.messages || [];
+
+            const prevMsgSig = (existing.messages || [])
+              .map(m => `${m.outstandMessageId || m.id}:${m.text}`)
+              .join('|');
+            const nextMsgSig = combinedMessages
+              .map(m => `${m.outstandMessageId || m.id}:${m.text}`)
+              .join('|');
+
+            if (
+              prevMsgSig !== nextMsgSig ||
+              existing.windowOpen !== (existing.windowOpen || hasInboundDm) ||
+              existing.outstandConversationId !== conv.id ||
+              (inferredMagnet && existing.matchedKeyword === 'DIRECT DM')
+            ) {
+              hasChanges = true;
+              mergedThreads[existingIdx] = {
+                ...existing,
+                outstandConversationId: conv.id,
+                socialAccountId: acc.id || existing.socialAccountId,
+                prospectHandle: handle || existing.prospectHandle,
+                prospectName:
+                  conv.participantDisplayName || conv.participant_name || existing.prospectName,
+                matchedKeyword:
+                  existing.matchedKeyword === 'DIRECT DM' && inferredMagnet
+                    ? inferredMagnet.keywordTrigger
+                    : existing.matchedKeyword,
+                matchedMagnetId: existing.matchedMagnetId || inferredMagnet?.id || null,
+                matchedMagnetTitle:
+                  existing.matchedMagnetTitle === 'Live Conversation' && inferredMagnet
+                    ? inferredMagnet.workingTitle
+                    : existing.matchedMagnetTitle,
+                stage:
+                  existing.stage === 'STAGE_S' && detectedConstraint
+                    ? 'STAGE_H'
+                    : existing.stage,
+                constraintPicked: existing.constraintPicked || detectedConstraint,
+                windowOpen: existing.windowOpen || hasInboundDm,
+                lastUserReplyAt:
+                  conv.lastInboundAt ||
+                  existing.lastUserReplyAt ||
+                  (hasInboundDm ? ts : null),
+                updatedAt: ts,
+                messages: combinedMessages
+              };
+            }
           }
         }
       }
@@ -389,6 +543,23 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
       // Ignore conversation sync error
     }
   };
+
+  // Poll live conversations & DM replies every 8 seconds while the CRM panel is open
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (outstandConfig.instagramAccountId || outstandConfig.facebookAccountId) {
+        syncLiveConversationsFromOutstand(
+          outstandConfig.instagramAccountId,
+          outstandConfig.facebookAccountId
+        );
+      }
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [
+    outstandConfig.instagramAccountId,
+    outstandConfig.facebookAccountId,
+    threads
+  ]);
 
   const syncConnectedAccountsFromOutstand = async (
     preferredPageId?: string,
@@ -1169,7 +1340,11 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
             json?.error || 'Message saved locally, but live social delivery could not be confirmed.'
           );
         } else {
-          outstandMessageId = json?.data?.id || json?.data?.data?.id || null;
+          outstandMessageId =
+            json?.data?.message?.id ||
+            json?.data?.data?.id ||
+            json?.data?.id ||
+            null;
         }
       } catch {
         setStatusBanner('Message saved locally (offline or connection unavailable).');
@@ -1177,7 +1352,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     }
 
     const newMsg: DmCrmMessage = {
-      id: `msg-out-${Date.now()}`,
+      id: outstandMessageId ? `msg-${outstandMessageId}` : `msg-out-${Date.now()}`,
       outstandMessageId,
       direction: 'outbound_dm',
       text: messageText,
