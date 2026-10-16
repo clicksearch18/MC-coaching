@@ -317,9 +317,13 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
         const json = await res.json();
         const convList: {
           id: string;
+          participantDisplayName?: string;
+          participantId?: string;
           participant_username?: string;
           participant_name?: string;
+          lastInboundAt?: string;
           updated_at?: string;
+          unreadCount?: number;
           last_message_text?: string;
         }[] = Array.isArray(json?.data?.data)
           ? json.data.data
@@ -332,17 +336,21 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           const exists = mergedThreads.some(t => t.outstandConversationId === conv.id);
           if (!exists) {
             hasChanges = true;
-            const handle = (conv.participant_username || conv.participant_name || 'prospect').replace(
-              /^@/,
-              ''
-            );
+            const rawName =
+              conv.participantDisplayName ||
+              conv.participant_username ||
+              conv.participant_name ||
+              conv.participantId ||
+              'prospect';
+            const handle = String(rawName).replace(/^@/, '');
+            const ts = conv.lastInboundAt || conv.updated_at || new Date().toISOString();
             mergedThreads.unshift({
               id: `crm-${conv.id}`,
               outstandConversationId: conv.id,
               socialAccountId: acc.id || null,
               platform: acc.platform,
               prospectHandle: handle,
-              prospectName: conv.participant_name || handle,
+              prospectName: conv.participantDisplayName || conv.participant_name || handle,
               matchedKeyword: 'DIRECT DM',
               matchedMagnetId: null,
               matchedMagnetTitle: 'Live Conversation',
@@ -350,18 +358,18 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
               sourcePostId: null,
               stage: 'STAGE_S',
               constraintPicked: '',
-              windowOpen: true,
-              lastUserReplyAt: conv.updated_at || new Date().toISOString(),
+              windowOpen: Boolean(conv.lastInboundAt),
+              lastUserReplyAt: conv.lastInboundAt || ts,
               scheduledFollowup: null,
-              unreadCount: 0,
-              updatedAt: conv.updated_at || new Date().toISOString(),
+              unreadCount: typeof conv.unreadCount === 'number' ? conv.unreadCount : 0,
+              updatedAt: ts,
               messages: conv.last_message_text
                 ? [
                     {
                       id: `msg-${conv.id}`,
                       direction: 'inbound_dm',
                       text: conv.last_message_text,
-                      createdAt: conv.updated_at || new Date().toISOString(),
+                      createdAt: ts,
                       deliveryStatus: 'read'
                     }
                   ]

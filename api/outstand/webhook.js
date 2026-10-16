@@ -73,14 +73,14 @@ export default async function handler(req, res) {
     if (supabase) {
       const [{ data: studentRows }, { data: settingsRow }] = await Promise.all([
         supabase.from('mc_students').select('id, profile'),
-        supabase.from('mc_lessons').select('lesson').eq('week_number', 0).maybeSingle()
+        supabase.from('mc_lessons').select('data').eq('week_number', 0).maybeSingle()
       ]);
 
       if (Array.isArray(studentRows)) {
         students = studentRows.map(r => r.profile).filter(Boolean);
       }
-      if (!globalApiKey && settingsRow?.lesson?.outstandApiKey) {
-        globalApiKey = settingsRow.lesson.outstandApiKey;
+      if (!globalApiKey && settingsRow?.data?.outstandApiKey) {
+        globalApiKey = settingsRow.data.outstandApiKey;
       }
     }
 
@@ -123,17 +123,19 @@ export default async function handler(req, res) {
     // EVENT 1: comment.received -> Keyword Match -> POST /v1/conversations
     // -------------------------------------------------------------------------
     if (eventType === 'comment.received') {
-      const {
-        network = 'instagram',
-        accountId,
-        accountUsername,
-        postId,
-        commentId,
-        authorId,
-        authorUsername,
-        authorName,
-        text = ''
-      } = data;
+      const network = data.network || 'instagram';
+      const accountId =
+        data.accountId || data.account_id || data.socialAccountId || data.social_account_id;
+      const accountUsername =
+        data.accountUsername || data.account_username || data.recipientUsername || data.recipient_username;
+      const postId = data.postId || data.post_id || data.mediaId || data.media_id;
+      const commentId = data.commentId || data.comment_id || data.id;
+      const authorId = data.authorId || data.author_id || data.fromId || data.from_id;
+      const authorUsername =
+        data.authorUsername || data.author_username || data.fromUsername || data.username;
+      const authorName =
+        data.authorName || data.author_name || data.fromName || authorUsername;
+      const text = data.text || data.content || data.message || '';
 
       // Ignore outbound/echo comments or comments authored by the connected account itself
       if (data.isEcho || data.fromMe || data.direction === 'outbound' || (accountId && authorId && accountId === authorId)) {
@@ -251,14 +253,22 @@ export default async function handler(req, res) {
             },
             body: JSON.stringify({
               social_account_id: accountId,
-              comment_id: commentId,
-              content: combinedPrivateReply
+              content: combinedPrivateReply,
+              instagram: {
+                comment_id: commentId,
+                ...(authorId ? { author_id: authorId } : {})
+              }
             }),
             signal: AbortSignal.timeout(8000)
           });
           outstandResult = await resp.json().catch(() => ({}));
-          if (outstandResult?.data?.id || outstandResult?.id) {
-            outstandConvoId = outstandResult.data?.id || outstandResult.id;
+          const createdConvoId =
+            outstandResult?.conversation?.id ||
+            outstandResult?.data?.conversation?.id ||
+            outstandResult?.data?.id ||
+            outstandResult?.id;
+          if (createdConvoId) {
+            outstandConvoId = createdConvoId;
           }
         } catch (err) {
           console.warn('POST /v1/conversations error:', err);
@@ -386,16 +396,22 @@ export default async function handler(req, res) {
     // EVENT 2: message.received -> Append Prospect Reply & Unlock 24h Window
     // -------------------------------------------------------------------------
     if (eventType === 'message.received') {
-      const {
-        conversationId,
-        accountId,
-        accountUsername,
-        messageId,
-        senderId,
-        senderUsername,
-        senderName,
-        text = ''
-      } = data;
+      const conversationId = data.conversationId || data.conversation_id;
+      const accountId =
+        data.accountId || data.account_id || data.socialAccountId || data.social_account_id;
+      const accountUsername =
+        data.accountUsername || data.account_username || data.recipientUsername;
+      const messageId = data.messageId || data.message_id || data.id;
+      const senderId =
+        data.senderId || data.sender_id || data.participantId || data.participant_id;
+      const senderUsername =
+        data.senderUsername ||
+        data.sender_username ||
+        data.participantDisplayName ||
+        data.participant_username;
+      const senderName =
+        data.senderName || data.sender_name || data.participantDisplayName || senderUsername;
+      const text = data.text || data.content || data.message || '';
 
       // Ignore outbound echoes or messages sent by the connected business account itself
       if (

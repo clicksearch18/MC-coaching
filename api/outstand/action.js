@@ -57,6 +57,7 @@ export default async function handler(req, res) {
       selectedPageIds,
       conversationId,
       commentId,
+      authorId,
       messageId,
       content,
       text,
@@ -109,6 +110,13 @@ export default async function handler(req, res) {
       const payload = {};
       if (redirectUri) payload.redirect_uri = redirectUri;
       if (tenantId) payload.tenant_id = tenantId;
+      // Per Outstand Conversations docs, instagram_business_manage_messages & instagram_business_manage_comments
+      // must be explicitly requested in scopes so Outstand subscribes the account to DMs and comment webhooks.
+      if (network === 'instagram') {
+        payload.scopes =
+          body.scopes ||
+          'instagram_business_basic,instagram_business_content_publish,instagram_business_manage_comments,instagram_business_manage_insights,instagram_business_manage_messages';
+      }
 
       const requestAuthUrl = async () => {
         let r = await fetch(
@@ -124,6 +132,7 @@ export default async function handler(req, res) {
           const params = new URLSearchParams();
           if (tenantId) params.set('tenant_id', tenantId);
           if (redirectUri) params.set('redirect_uri', redirectUri);
+          if (payload.scopes) params.set('scopes', payload.scopes);
           const qs = params.toString() ? `?${params.toString()}` : '';
           r = await fetch(
             `${OUTSTAND_BASE_URL}/social-networks/${encodeURIComponent(network)}/auth-url${qs}`,
@@ -271,8 +280,11 @@ export default async function handler(req, res) {
         headers,
         body: JSON.stringify({
           social_account_id: socialAccountId,
-          comment_id: commentId,
-          content: messageContent
+          content: messageContent,
+          instagram: {
+            comment_id: commentId,
+            ...(authorId ? { author_id: authorId } : {})
+          }
         })
       });
       const json = await resp.json().catch(() => ({}));
