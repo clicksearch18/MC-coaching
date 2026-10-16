@@ -98,7 +98,14 @@ export default async function handler(req, res) {
         students.find(s => {
           try {
             const cfg = JSON.parse(s.worksheetAnswers?.outstand_config_json || '{}');
-            return cfg.socialAccountId && cfg.socialAccountId === accountId;
+            if (!accountId) return false;
+            return (
+              cfg.socialAccountId === accountId ||
+              cfg.instagramAccountId === accountId ||
+              cfg.facebookAccountId === accountId ||
+              (Array.isArray(cfg.connectedAccounts) &&
+                cfg.connectedAccounts.some(a => a.id === accountId))
+            );
           } catch {
             return false;
           }
@@ -303,7 +310,14 @@ export default async function handler(req, res) {
         students.find(s => {
           try {
             const cfg = JSON.parse(s.worksheetAnswers?.outstand_config_json || '{}');
-            return cfg.socialAccountId && cfg.socialAccountId === accountId;
+            if (!accountId) return false;
+            return (
+              cfg.socialAccountId === accountId ||
+              cfg.instagramAccountId === accountId ||
+              cfg.facebookAccountId === accountId ||
+              (Array.isArray(cfg.connectedAccounts) &&
+                cfg.connectedAccounts.some(a => a.id === accountId))
+            );
           } catch {
             return false;
           }

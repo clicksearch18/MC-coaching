@@ -74,10 +74,21 @@ export interface DmCrmThread {
   messages: DmCrmMessage[];
 }
 
+export interface OutstandConnectedAccount {
+  id: string;
+  network: 'instagram' | 'facebook';
+  username: string;
+  name?: string;
+}
+
 export interface OutstandConfig {
   apiKey: string;
   socialAccountId: string;
+  instagramAccountId?: string;
   instagramHandle: string;
+  facebookAccountId?: string;
+  facebookPageName?: string;
+  connectedAccounts?: OutstandConnectedAccount[];
   tenantId: string;
   autoCommentToDm: boolean;
   combineStageSandH: boolean;
@@ -282,6 +293,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
 
   // Simulator controls
+  const [simPlatform, setSimPlatform] = useState<'instagram' | 'facebook'>('instagram');
   const [simHandle, setSimHandle] = useState('devon_mercer');
   const [simName, setSimName] = useState('Devon Mercer');
   const [simKeyword, setSimKeyword] = useState(
@@ -310,14 +322,22 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     const defaults: OutstandConfig = {
       apiKey: '',
       socialAccountId: '',
+      instagramAccountId: '',
       instagramHandle: student.worksheetAnswers['ig_handle'] || '',
+      facebookAccountId: '',
+      facebookPageName: '',
+      connectedAccounts: [],
       tenantId: student.id,
       autoCommentToDm: true,
       combineStageSandH: true
     };
     if (!raw) return defaults;
     try {
-      return { ...defaults, ...JSON.parse(raw) };
+      const parsed = { ...defaults, ...JSON.parse(raw) };
+      if (!parsed.instagramAccountId && parsed.socialAccountId) {
+        parsed.instagramAccountId = parsed.socialAccountId;
+      }
+      return parsed;
     } catch {
       return defaults;
     }
@@ -326,13 +346,27 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
   // Config modal form state
   const [cfgApiKey, setCfgApiKey] = useState(outstandConfig.apiKey);
   const [cfgSocialAccountId, setCfgSocialAccountId] = useState(outstandConfig.socialAccountId);
+  const [cfgIgAccountId, setCfgIgAccountId] = useState(
+    outstandConfig.instagramAccountId || outstandConfig.socialAccountId || ''
+  );
   const [cfgIgHandle, setCfgIgHandle] = useState(outstandConfig.instagramHandle);
+  const [cfgFbAccountId, setCfgFbAccountId] = useState(outstandConfig.facebookAccountId || '');
+  const [cfgFbPageName, setCfgFbPageName] = useState(outstandConfig.facebookPageName || '');
   const [cfgAutoTrigger, setCfgAutoTrigger] = useState(outstandConfig.autoCommentToDm);
   const [cfgCombineSH, setCfgCombineSH] = useState(outstandConfig.combineStageSandH);
   const [isCheckingAccounts, setIsCheckingAccounts] = useState(false);
+  const [connectingNetwork, setConnectingNetwork] = useState<'instagram' | 'facebook' | null>(null);
   const [fetchedAccounts, setFetchedAccounts] = useState<
-    { id: string; username?: string; network?: string }[]
+    { id: string; username?: string; name?: string; network?: string }[]
   >([]);
+
+  // Pending OAuth session state (`?session=` callback from Outstand OAuth flow)
+  const [pendingSessionToken, setPendingSessionToken] = useState<string | null>(null);
+  const [pendingPages, setPendingPages] = useState<
+    { id: string; name?: string; username?: string; network?: string }[]
+  >([]);
+  const [selectedPendingPageIds, setSelectedPendingPageIds] = useState<string[]>([]);
+  const [isFinalizingSession, setIsFinalizingSession] = useState(false);
 
   // Load threads from student.worksheetAnswers['dm_crm_threads_json']
   const threads: DmCrmThread[] = useMemo(() => {
@@ -506,8 +540,13 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     const nowIso = new Date().toISOString();
     const fakeCommentId = `cmt_${Date.now()}`;
 
+    const targetAccountId =
+      simPlatform === 'facebook'
+        ? outstandConfig.facebookAccountId || outstandConfig.socialAccountId
+        : outstandConfig.instagramAccountId || outstandConfig.socialAccountId;
+
     // If student has configured Outstand API + socialAccountId, also attempt live Outstand call
-    if (outstandConfig.socialAccountId && outstandConfig.apiKey) {
+    if (targetAccountId && outstandConfig.apiKey) {
       try {
         await fetch('/api/outstand/action', {
           method: 'POST',
@@ -515,7 +554,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           body: JSON.stringify({
             action: 'SEND_PRIVATE_REPLY',
             apiKey: outstandConfig.apiKey,
-            socialAccountId: outstandConfig.socialAccountId,
+            socialAccountId: targetAccountId,
             commentId: fakeCommentId,
             text: combinedReply
           })
@@ -525,18 +564,21 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
       }
     }
 
+    const platformLabel = simPlatform === 'facebook' ? 'Facebook' : 'Instagram';
+
     const newThread: DmCrmThread = {
       id: `crm-${Date.now()}`,
       outstandConversationId: `conv_${Date.now()}`,
-      socialAccountId: outstandConfig.socialAccountId || 'acc_ig_sandbox',
-      platform: 'instagram',
+      socialAccountId:
+        targetAccountId || (simPlatform === 'facebook' ? 'acc_fb_sandbox' : 'acc_ig_sandbox'),
+      platform: simPlatform,
       prospectHandle: cleanHandle,
       prospectName: cleanName,
       matchedKeyword: keyword,
       matchedMagnetId: matchedMag?.id || null,
       matchedMagnetTitle: matchedMag?.workingTitle || 'Shift Magnet',
       sourceCommentId: fakeCommentId,
-      sourcePostId: 'reel_latest',
+      sourcePostId: simPlatform === 'facebook' ? 'fb_post_latest' : 'reel_latest',
       stage: 'STAGE_S',
       constraintPicked: '',
       windowOpen: false, // Meta 24h window stays locked until prospect replies to Private Reply
@@ -549,7 +591,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           id: `msg-cmt-${Date.now()}`,
           direction: 'inbound_comment',
           text: simCommentText.trim() || keyword,
-          stageTag: `Comment Trigger (${keyword})`,
+          stageTag: `${platformLabel} Comment Trigger (${keyword})`,
           createdAt: nowIso,
           deliveryStatus: 'delivered'
         },
@@ -557,7 +599,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           id: `msg-dm-${Date.now() + 1}`,
           direction: 'outbound_dm',
           text: combinedReply,
-          stageTag: 'Stage S + H · Outstand Private Reply',
+          stageTag: `Stage S + H · ${platformLabel} Private Reply`,
           createdAt: nowIso,
           deliveryStatus: 'sent'
         }
@@ -570,15 +612,17 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     setIsTriggeringSim(false);
     setStatusBanner({
       type: 'success',
-      text: `Comment trigger "${keyword}" fired! Outstand sent combined Stage S (Link) + Stage H (A/B/C Diagnostic) Private Reply to @${cleanHandle}.`
+      text: `${platformLabel} comment trigger "${keyword}" fired! Outstand sent combined Stage S (Link) + Stage H (A/B/C Diagnostic) Private Reply to @${cleanHandle}.`
     });
 
     onTriggerCrmNotification?.({
-      senderLabel: 'Live DM CRM · Comment Trigger',
-      text: `⚡ @${cleanHandle} commented "${simCommentText.trim() || keyword}" → Outstand auto-sent "${
+      senderLabel: `Live DM CRM · ${platformLabel} Comment Trigger`,
+      text: `⚡ [${platformLabel}] @${cleanHandle} commented "${
+        simCommentText.trim() || keyword
+      }" → Outstand auto-sent "${
         matchedMag?.workingTitle || 'Shift Magnet'
       }" + Stage H (A/B/C Diagnostic) Private Reply!`,
-      bannerTitle: `⚡ Comment Trigger Fired: @${cleanHandle}`,
+      bannerTitle: `⚡ ${platformLabel} Comment Trigger: @${cleanHandle}`,
       bannerBody: `Sent "${matchedMag?.workingTitle || 'Shift Magnet'}" + Stage H A/B/C Question to @${cleanHandle}.`,
       threadId: newThread.id,
       actionLabel: 'Open DM Thread in Live CRM'
@@ -923,26 +967,63 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     }
   };
 
+  const openConfigModalWithCurrentValues = () => {
+    setCfgApiKey(outstandConfig.apiKey);
+    setCfgSocialAccountId(outstandConfig.socialAccountId);
+    setCfgIgAccountId(
+      outstandConfig.instagramAccountId || outstandConfig.socialAccountId || ''
+    );
+    setCfgIgHandle(outstandConfig.instagramHandle || '');
+    setCfgFbAccountId(outstandConfig.facebookAccountId || '');
+    setCfgFbPageName(outstandConfig.facebookPageName || '');
+    setCfgAutoTrigger(outstandConfig.autoCommentToDm);
+    setCfgCombineSH(outstandConfig.combineStageSandH);
+    setShowConfigModal(true);
+  };
+
   // Fetch connected social accounts from Outstand (`GET /v1/social-accounts`)
-  const handleFetchOutstandAccounts = async () => {
+  const handleFetchOutstandAccounts = async (overrideApiKey?: string) => {
     setIsCheckingAccounts(true);
     try {
+      const keyToUse = (overrideApiKey ?? cfgApiKey ?? outstandConfig.apiKey).trim();
       const res = await fetch('/api/outstand/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'LIST_ACCOUNTS',
-          apiKey: cfgApiKey.trim() || undefined,
+          apiKey: keyToUse || undefined,
           tenantId: student.id
         })
       });
       const json = await res.json();
       if (json?.ok && Array.isArray(json?.data?.data || json?.data)) {
-        const list = Array.isArray(json.data.data) ? json.data.data : json.data;
+        const list: { id: string; username?: string; name?: string; network?: string }[] =
+          Array.isArray(json.data.data) ? json.data.data : json.data;
         setFetchedAccounts(list);
+
+        const igAcc = list.find(a => (a.network || '').toLowerCase() === 'instagram');
+        const fbAcc = list.find(a => (a.network || '').toLowerCase() === 'facebook');
+
+        if (igAcc?.id) {
+          setCfgIgAccountId(igAcc.id);
+          if (!cfgSocialAccountId) setCfgSocialAccountId(igAcc.id);
+          if (igAcc.username) setCfgIgHandle(igAcc.username.replace(/^@/, ''));
+        }
+        if (fbAcc?.id) {
+          setCfgFbAccountId(fbAcc.id);
+          if (!cfgSocialAccountId && !igAcc?.id) setCfgSocialAccountId(fbAcc.id);
+          if (fbAcc.name || fbAcc.username) {
+            setCfgFbPageName(fbAcc.name || fbAcc.username || '');
+          }
+        }
         if (list[0]?.id && !cfgSocialAccountId) {
           setCfgSocialAccountId(list[0].id);
         }
+      } else if (json?.error) {
+        setStatusBanner({
+          type: 'warning',
+          text: `Outstand API response: ${json.error}`
+        });
       }
     } catch {
       // Ignore error
@@ -951,12 +1032,164 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     }
   };
 
+  // Start Outstand OAuth connection flow for Instagram or Facebook (`POST /v1/social-networks/{network}/auth-url`)
+  const handleConnectSocialNetwork = async (network: 'instagram' | 'facebook') => {
+    const activeKey = (cfgApiKey || outstandConfig.apiKey).trim();
+    setConnectingNetwork(network);
+    try {
+      const redirectUri =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}${window.location.pathname}`
+          : 'https://mc-coaching-swart.vercel.app';
+
+      const res = await fetch('/api/outstand/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'GET_AUTH_URL',
+          network,
+          apiKey: activeKey || undefined,
+          tenantId: student.id,
+          redirectUri
+        })
+      });
+      const json = await res.json();
+      if (json?.ok && json?.authUrl) {
+        window.open(json.authUrl, '_blank', 'noopener,noreferrer');
+        setStatusBanner({
+          type: 'info',
+          text: `Opened Outstand ${
+            network === 'facebook' ? 'Facebook Page' : 'Instagram'
+          } OAuth window! After authorizing on Meta, click "Sync Connected Accounts" in the Configure modal.`
+        });
+      } else {
+        openConfigModalWithCurrentValues();
+        setStatusBanner({
+          type: 'info',
+          text: activeKey
+            ? `Could not auto-launch ${network} OAuth (${
+                json?.error || 'verify Outstand social network settings'
+              }). You can also paste your connected ${
+                network === 'facebook' ? 'Facebook' : 'Instagram'
+              } Account ID or click Sync Connected Accounts below.`
+            : `Enter your Outstand API Key (out_live_...) in the modal below to launch 1-click ${
+                network === 'facebook' ? 'Facebook Page' : 'Instagram'
+              } OAuth or link your account.`
+        });
+      }
+    } catch {
+      openConfigModalWithCurrentValues();
+    } finally {
+      setConnectingNetwork(null);
+    }
+  };
+
+  // Handle Outstand OAuth redirect `?session=SESSION_TOKEN` for multi-page selection (Facebook Pages / Instagram Business)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const sessionToken = params.get('session') || params.get('outstand_session');
+    if (!sessionToken) return;
+
+    setPendingSessionToken(sessionToken);
+    openConfigModalWithCurrentValues();
+
+    // Clean query param from address bar without reloading
+    const cleanUrl = `${window.location.origin}${window.location.pathname}${window.location.hash}`;
+    window.history.replaceState({}, document.title, cleanUrl);
+
+    (async () => {
+      try {
+        const res = await fetch('/api/outstand/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'GET_PENDING_CONNECTION',
+            sessionToken,
+            apiKey: outstandConfig.apiKey || undefined
+          })
+        });
+        const json = await res.json();
+        const pages =
+          json?.data?.available_pages ||
+          json?.data?.pages ||
+          json?.data?.accounts ||
+          json?.data?.data ||
+          [];
+        if (Array.isArray(pages) && pages.length > 0) {
+          setPendingPages(pages);
+          setSelectedPendingPageIds(pages.map((p: { id: string }) => p.id));
+        }
+      } catch {
+        // Ignore error
+      }
+    })();
+  }, []);
+
+  const handleFinalizePendingSession = async () => {
+    if (!pendingSessionToken) return;
+    setIsFinalizingSession(true);
+    try {
+      const res = await fetch('/api/outstand/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'FINALIZE_PENDING_CONNECTION',
+          sessionToken: pendingSessionToken,
+          selectedPageIds: selectedPendingPageIds,
+          apiKey: (cfgApiKey || outstandConfig.apiKey).trim() || undefined
+        })
+      });
+      const json = await res.json();
+      if (json?.ok) {
+        setPendingSessionToken(null);
+        setPendingPages([]);
+        await handleFetchOutstandAccounts();
+        setStatusBanner({
+          type: 'success',
+          text: 'Social account connection finalized via Outstand! Your Instagram / Facebook accounts are now linked.'
+        });
+      }
+    } catch {
+      // Ignore error
+    } finally {
+      setIsFinalizingSession(false);
+    }
+  };
+
   const handleSaveConfigModal = (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanIgId = cfgIgAccountId.trim() || cfgSocialAccountId.trim();
+    const cleanIgHandle = cfgIgHandle.trim().replace(/^@/, '');
+    const cleanFbId = cfgFbAccountId.trim();
+    const cleanFbName = cfgFbPageName.trim();
+    const primaryAccountId = cfgSocialAccountId.trim() || cleanIgId || cleanFbId;
+
+    const connectedAccountsList: OutstandConnectedAccount[] = [];
+    if (cleanIgId || cleanIgHandle) {
+      connectedAccountsList.push({
+        id: cleanIgId || 'acc_ig_connected',
+        network: 'instagram',
+        username: cleanIgHandle || 'instagram_account'
+      });
+    }
+    if (cleanFbId || cleanFbName) {
+      connectedAccountsList.push({
+        id: cleanFbId || 'acc_fb_connected',
+        network: 'facebook',
+        username: cleanFbName || 'facebook_page',
+        name: cleanFbName || 'Facebook Page'
+      });
+    }
+
     const next: OutstandConfig = {
       apiKey: cfgApiKey.trim(),
-      socialAccountId: cfgSocialAccountId.trim(),
-      instagramHandle: cfgIgHandle.trim().replace(/^@/, ''),
+      socialAccountId: primaryAccountId,
+      instagramAccountId: cleanIgId,
+      instagramHandle: cleanIgHandle,
+      facebookAccountId: cleanFbId,
+      facebookPageName: cleanFbName,
+      connectedAccounts: connectedAccountsList,
       tenantId: student.id,
       autoCommentToDm: cfgAutoTrigger,
       combineStageSandH: cfgCombineSH,
@@ -966,15 +1199,25 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     setShowConfigModal(false);
     setStatusBanner({
       type: 'success',
-      text: 'Outstand.so Comment-to-DM & CRM configuration saved!'
+      text: 'Outstand.so Instagram & Facebook CRM configuration saved!'
     });
   };
 
-  const isOutstandLive = Boolean(outstandConfig.socialAccountId || outstandConfig.apiKey);
+  const isIgConnected = Boolean(
+    outstandConfig.instagramAccountId ||
+      outstandConfig.instagramHandle ||
+      outstandConfig.socialAccountId
+  );
+  const isFbConnected = Boolean(
+    outstandConfig.facebookAccountId || outstandConfig.facebookPageName
+  );
+  const isOutstandLive = Boolean(
+    isIgConnected || isFbConnected || outstandConfig.apiKey
+  );
 
   return (
     <div className="space-y-5">
-      {/* TopOutstand.so Command Header, KPI Strip & Comment-to-DM Automation Banner */}
+      {/* TopOutstand.so Command Header, Connected Social Accounts Strip & Comment-to-DM Automation Banner */}
       <div className="glass-panel rounded-2xl p-4 sm:p-6 border border-[#09ADEF]/30 bg-gradient-to-r from-[#09ADEF]/[0.08] via-[#070A10] to-emerald-500/[0.06] space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1.5">
@@ -985,14 +1228,25 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
               </span>
               <span
                 className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                  isOutstandLive
-                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/35'
-                    : 'bg-amber-500/15 text-amber-200 border-amber-400/35'
+                  isIgConnected
+                    ? 'bg-pink-500/15 text-pink-300 border-pink-400/35'
+                    : 'bg-white/[0.05] text-neutral-400 border-white/10'
                 }`}
               >
-                {isOutstandLive
-                  ? `CONNECTED · @${outstandConfig.instagramHandle || 'IG ACCOUNT'}`
-                  : 'INTERACTIVE SANDBOX + WEBHOOK READY'}
+                {isIgConnected
+                  ? `IG CONNECTED · @${outstandConfig.instagramHandle || 'INSTAGRAM'}`
+                  : 'IG NOT LINKED'}
+              </span>
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                  isFbConnected
+                    ? 'bg-blue-500/15 text-blue-300 border-blue-400/35'
+                    : 'bg-white/[0.05] text-neutral-400 border-white/10'
+                }`}
+              >
+                {isFbConnected
+                  ? `FB CONNECTED · ${outstandConfig.facebookPageName || 'FACEBOOK PAGE'}`
+                  : 'FB NOT LINKED'}
               </span>
             </div>
 
@@ -1000,14 +1254,15 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
               LIVE S.H.I.F.T. DM CRM &amp; COMMENT TRIGGERS
             </h1>
             <p className="text-xs sm:text-sm text-neutral-300 max-w-3xl leading-relaxed">
-              When a viewer comments any of your Shift Magnet keywords (
+              Connect both your <strong>Instagram Business/Creator Account</strong> and{' '}
+              <strong>Facebook Page</strong> via Outstand.so. When a viewer comments any of your
+              Shift Magnet keywords (
               {student.shiftMagnets.map(m => `"${m.keywordTrigger}"`).join(', ') || '"AUDIT"'}
-              ), Outstand’s <code className="text-[#09ADEF]">comment.received</code> webhook fires{' '}
+              ) on Instagram or Facebook, Outstand’s{' '}
+              <code className="text-[#09ADEF]">comment.received</code> webhook fires{' '}
               <code className="text-[#09ADEF]">POST /v1/conversations</code> with a single combined{' '}
               <strong>Stage S (Magnet Link) + Stage H (A/B/C Constraint Diagnostic)</strong> Private
-              Reply and triggers an in-app notification. Once they reply <strong>A, B, or C</strong>
-              , Meta’s 24-hour window unlocks so you can run Stages I, F, T and schedule Day 2–30
-              Re-Engagement loops.
+              Reply and triggers an in-app notification.
             </p>
           </div>
 
@@ -1025,19 +1280,149 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
 
             <button
               type="button"
-              onClick={() => {
-                setCfgApiKey(outstandConfig.apiKey);
-                setCfgSocialAccountId(outstandConfig.socialAccountId);
-                setCfgIgHandle(outstandConfig.instagramHandle || '');
-                setCfgAutoTrigger(outstandConfig.autoCommentToDm);
-                setCfgCombineSH(outstandConfig.combineStageSandH);
-                setShowConfigModal(true);
-              }}
+              onClick={openConfigModalWithCurrentValues}
               className="btn-2mm px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
             >
               <Settings className="w-3.5 h-3.5" />
               <span>Configure Outstand API &amp; Webhook</span>
             </button>
+          </div>
+        </div>
+
+        {/* Connected Social Channels Bar: Instagram + Facebook */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-white/[0.08]">
+          {/* Instagram Channel Card */}
+          <div className="p-3.5 rounded-xl bg-[#050811]/95 border border-pink-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-pink-500/25 via-rose-500/20 to-amber-500/20 border border-pink-400/35 flex items-center justify-center shrink-0 font-display text-sm text-pink-300">
+                IG
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white uppercase tracking-wide">
+                    Instagram Business / Creator
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
+                      isIgConnected
+                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/35'
+                        : 'bg-amber-500/15 text-amber-200 border-amber-400/35'
+                    }`}
+                  >
+                    {isIgConnected ? 'Connected' : 'Ready to Connect'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-neutral-400 mt-0.5">
+                  {isIgConnected ? (
+                    <>
+                      Handle:{' '}
+                      <strong className="text-pink-300">
+                        @{outstandConfig.instagramHandle || 'instagram_connected'}
+                      </strong>{' '}
+                      {outstandConfig.instagramAccountId || outstandConfig.socialAccountId ? (
+                        <span className="font-mono text-[10px] text-neutral-500">
+                          ({outstandConfig.instagramAccountId || outstandConfig.socialAccountId})
+                        </span>
+                      ) : null}
+                    </>
+                  ) : (
+                    'Triggers Private Replies on Instagram Reels & Post comments + syncs IG DMs.'
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleConnectSocialNetwork('instagram')}
+                disabled={connectingNetwork === 'instagram'}
+                className="px-3 py-1.5 rounded-lg bg-pink-500/15 hover:bg-pink-500/25 border border-pink-400/40 text-[11px] font-bold text-pink-200 inline-flex items-center gap-1.5 cursor-pointer transition"
+              >
+                <ExternalLink className="w-3 h-3" />
+                <span>
+                  {connectingNetwork === 'instagram'
+                    ? 'Connecting...'
+                    : isIgConnected
+                    ? 'Reconnect IG'
+                    : 'Connect Instagram'}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={openConfigModalWithCurrentValues}
+                className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 text-[10px] font-semibold text-neutral-300 cursor-pointer"
+              >
+                Edit ID
+              </button>
+            </div>
+          </div>
+
+          {/* Facebook Page Channel Card */}
+          <div className="p-3.5 rounded-xl bg-[#050811]/95 border border-blue-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/25 to-cyan-500/20 border border-blue-400/35 flex items-center justify-center shrink-0 font-display text-sm text-blue-300">
+                FB
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white uppercase tracking-wide">
+                    Facebook Page &amp; Messenger
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
+                      isFbConnected
+                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/35'
+                        : 'bg-amber-500/15 text-amber-200 border-amber-400/35'
+                    }`}
+                  >
+                    {isFbConnected ? 'Connected' : 'Ready to Connect'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-neutral-400 mt-0.5">
+                  {isFbConnected ? (
+                    <>
+                      Page:{' '}
+                      <strong className="text-blue-300">
+                        {outstandConfig.facebookPageName || 'Facebook Page Connected'}
+                      </strong>{' '}
+                      {outstandConfig.facebookAccountId ? (
+                        <span className="font-mono text-[10px] text-neutral-500">
+                          ({outstandConfig.facebookAccountId})
+                        </span>
+                      ) : null}
+                    </>
+                  ) : (
+                    'Triggers Messenger Private Replies on FB Page Post/Reel comments + syncs DMs.'
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleConnectSocialNetwork('facebook')}
+                disabled={connectingNetwork === 'facebook'}
+                className="px-3 py-1.5 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 border border-blue-400/40 text-[11px] font-bold text-blue-200 inline-flex items-center gap-1.5 cursor-pointer transition"
+              >
+                <ExternalLink className="w-3 h-3" />
+                <span>
+                  {connectingNetwork === 'facebook'
+                    ? 'Connecting...'
+                    : isFbConnected
+                    ? 'Reconnect FB'
+                    : 'Connect Facebook'}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={openConfigModalWithCurrentValues}
+                className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 text-[10px] font-semibold text-neutral-300 cursor-pointer"
+              >
+                Edit ID
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1088,11 +1473,35 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           className="p-3.5 rounded-xl bg-[#04060A]/90 border border-white/10 space-y-3"
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Zap className="w-4 h-4 text-[#09ADEF]" />
               <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-white">
-                LIVE COMMENT-TO-DM TRIGGER SIMULATOR (TEST YOUR KEYWORD AUTOMATION)
+                LIVE COMMENT-TO-DM TRIGGER SIMULATOR (INSTAGRAM &amp; FACEBOOK)
               </span>
+              <div className="inline-flex items-center rounded-lg bg-[#090C12] p-0.5 border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setSimPlatform('instagram')}
+                  className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider cursor-pointer transition ${
+                    simPlatform === 'instagram'
+                      ? 'bg-pink-500/25 text-pink-200 border border-pink-400/40'
+                      : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  Instagram
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSimPlatform('facebook')}
+                  className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider cursor-pointer transition ${
+                    simPlatform === 'facebook'
+                      ? 'bg-blue-500/25 text-blue-200 border border-blue-400/40'
+                      : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  Facebook
+                </button>
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-[10px] text-neutral-400">Active Keywords:</span>
@@ -1307,6 +1716,15 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-1.5">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
+                              thread.platform === 'facebook'
+                                ? 'bg-blue-500/20 text-blue-300 border-blue-400/35'
+                                : 'bg-pink-500/20 text-pink-300 border-pink-400/35'
+                            }`}
+                          >
+                            {thread.platform === 'facebook' ? 'FB' : 'IG'}
+                          </span>
                           <span className="text-xs font-bold text-white">
                             {thread.prospectName}
                           </span>
@@ -1385,6 +1803,15 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${
+                          activeThread.platform === 'facebook'
+                            ? 'bg-blue-500/20 text-blue-300 border-blue-400/35'
+                            : 'bg-pink-500/20 text-pink-300 border-pink-400/35'
+                        }`}
+                      >
+                        {activeThread.platform === 'facebook' ? 'Facebook Messenger' : 'Instagram DM'}
+                      </span>
                       <h3 className="font-display text-xl text-white tracking-wide uppercase">
                         {activeThread.prospectName}
                       </h3>
@@ -1711,14 +2138,15 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
         </div>
       </div>
 
-      {/* Outstand.so API & Webhook Setup Modal */}
+      {/* Outstand.so API, Instagram & Facebook Connection Modal */}
       <ModalDialog
         isOpen={showConfigModal}
         onClose={() => setShowConfigModal(false)}
-        title="Outstand.so Comment-to-DM & CRM Configuration"
-        maxWidthClass="max-w-2xl"
+        title="Outstand.so API · Connect Instagram & Facebook Accounts"
+        maxWidthClass="max-w-3xl"
       >
         <form onSubmit={handleSaveConfigModal} className="space-y-4 text-xs">
+          {/* Step 1: Webhook URL */}
           <div className="p-3.5 rounded-xl bg-[#09ADEF]/10 border border-[#09ADEF]/30 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#09ADEF]">
@@ -1752,74 +2180,220 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-neutral-300 mb-1">
-                Outstand API Key (Optional if set in Vercel Env)
-              </label>
-              <input
-                type="password"
-                value={cfgApiKey}
-                onChange={e => setCfgApiKey(e.target.value)}
-                placeholder="out_live_..."
-                className="w-full rounded-xl bg-[#0B0D14] border border-white/12 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
-              />
+          {/* Pending OAuth Session Finalizer (when redirected back with ?session=TOKEN) */}
+          {pendingSessionToken && (
+            <div className="p-3.5 rounded-xl bg-emerald-500/12 border border-emerald-400/40 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-bold text-emerald-200 uppercase tracking-wider text-[11px]">
+                  Pending Meta OAuth Connection Detected — Select Pages to Finalize
+                </div>
+                <button
+                  type="button"
+                  onClick={handleFinalizePendingSession}
+                  disabled={isFinalizingSession}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-500 text-slate-950 font-bold text-[11px] uppercase tracking-wider cursor-pointer"
+                >
+                  {isFinalizingSession ? 'Finalizing...' : 'Finalize Connection'}
+                </button>
+              </div>
+              {pendingPages.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {pendingPages.map(page => {
+                    const checked = selectedPendingPageIds.includes(page.id);
+                    return (
+                      <label
+                        key={page.id}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#05080F] border border-white/15 text-white cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setSelectedPendingPageIds(prev => [...prev, page.id]);
+                            } else {
+                              setSelectedPendingPageIds(prev => prev.filter(id => id !== page.id));
+                            }
+                          }}
+                          className="accent-emerald-400"
+                        />
+                        <span>
+                          {page.name || page.username || page.id} ({page.network || 'Page'})
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
             </div>
+          )}
 
-            <div>
-              <label className="block font-semibold text-neutral-300 mb-1">
-                Instagram Handle (@username)
-              </label>
-              <input
-                type="text"
-                value={cfgIgHandle}
-                onChange={e => setCfgIgHandle(e.target.value)}
-                placeholder="yourhandle"
-                className="w-full rounded-xl bg-[#0B0D14] border border-white/12 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="font-semibold text-neutral-300">
-                Outstand Social Account ID (<code className="text-[#09ADEF]">social_account_id</code>
-                )
+          {/* Step 2: Outstand API Key + Sync Button */}
+          <div className="p-3.5 rounded-xl bg-[#05080F] border border-white/10 space-y-2.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <label className="font-bold uppercase tracking-wider text-[10px] text-neutral-300">
+                2. OUTSTAND API KEY (OPTIONAL IF SET IN VERCEL ENVIRONMENT)
               </label>
               <button
                 type="button"
-                onClick={handleFetchOutstandAccounts}
+                onClick={() => handleFetchOutstandAccounts()}
                 disabled={isCheckingAccounts}
-                className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF] hover:underline inline-flex items-center gap-1 cursor-pointer"
+                className="px-2.5 py-1 rounded-lg bg-[#09ADEF]/15 hover:bg-[#09ADEF]/25 border border-[#09ADEF]/35 text-[10px] font-bold uppercase tracking-wider text-[#09ADEF] inline-flex items-center gap-1.5 cursor-pointer"
               >
                 <RefreshCw className={`w-3 h-3 ${isCheckingAccounts ? 'animate-spin' : ''}`} />
-                <span>Fetch from Outstand API</span>
+                <span>Sync Connected Accounts from Outstand API</span>
               </button>
             </div>
+
             <input
-              type="text"
-              value={cfgSocialAccountId}
-              onChange={e => setCfgSocialAccountId(e.target.value)}
-              placeholder="acc_..."
-              className="w-full rounded-xl bg-[#0B0D14] border border-white/12 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+              type="password"
+              value={cfgApiKey}
+              onChange={e => setCfgApiKey(e.target.value)}
+              placeholder="out_live_..."
+              className="w-full rounded-xl bg-[#0B0D14] border border-white/12 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none font-mono"
             />
+
             {fetchedAccounts.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {fetchedAccounts.map(acc => (
-                  <button
-                    key={acc.id}
-                    type="button"
-                    onClick={() => {
-                      setCfgSocialAccountId(acc.id);
-                      if (acc.username) setCfgIgHandle(acc.username);
-                    }}
-                    className="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 text-[10px] text-white cursor-pointer"
-                  >
-                    Select {acc.username ? `@${acc.username}` : acc.id} ({acc.network || 'IG'})
-                  </button>
-                ))}
+              <div className="pt-1 space-y-1.5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+                  Connected Accounts Found in Outstand ({fetchedAccounts.length}) — Click to Assign:
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {fetchedAccounts.map(acc => {
+                    const isFb = (acc.network || '').toLowerCase() === 'facebook';
+                    return (
+                      <button
+                        key={acc.id}
+                        type="button"
+                        onClick={() => {
+                          if (isFb) {
+                            setCfgFbAccountId(acc.id);
+                            if (acc.name || acc.username) {
+                              setCfgFbPageName(acc.name || acc.username || '');
+                            }
+                          } else {
+                            setCfgIgAccountId(acc.id);
+                            setCfgSocialAccountId(acc.id);
+                            if (acc.username) setCfgIgHandle(acc.username.replace(/^@/, ''));
+                          }
+                        }}
+                        className={`px-2.5 py-1 rounded-lg border text-[10px] font-semibold cursor-pointer ${
+                          isFb
+                            ? 'bg-blue-500/15 hover:bg-blue-500/25 border-blue-400/35 text-blue-200'
+                            : 'bg-pink-500/15 hover:bg-pink-500/25 border-pink-400/35 text-pink-200'
+                        }`}
+                      >
+                        [{isFb ? 'FB' : 'IG'}] {acc.name || (acc.username ? `@${acc.username}` : acc.id)}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
+          </div>
+
+          {/* Step 3: Connect Instagram & Connect Facebook Page Side-by-Side */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Instagram Connection Box */}
+            <div className="p-3.5 rounded-xl bg-[#070A12] border border-pink-500/30 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded bg-pink-500/20 border border-pink-400/40 text-[10px] font-bold text-pink-300">
+                    INSTAGRAM
+                  </span>
+                  <span className="font-bold text-white">Instagram Business / Creator</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleConnectSocialNetwork('instagram')}
+                  disabled={connectingNetwork === 'instagram'}
+                  className="px-2.5 py-1 rounded-lg bg-pink-500/20 hover:bg-pink-500/30 border border-pink-400/40 text-[10px] font-bold text-pink-200 inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span>
+                    {connectingNetwork === 'instagram' ? 'Opening...' : '1-Click OAuth'}
+                  </span>
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-neutral-300 mb-1">
+                  Instagram Handle (@username)
+                </label>
+                <input
+                  type="text"
+                  value={cfgIgHandle}
+                  onChange={e => setCfgIgHandle(e.target.value)}
+                  placeholder="yourhandle"
+                  className="w-full rounded-xl bg-[#0B0D14] border border-white/12 p-2 text-white focus:border-pink-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-neutral-300 mb-1">
+                  Instagram Outstand Account ID (<code className="text-pink-300">acc_...</code>)
+                </label>
+                <input
+                  type="text"
+                  value={cfgIgAccountId}
+                  onChange={e => {
+                    setCfgIgAccountId(e.target.value);
+                    setCfgSocialAccountId(e.target.value);
+                  }}
+                  placeholder="acc_ig_..."
+                  className="w-full rounded-xl bg-[#0B0D14] border border-white/12 p-2 text-white font-mono focus:border-pink-400 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Facebook Page Connection Box */}
+            <div className="p-3.5 rounded-xl bg-[#070A12] border border-blue-500/30 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded bg-blue-500/20 border border-blue-400/40 text-[10px] font-bold text-blue-300">
+                    FACEBOOK
+                  </span>
+                  <span className="font-bold text-white">Facebook Page &amp; Messenger</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleConnectSocialNetwork('facebook')}
+                  disabled={connectingNetwork === 'facebook'}
+                  className="px-2.5 py-1 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/40 text-[10px] font-bold text-blue-200 inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span>
+                    {connectingNetwork === 'facebook' ? 'Opening...' : '1-Click OAuth'}
+                  </span>
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-neutral-300 mb-1">
+                  Facebook Page Name
+                </label>
+                <input
+                  type="text"
+                  value={cfgFbPageName}
+                  onChange={e => setCfgFbPageName(e.target.value)}
+                  placeholder="Your Coaching Page"
+                  className="w-full rounded-xl bg-[#0B0D14] border border-white/12 p-2 text-white focus:border-blue-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-neutral-300 mb-1">
+                  Facebook Outstand Account ID (<code className="text-blue-300">acc_...</code>)
+                </label>
+                <input
+                  type="text"
+                  value={cfgFbAccountId}
+                  onChange={e => setCfgFbAccountId(e.target.value)}
+                  placeholder="acc_fb_..."
+                  className="w-full rounded-xl bg-[#0B0D14] border border-white/12 p-2 text-white font-mono focus:border-blue-400 focus:outline-none"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="p-3.5 rounded-xl bg-[#05080F] border border-white/10 space-y-2.5">
@@ -1832,12 +2406,12 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
               />
               <div>
                 <div className="font-bold text-white">
-                  Auto-Fire Comment-to-DM Private Reply on Keyword Match
+                  Auto-Fire Comment-to-DM Private Reply on Keyword Match (Instagram &amp; Facebook)
                 </div>
                 <div className="text-[11px] text-neutral-400">
                   Automatically calls Outstand <code className="text-neutral-200">POST /v1/conversations</code>{' '}
-                  with <code className="text-neutral-200">comment_id</code> whenever a comment
-                  contains any of your Shift Magnet keywords.
+                  with <code className="text-neutral-200">comment_id</code> whenever an Instagram or
+                  Facebook comment contains any of your Shift Magnet keywords.
                 </div>
               </div>
             </label>
@@ -1854,9 +2428,9 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                   Combine Stage S (Link) + Stage H (A/B/C Question) in First Private Reply (Recommended)
                 </div>
                 <div className="text-[11px] text-neutral-400">
-                  Instagram allows only <strong>1 Private Reply per comment</strong> until the
-                  prospect responds. Combining Stage S + Stage H ensures they get the link AND the
-                  easy A/B/C reply trigger in one message.
+                  Meta allows only <strong>1 Private Reply per comment</strong> on Instagram &amp;
+                  Facebook until the prospect responds. Combining Stage S + Stage H ensures they get
+                  the link AND the easy A/B/C reply trigger in one message.
                 </div>
               </div>
             </label>
@@ -1874,7 +2448,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
               type="submit"
               className="btn-2mm rounded-xl font-bold uppercase tracking-wider px-5 py-2.5 cursor-pointer"
             >
-              Save Outstand Configuration
+              Save Instagram &amp; Facebook Configuration
             </button>
           </div>
         </form>
