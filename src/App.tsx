@@ -171,13 +171,41 @@ export function App() {
   const [authSession, setAuthSession] = useState<AuthSession>(() => {
     const path = window.location.pathname.toLowerCase();
     const params = new URLSearchParams(window.location.search);
-    const magicStudentId = params.get('student');
+    const rawHref = window.location.href;
+    const extractedSession =
+      params.get('session') ||
+      params.get('outstand_session') ||
+      rawHref.match(/[?&](?:outstand_)?session=([^&#]+)/)?.[1] ||
+      null;
+
+    if (extractedSession) {
+      try {
+        sessionStorage.setItem('outstand_pending_session', decodeURIComponent(extractedSession));
+      } catch {
+        // ignore
+      }
+    }
+
+    let pendingOAuthStudentId: string | null = null;
+    try {
+      const pendingRaw = localStorage.getItem('outstand_oauth_pending');
+      if (pendingRaw) {
+        const parsedPending = JSON.parse(pendingRaw);
+        if (parsedPending?.studentId) {
+          pendingOAuthStudentId = parsedPending.studentId;
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    const rawMagicStudentId = params.get('student')?.split('?')[0] || pendingOAuthStudentId;
 
     if (path === '/login') {
       return { role: 'UNAUTHENTICATED' };
     }
-    if (magicStudentId) {
-      return { role: 'STUDENT', studentId: magicStudentId };
+    if (rawMagicStudentId) {
+      return { role: 'STUDENT', studentId: rawMagicStudentId };
     }
     try {
       const saved = localStorage.getItem(AUTH_SESSION_KEY);
@@ -202,11 +230,23 @@ export function App() {
   >(() => {
     if (window.location.pathname.toLowerCase() === '/admin') return 'COACH';
     const params = new URLSearchParams(window.location.search);
+    const hasPendingOAuth = (() => {
+      try {
+        return Boolean(
+          sessionStorage.getItem('outstand_pending_session') ||
+            localStorage.getItem('outstand_oauth_pending')
+        );
+      } catch {
+        return false;
+      }
+    })();
     if (
+      hasPendingOAuth ||
       params.get('session') ||
       params.get('outstand_session') ||
       params.get('connected_network') ||
-      params.get('tab')?.toUpperCase() === 'CRM'
+      params.get('tab')?.toUpperCase() === 'CRM' ||
+      window.location.href.includes('session=')
     ) {
       return 'CRM';
     }
@@ -214,7 +254,18 @@ export function App() {
   });
   const [activeStudentId, setActiveStudentId] = useState<string>(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get('student') || INITIAL_STUDENTS[0].id;
+    const cleanParamStudent = params.get('student')?.split('?')[0];
+    if (cleanParamStudent) return cleanParamStudent;
+    try {
+      const pendingRaw = localStorage.getItem('outstand_oauth_pending');
+      if (pendingRaw) {
+        const parsedPending = JSON.parse(pendingRaw);
+        if (parsedPending?.studentId) return parsedPending.studentId;
+      }
+    } catch {
+      // ignore
+    }
+    return INITIAL_STUDENTS[0].id;
   });
   const [dbSyncStatus, setDbSyncStatus] = useState<'CONNECTING' | 'SYNCING' | 'SYNCED' | 'LOCAL'>(
     isSupabaseConfigured ? 'CONNECTING' : 'LOCAL'
@@ -376,7 +427,22 @@ export function App() {
           if (dirtyStudentsToUpsert.length > 0) {
             await upsertStudentsToSupabase(dirtyStudentsToUpsert);
           }
-          setStudents(enriched);
+          setStudents(prev =>
+            enriched.map(remoteSt => {
+              const localEditTime = lastLocalEditTimestampRef.current[remoteSt.id] || 0;
+              const localSt = prev.find(p => p.id === remoteSt.id);
+              if (localEditTime > 0 && localSt) {
+                return {
+                  ...remoteSt,
+                  worksheetAnswers: {
+                    ...remoteSt.worksheetAnswers,
+                    ...localSt.worksheetAnswers
+                  }
+                };
+              }
+              return remoteSt;
+            })
+          );
           setDbSyncStatus('SYNCED');
         }
       }
@@ -2167,13 +2233,34 @@ export function App() {
   };
 
   const handleLoginStudent = (studentId: string) => {
-    const session: AuthSession = { role: 'STUDENT', studentId };
+    const cleanStudentId = studentId.split('?')[0];
+    const session: AuthSession = { role: 'STUDENT', studentId: cleanStudentId };
     setAuthSession(session);
-    setActiveStudentId(studentId);
-    setActiveTab('CADENCE');
+    setActiveStudentId(cleanStudentId);
+
+    const params = new URLSearchParams(window.location.search);
+    const isOAuthReturnOrCrm = (() => {
+      try {
+        return Boolean(
+          sessionStorage.getItem('outstand_pending_session') ||
+            localStorage.getItem('outstand_oauth_pending') ||
+            params.get('session') ||
+            params.get('outstand_session') ||
+            params.get('connected_network') ||
+            params.get('tab')?.toUpperCase() === 'CRM' ||
+            window.location.href.includes('session=')
+        );
+      } catch {
+        return false;
+      }
+    })();
+
+    setActiveTab(isOAuthReturnOrCrm ? 'CRM' : 'CADENCE');
     try {
       localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
-      window.history.pushState({}, '', `/student?student=${studentId}`);
+      if (!isOAuthReturnOrCrm) {
+        window.history.pushState({}, '', `/student?student=${cleanStudentId}`);
+      }
     } catch {
       // ignore
     }
@@ -2224,12 +2311,16 @@ export function App() {
 
   const crmThreadsCount = (() => {
     const raw = currentStudent.worksheetAnswers['dm_crm_threads_json'];
-    if (!raw) return 2;
+    if (!raw) return 0;
     try {
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed.length : 2;
+      if (!Array.isArray(parsed)) return 0;
+      return parsed.filter(
+        (t: { id?: string; outstandConversationId?: string | null }) =>
+          t.id !== 'crm-starter-1' && t.outstandConversationId !== 'conv_outstand_demo_01'
+      ).length;
     } catch {
-      return 2;
+      return 0;
     }
   })();
 

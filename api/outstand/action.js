@@ -83,19 +83,19 @@ export default async function handler(req, res) {
 
     // 1. List Connected Social Accounts (Scoped strictly to student tenantId when provided)
     if (action === 'LIST_ACCOUNTS') {
-      const params = new URLSearchParams();
-      if (tenantId) params.set('tenant_id', tenantId);
-      const qs = params.toString() ? `?${params.toString()}` : '';
-      const resp = await fetch(`${OUTSTAND_BASE_URL}/social-accounts${qs}`, {
+      const resp = await fetch(`${OUTSTAND_BASE_URL}/social-accounts`, {
         method: 'GET',
         headers,
         signal: AbortSignal.timeout(10000)
       });
       const json = await resp.json().catch(() => ({}));
       const rawList = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
-      // Filter strictly to tenantId if the upstream API ignores the query parameter
+      // Filter to accounts belonging to this student tenantId (or untagged accounts finalized in this workspace)
       const scopedList = tenantId
-        ? rawList.filter(a => !a.tenant_id || !a.tenantId || a.tenant_id === tenantId || a.tenantId === tenantId)
+        ? rawList.filter(a => {
+            const accTenant = a.tenant_id || a.tenantId;
+            return !accTenant || accTenant === tenantId;
+          })
         : rawList;
       return res.status(resp.status).json({
         ok: resp.ok,
@@ -177,25 +177,52 @@ export default async function handler(req, res) {
         }
       );
       const json = await resp.json().catch(() => ({}));
-      return res.status(resp.status).json({ ok: resp.ok, data: json });
+      const availablePages =
+        json?.data?.availablePages ||
+        json?.data?.available_pages ||
+        json?.data?.pages ||
+        json?.data?.accounts ||
+        json?.availablePages ||
+        json?.available_pages ||
+        json?.pages ||
+        (Array.isArray(json?.data) ? json.data : []);
+
+      return res.status(resp.status).json({
+        ok: resp.ok,
+        network: json?.data?.network || json?.network || null,
+        availablePages: Array.isArray(availablePages) ? availablePages : [],
+        data: json,
+        error: !resp.ok ? json?.error || json?.message || 'Pending session expired or invalid' : undefined
+      });
     }
 
     // 4. Finalize Pending Connection (select specific Facebook Page / Instagram account)
     if (action === 'FINALIZE_PENDING_CONNECTION' && sessionToken) {
+      const pageIds = Array.isArray(selectedPageIds) ? selectedPageIds.filter(Boolean) : [];
       const resp = await fetch(
         `${OUTSTAND_BASE_URL}/social-accounts/pending/${encodeURIComponent(sessionToken)}/finalize`,
         {
           method: 'POST',
           headers,
           body: JSON.stringify({
-            selectedPageIds: selectedPageIds || [],
-            pageIds: selectedPageIds || [],
-            accountIds: selectedPageIds || []
+            selectedPageIds: pageIds
           })
         }
       );
       const json = await resp.json().catch(() => ({}));
-      return res.status(resp.status).json({ ok: resp.ok, data: json });
+      const connectedAccounts =
+        json?.connectedAccounts ||
+        json?.data?.connectedAccounts ||
+        (Array.isArray(json?.data) ? json.data : []);
+
+      return res.status(resp.status).json({
+        ok: resp.ok,
+        connectedAccounts: Array.isArray(connectedAccounts) ? connectedAccounts : [],
+        data: json,
+        error: !resp.ok
+          ? json?.error || json?.message || 'Could not finalize Facebook Page connection'
+          : undefined
+      });
     }
 
     // 5. Disconnect / Delete a Social Account
