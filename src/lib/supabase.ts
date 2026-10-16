@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { StudentProfile, WorkbookWeek, AppEmailAndAdminSettings } from '../types';
+import { StudentProfile, WorkbookWeek, AppEmailAndAdminSettings, GroupDiscussionPost } from '../types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseKey =
@@ -261,3 +261,72 @@ export async function sendSupabaseMagicLinkEmail(
     return { ok: false, error: err instanceof Error ? err.message : 'Failed to send magic link' };
   }
 }
+
+export async function fetchGroupDiscussionsFromSupabase(): Promise<GroupDiscussionPost[] | null> {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from('mc_lessons')
+      .select('lesson')
+      .eq('week_number', -1)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Supabase fetchGroupDiscussions warning:', error.message);
+      return null;
+    }
+    if (!data || !data.lesson) {
+      return [];
+    }
+    const raw = data.lesson as { posts?: GroupDiscussionPost[] };
+    if (Array.isArray(raw?.posts)) {
+      return raw.posts;
+    }
+    return [];
+  } catch {
+    return null;
+  }
+}
+
+export async function upsertGroupDiscussionsToSupabase(
+  posts: GroupDiscussionPost[]
+): Promise<boolean> {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase.from('mc_lessons').upsert(
+      {
+        week_number: -1,
+        lesson: { posts },
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: 'week_number' }
+    );
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export function subscribeToGroupDiscussionsRealtime(
+  onUpdate: (posts: GroupDiscussionPost[]) => void
+): () => void {
+  if (!supabase) return () => {};
+  const channel = supabase
+    .channel('mc_group_discussions_realtime')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'mc_lessons', filter: 'week_number=eq.-1' },
+      payload => {
+        const row = payload.new as { lesson?: { posts?: GroupDiscussionPost[] } } | undefined;
+        if (row?.lesson && Array.isArray(row.lesson.posts)) {
+          onUpdate(row.lesson.posts);
+        }
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+

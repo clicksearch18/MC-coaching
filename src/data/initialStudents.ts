@@ -7,7 +7,8 @@ import {
   PlaybookPillar,
   ShiftMagnet,
   AppEmailAndAdminSettings,
-  EmailTemplateConfig
+  EmailTemplateConfig,
+  GroupDiscussionPost
 } from '../types';
 
 const defaultShiftMagnets: ShiftMagnet[] = [
@@ -345,4 +346,30 @@ export function createNewStudentProfile(params: {
     messages: []
   };
 }
+
+export const INITIAL_GROUP_POSTS: GroupDiscussionPost[] = [
+  {
+    id: 'group-welcome-pinned',
+    type: 'GENERAL_THREAD',
+    category: 'GENERAL',
+    authorId: 'coach-josh',
+    authorName: 'Coach Josh Beechraft',
+    authorAvatar: 'JB',
+    authorCompany: '2mmShift / Market Concussion',
+    authorNiche: '2mmShift Architect',
+    authorRole: 'COACH',
+    title: 'Welcome to the Cohort Group Feed & Video Breakdown Room',
+    body: 'Use this room to learn from each other’s outputs in real time.\n\n1. When you verify a Daily Video (or Core Brand Video) in your Studio, keep "Post Link to Cohort Group" enabled — it notifies all operators in the cohort so everyone can see your hook and execution.\n2. When I review your video, my official Coach Feedback automatically appends right onto your video’s thread so the entire group can study the breakdown.\n3. Jump into any thread below to discuss hooks, pacing, Shift Magnet CTAs, or start a general cohort discussion!',
+    timestamp: 'Pinned · Cohort Room',
+    createdAtISO: '2026-10-15T12:00:00.000Z',
+    pinned: true,
+    reactions: {
+      fire: ['student-josh'],
+      shift: ['student-josh'],
+      props: []
+    },
+    comments: []
+  }
+];
+
 

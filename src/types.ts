@@ -38,6 +38,8 @@ export interface SupportingVideoItem {
   coachReviewStatus?: CoachReviewStatus;
   coachFeedback?: string;
   coachReviewedAt?: string;
+  sharedToGroup?: boolean;
+  groupPostId?: string;
 }
 
 export interface CoreBrandVideo {
@@ -59,6 +61,8 @@ export interface CoreBrandVideo {
   coachReviewStatus?: CoachReviewStatus;
   coachFeedback?: string;
   coachReviewedAt?: string;
+  sharedToGroup?: boolean;
+  groupPostId?: string;
   scriptDraft?: {
     S: string;
     H: string;
@@ -140,12 +144,70 @@ export interface WorkbookWeek {
 }
 
 export interface ChatMessageActionTarget {
-  tab: 'CADENCE' | 'WORKBOOK' | 'MAGNETS';
+  tab: 'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'GROUP';
   subTab?: 'STUDIO' | 'QUEUE' | 'CORE5' | 'PLAYBOOK';
   videoId?: string;
   coreVideoId?: string;
   lessonNumber?: number;
+  groupPostId?: string;
   label?: string;
+}
+
+export interface GroupDiscussionComment {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorAvatar: string;
+  authorCompany?: string;
+  authorRole: 'COACH' | 'STUDENT';
+  text: string;
+  timestamp: string;
+  createdAtISO: string;
+  isOfficialCoachReview?: boolean;
+  reviewStatus?: CoachReviewStatus;
+}
+
+export type GroupDiscussionCategory =
+  | 'VIDEO_BREAKDOWN'
+  | 'GENERAL'
+  | 'HOOK_FEEDBACK'
+  | 'SHIFT_MAGNET'
+  | 'WINS';
+
+export interface GroupDiscussionPost {
+  id: string;
+  type: 'VIDEO_SHARE' | 'GENERAL_THREAD';
+  category: GroupDiscussionCategory;
+  authorId: string;
+  authorName: string;
+  authorAvatar: string;
+  authorCompany: string;
+  authorNiche?: string;
+  authorRole: 'COACH' | 'STUDENT';
+  title: string;
+  body: string;
+  timestamp: string;
+  createdAtISO: string;
+  // Video Share metadata (when type === 'VIDEO_SHARE')
+  studentId?: string;
+  videoType?: 'SUPPORTING' | 'CORE';
+  videoId?: string;
+  videoBadge?: string;
+  videoStage?: string;
+  videoUrl?: string;
+  hookUsed?: string;
+  // Appended Coach Review & Feedback
+  coachReviewStatus?: CoachReviewStatus;
+  coachFeedback?: string;
+  coachReviewedAt?: string;
+  // Reactions & Discussion Thread
+  reactions: {
+    fire: string[]; // array of voter IDs
+    shift: string[];
+    props: string[];
+  };
+  comments: GroupDiscussionComment[];
+  pinned?: boolean;
 }
 
 export interface ChatMessage {

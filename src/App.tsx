@@ -9,9 +9,15 @@ import {
   Smartphone,
   UserCheck,
   LogOut,
-  ExternalLink
+  ExternalLink,
+  Users
 } from 'lucide-react';
-import { INITIAL_STUDENTS, createNewStudentProfile, DEFAULT_APP_SETTINGS } from './data/initialStudents';
+import {
+  INITIAL_STUDENTS,
+  createNewStudentProfile,
+  DEFAULT_APP_SETTINGS,
+  INITIAL_GROUP_POSTS
+} from './data/initialStudents';
 import { WORKBOOK_WEEKS } from './data/workbookData';
 import {
   StudentProfile,
@@ -22,12 +28,16 @@ import {
   CoachReviewStatus,
   AppEmailAndAdminSettings,
   ChatMessage,
-  ChatMessageActionTarget
+  ChatMessageActionTarget,
+  GroupDiscussionPost,
+  GroupDiscussionCategory,
+  GroupDiscussionComment
 } from './types';
 import { DailyCadenceView } from './components/DailyCadenceView';
 import { WorkbookView } from './components/WorkbookView';
 import { ShiftMagnetsView } from './components/ShiftMagnetsView';
 import { CoachDashboardView } from './components/CoachDashboardView';
+import { GroupDiscussionView } from './components/GroupDiscussionView';
 import { LoginView } from './components/LoginView';
 import { ModalDialog } from './components/ModalDialog';
 import { parseStudentSpreadsheet } from './utils/excelParser';
@@ -41,6 +51,9 @@ import {
   upsertSingleLessonToSupabase,
   fetchAppSettingsFromSupabase,
   upsertAppSettingsToSupabase,
+  fetchGroupDiscussionsFromSupabase,
+  upsertGroupDiscussionsToSupabase,
+  subscribeToGroupDiscussionsRealtime,
   subscribeToStudentsRealtime,
   subscribeToSupabaseAuth,
   isSupabaseConfigured
@@ -49,6 +62,7 @@ import {
 const STORAGE_KEY = 'mcm_cam005_students_v5_clean';
 const LESSONS_STORAGE_KEY = 'mcm_cam005_lessons_v2';
 const SETTINGS_STORAGE_KEY = 'mcm_cam005_settings_v1';
+const GROUP_POSTS_STORAGE_KEY = 'mcm_cam005_group_posts_v1';
 const AUTH_SESSION_KEY = 'mcm_cam005_auth_session_v1';
 const LEGACY_DEMO_IDS = new Set(['student-marcus', 'student-elena', 'student-devon']);
 
@@ -126,6 +140,19 @@ export function App() {
     return DEFAULT_APP_SETTINGS;
   });
 
+  const [groupPosts, setGroupPosts] = useState<GroupDiscussionPost[]>(() => {
+    try {
+      const saved = localStorage.getItem(GROUP_POSTS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as GroupDiscussionPost[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return INITIAL_GROUP_POSTS;
+  });
+
   const [authSession, setAuthSession] = useState<AuthSession>(() => {
     const path = window.location.pathname.toLowerCase();
     const params = new URLSearchParams(window.location.search);
@@ -155,9 +182,9 @@ export function App() {
   const [, setRoleMode] = useState<'STUDENT' | 'COACH'>(() =>
     window.location.pathname.toLowerCase() === '/admin' ? 'COACH' : 'STUDENT'
   );
-  const [activeTab, setActiveTab] = useState<'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'COACH'>(() =>
-    window.location.pathname.toLowerCase() === '/admin' ? 'COACH' : 'CADENCE'
-  );
+  const [activeTab, setActiveTab] = useState<
+    'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'GROUP' | 'COACH'
+  >(() => (window.location.pathname.toLowerCase() === '/admin' ? 'COACH' : 'CADENCE'));
   const [activeStudentId, setActiveStudentId] = useState<string>(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('student') || INITIAL_STUDENTS[0].id;
@@ -174,6 +201,7 @@ export function App() {
   const [requestedVideoId, setRequestedVideoId] = useState<string | undefined>(undefined);
   const [requestedCoreVideoId, setRequestedCoreVideoId] = useState<string | undefined>(undefined);
   const [requestedLessonNumber, setRequestedLessonNumber] = useState<number | undefined>(undefined);
+  const [requestedGroupPostId, setRequestedGroupPostId] = useState<string | undefined>(undefined);
 
   // Modals & Push Banners
   const [showImportModal, setShowImportModal] = useState(false);
@@ -263,10 +291,11 @@ export function App() {
 
     let cancelled = false;
     (async () => {
-      const [remoteStudents, remoteLessons, remoteSettings] = await Promise.all([
+      const [remoteStudents, remoteLessons, remoteSettings, remoteGroupPosts] = await Promise.all([
         fetchStudentsFromSupabase(),
         fetchLessonsFromSupabase(),
-        fetchAppSettingsFromSupabase()
+        fetchAppSettingsFromSupabase(),
+        fetchGroupDiscussionsFromSupabase()
       ]);
       if (cancelled) return;
 
@@ -346,6 +375,12 @@ export function App() {
         await upsertAppSettingsToSupabase(DEFAULT_APP_SETTINGS);
       }
 
+      if (remoteGroupPosts && remoteGroupPosts.length > 0) {
+        setGroupPosts(remoteGroupPosts);
+      } else if (remoteGroupPosts !== null) {
+        await upsertGroupDiscussionsToSupabase(INITIAL_GROUP_POSTS);
+      }
+
       setInitialDbLoadDone(true);
     })();
 
@@ -388,7 +423,7 @@ export function App() {
             return [normalizedIncoming, ...prev];
           }
 
-          // Detect newly arrived message from the opposite role to fire a recipient-side push banner
+          // Detect newly arrived message from the opposite role (or Cohort Group SYSTEM notification) to fire a recipient-side push banner
           if (normalizedIncoming.messages.length > existing.messages.length) {
             const newestMsg = normalizedIncoming.messages[normalizedIncoming.messages.length - 1];
             const isViewerAdmin = authSession.role === 'ADMIN';
@@ -400,11 +435,11 @@ export function App() {
               );
             } else if (
               !isViewerAdmin &&
-              newestMsg.senderRole === 'COACH' &&
+              (newestMsg.senderRole === 'COACH' || newestMsg.senderRole === 'SYSTEM') &&
               normalizedIncoming.id === activeStudentId
             ) {
               triggerWebPushAndBanner(
-                `Message from ${newestMsg.senderName}`,
+                `Notification · ${newestMsg.senderName}`,
                 newestMsg.text,
                 newestMsg.isAlert ? 'MISSED_ALERT' : 'COACH_NUDGE'
               );
@@ -441,6 +476,17 @@ export function App() {
       unsubscribe();
     };
   }, [initialDbLoadDone, authSession.role, activeStudentId, triggerWebPushAndBanner]);
+
+  // Realtime subscription to Cohort Group Discussions (mc_lessons week_number = -1)
+  useEffect(() => {
+    if (!initialDbLoadDone || !isSupabaseConfigured) return;
+    const unsubscribe = subscribeToGroupDiscussionsRealtime(incomingPosts => {
+      setGroupPosts(incomingPosts);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [initialDbLoadDone]);
 
   // Supabase Magic Link Auth Handshake
   useEffect(() => {
@@ -500,6 +546,30 @@ export function App() {
     }
   }, [appSettings, initialDbLoadDone]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(GROUP_POSTS_STORAGE_KEY, JSON.stringify(groupPosts));
+    } catch {
+      // ignore
+    }
+  }, [groupPosts]);
+
+  const saveGroupPosts = useCallback(
+    (updater: (prev: GroupDiscussionPost[]) => GroupDiscussionPost[]) => {
+      setGroupPosts(prev => {
+        const next = updater(prev);
+        if (isSupabaseConfigured) {
+          setDbSyncStatus('SYNCING');
+          upsertGroupDiscussionsToSupabase(next).then(ok => {
+            if (ok) setDbSyncStatus('SYNCED');
+          });
+        }
+        return next;
+      });
+    },
+    []
+  );
+
   const currentStudent = students.find(s => s.id === activeStudentId) || students[0];
   const isAdminSession = authSession.role === 'ADMIN';
 
@@ -517,24 +587,72 @@ export function App() {
     [scheduleSingleStudentSync]
   );
 
+  // Broadcast a Cohort Group notification into all students' inboxes so every operator gets notified
+  const broadcastCohortGroupNotification = useCallback(
+    (params: {
+      excludeStudentId?: string;
+      senderName: string;
+      text: string;
+      relatedVideoTitle?: string;
+      groupPostId: string;
+      actionLabel?: string;
+    }) => {
+      const formattedTime = new Date().toLocaleTimeString([], {
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+
+      setStudents(prev => {
+        const updatedList = prev.map(st => {
+          const isActor = st.id === params.excludeStudentId;
+          const notifMsg: ChatMessage = {
+            id: `msg-group-${Date.now()}-${st.id}`,
+            senderRole: 'SYSTEM',
+            senderName: `Cohort Group · ${params.senderName}`,
+            text: params.text,
+            timestamp: formattedTime,
+            relatedVideoTitle: params.relatedVideoTitle,
+            readByStudent: isActor,
+            readByCoach: authSession.role === 'ADMIN',
+            actionTarget: {
+              label: params.actionLabel || 'Open Group Thread',
+              tab: 'GROUP',
+              groupPostId: params.groupPostId
+            }
+          };
+          return {
+            ...st,
+            messages: [...st.messages, notifMsg]
+          };
+        });
+
+        if (isSupabaseConfigured) {
+          upsertStudentsToSupabase(updatedList);
+        }
+        return updatedList;
+      });
+    },
+    [authSession.role]
+  );
+
   const handleMarkMessagesRead = useCallback(
     (studentId: string) => {
       const isCoachViewer = authSession.role === 'ADMIN';
       updateStudent(studentId, st => {
         const needsUpdate = st.messages.some(m =>
           isCoachViewer
-            ? m.senderRole === 'STUDENT' && m.readByCoach === false
-            : m.senderRole === 'COACH' && m.readByStudent === false
+            ? (m.senderRole === 'STUDENT' || m.senderRole === 'SYSTEM') && m.readByCoach === false
+            : (m.senderRole === 'COACH' || m.senderRole === 'SYSTEM') && m.readByStudent === false
         );
         if (!needsUpdate) return st;
         return {
           ...st,
           messages: st.messages.map(m =>
             isCoachViewer
-              ? m.senderRole === 'STUDENT'
+              ? m.senderRole === 'STUDENT' || m.senderRole === 'SYSTEM'
                 ? { ...m, readByCoach: true }
                 : m
-              : m.senderRole === 'COACH'
+              : m.senderRole === 'COACH' || m.senderRole === 'SYSTEM'
               ? { ...m, readByStudent: true }
               : m
           )
@@ -571,6 +689,10 @@ export function App() {
     } else if (target.tab === 'MAGNETS') {
       setRoleMode('STUDENT');
       setActiveTab('MAGNETS');
+    } else if (target.tab === 'GROUP') {
+      setRoleMode('STUDENT');
+      setActiveTab('GROUP');
+      if (target.groupPostId) setRequestedGroupPostId(target.groupPostId);
     }
   };
 
@@ -623,7 +745,197 @@ export function App() {
     }));
   };
 
-  const handleMarkVideoDone = (videoId: string, videoUrl: string) => {
+  // Create or update a VIDEO_SHARE post in the Cohort Group Feed and optionally notify all students
+  const upsertVideoShareInGroupFeed = useCallback(
+    (params: {
+      student: StudentProfile;
+      videoType: 'SUPPORTING' | 'CORE';
+      videoId: string;
+      videoUrl?: string;
+      note?: string;
+      coachReviewStatus?: CoachReviewStatus;
+      coachFeedback?: string;
+      coachReviewedAt?: string;
+      notifyCohort?: boolean;
+    }): string => {
+      const { student: st, videoType, videoId } = params;
+      const formattedStamp = new Date().toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+
+      const suppVid =
+        videoType === 'SUPPORTING' ? st.supportingVideos.find(v => v.id === videoId) : undefined;
+      const coreVid =
+        videoType === 'CORE' ? st.coreVideos.find(c => c.id === videoId) : undefined;
+
+      const badge = suppVid
+        ? `DAY #${String(suppVid.dayNumber).padStart(2, '0')}`
+        : coreVid
+        ? `CORE ${coreVid.code}`
+        : 'VIDEO';
+      const title = suppVid
+        ? `${badge}: ${suppVid.title}`
+        : coreVid
+        ? `${badge}: ${coreVid.name}`
+        : 'Student Video Output';
+      const stage = suppVid ? suppVid.pillarStage : coreVid ? coreVid.week : '';
+      const resolvedUrl = params.videoUrl || suppVid?.videoUrl || coreVid?.videoUrl || '';
+      const hookUsed = suppVid
+        ? suppVid.customHook ||
+          (suppVid.selectedHook === 2
+            ? suppVid.hook2
+            : suppVid.selectedHook === 3
+            ? suppVid.hook3
+            : suppVid.hook1)
+        : coreVid?.purpose || '';
+
+      const resolvedReviewStatus =
+        params.coachReviewStatus || suppVid?.coachReviewStatus || coreVid?.coachReviewStatus;
+      const resolvedFeedback =
+        params.coachFeedback !== undefined
+          ? params.coachFeedback
+          : suppVid?.coachFeedback || coreVid?.coachFeedback;
+      const resolvedReviewedAt =
+        params.coachReviewedAt || suppVid?.coachReviewedAt || coreVid?.coachReviewedAt;
+
+      const deterministicPostId = `group-video-${st.id}-${videoType}-${videoId}`;
+
+      saveGroupPosts(prev => {
+        const existing = prev.find(
+          p =>
+            p.id === deterministicPostId ||
+            (p.type === 'VIDEO_SHARE' &&
+              p.studentId === st.id &&
+              p.videoType === videoType &&
+              p.videoId === videoId)
+        );
+
+        if (existing) {
+          return prev.map(p =>
+            p.id === existing.id
+              ? {
+                  ...p,
+                  title,
+                  body: params.note !== undefined ? params.note : p.body,
+                  videoUrl: resolvedUrl || p.videoUrl,
+                  hookUsed: hookUsed || p.hookUsed,
+                  coachReviewStatus: resolvedReviewStatus || p.coachReviewStatus,
+                  coachFeedback:
+                    resolvedFeedback !== undefined ? resolvedFeedback : p.coachFeedback,
+                  coachReviewedAt: resolvedReviewedAt || p.coachReviewedAt
+                }
+              : p
+          );
+        }
+
+        const newPost: GroupDiscussionPost = {
+          id: deterministicPostId,
+          type: 'VIDEO_SHARE',
+          category: 'VIDEO_BREAKDOWN',
+          authorId: st.id,
+          authorName: st.name,
+          authorAvatar: st.avatar,
+          authorCompany: st.company,
+          authorNiche: st.niche,
+          authorRole: 'STUDENT',
+          title,
+          body:
+            params.note ||
+            `${st.name} shared a verified video output (${badge}) with the cohort for peer learning and Coach feedback breakdown.`,
+          timestamp: formattedStamp,
+          createdAtISO: new Date().toISOString(),
+          studentId: st.id,
+          videoType,
+          videoId,
+          videoBadge: badge,
+          videoStage: stage,
+          videoUrl: resolvedUrl,
+          hookUsed,
+          coachReviewStatus: resolvedReviewStatus || 'Pending Review',
+          coachFeedback: resolvedFeedback,
+          coachReviewedAt: resolvedReviewedAt,
+          reactions: {
+            fire: [],
+            shift: [],
+            props: []
+          },
+          comments: []
+        };
+
+        return [newPost, ...prev];
+      });
+
+      if (params.notifyCohort) {
+        broadcastCohortGroupNotification({
+          excludeStudentId: st.id,
+          senderName: st.name,
+          text: `🎬 ${st.name} posted a new video to the Cohort Group: "${title}"${
+            params.note ? ` — "${params.note}"` : ''
+          }. Watch & learn from their output!`,
+          relatedVideoTitle: title,
+          groupPostId: deterministicPostId,
+          actionLabel: 'Watch & Discuss in Group'
+        });
+      }
+
+      return deterministicPostId;
+    },
+    [saveGroupPosts, broadcastCohortGroupNotification]
+  );
+
+  const handleShareVideoToGroup = useCallback(
+    (params: {
+      studentId: string;
+      videoType: 'SUPPORTING' | 'CORE';
+      videoId: string;
+      note?: string;
+      notifyCohort: boolean;
+    }) => {
+      const targetStudent =
+        latestStudentsRef.current.find(s => s.id === params.studentId) || currentStudent;
+      const postId = upsertVideoShareInGroupFeed({
+        student: targetStudent,
+        videoType: params.videoType,
+        videoId: params.videoId,
+        note: params.note,
+        notifyCohort: params.notifyCohort
+      });
+
+      updateStudent(targetStudent.id, st => ({
+        ...st,
+        supportingVideos:
+          params.videoType === 'SUPPORTING'
+            ? st.supportingVideos.map(v =>
+                v.id === params.videoId ? { ...v, sharedToGroup: true, groupPostId: postId } : v
+              )
+            : st.supportingVideos,
+        coreVideos:
+          params.videoType === 'CORE'
+            ? st.coreVideos.map(c =>
+                c.id === params.videoId ? { ...c, sharedToGroup: true, groupPostId: postId } : c
+              )
+            : st.coreVideos
+      }));
+
+      triggerWebPushAndBanner(
+        'Video Shared to Cohort Group!',
+        params.notifyCohort
+          ? `Your video is live in the Group Feed and all ${students.length} cohort operators have been notified.`
+          : 'Your video has been posted to the Cohort Group Feed.',
+        'DAILY_LESSON'
+      );
+    },
+    [currentStudent, students.length, updateStudent, upsertVideoShareInGroupFeed, triggerWebPushAndBanner]
+  );
+
+  const handleMarkVideoDone = (
+    videoId: string,
+    videoUrl: string,
+    options?: { shareToGroup?: boolean; groupNote?: string }
+  ) => {
     const todayISO = getTodayDateISO();
     const formattedTime = new Date().toLocaleTimeString([], {
       hour: 'numeric',
@@ -632,6 +944,8 @@ export function App() {
 
     let wasResubmission = false;
     let nextStreak = currentStudent.streakDays;
+    const shouldShareToGroup = options?.shareToGroup ?? true;
+    const deterministicPostId = `group-video-${currentStudent.id}-SUPPORTING-${videoId}`;
 
     updateStudent(currentStudent.id, st => {
       const targetVideo = st.supportingVideos.find(v => v.id === videoId);
@@ -651,7 +965,9 @@ export function App() {
         senderName: st.name,
         text: wasAlreadyDone
           ? `↻ Resubmitted updated link for ${videoLabel} — ${videoUrl}`
-          : `🎬 Submitted verified link for ${videoLabel} — ${videoUrl}`,
+          : `🎬 Submitted verified link for ${videoLabel}${
+              shouldShareToGroup ? ' (Shared to Cohort Group)' : ''
+            } — ${videoUrl}`,
         timestamp: formattedTime,
         relatedVideoTitle: videoLabel,
         readByStudent: true,
@@ -680,7 +996,9 @@ export function App() {
                 videoUrl,
                 completedAt: wasAlreadyDone ? `Updated · ${formattedTime}` : `Verified · ${formattedTime}`,
                 completedDateISO: todayISO,
-                coachReviewStatus: 'Pending Review'
+                coachReviewStatus: 'Pending Review',
+                sharedToGroup: shouldShareToGroup || v.sharedToGroup,
+                groupPostId: shouldShareToGroup ? deterministicPostId : v.groupPostId
               }
             : v
         ),
@@ -688,10 +1006,28 @@ export function App() {
       };
     });
 
+    if (shouldShareToGroup) {
+      upsertVideoShareInGroupFeed({
+        student: currentStudent,
+        videoType: 'SUPPORTING',
+        videoId,
+        videoUrl,
+        note: options?.groupNote,
+        coachReviewStatus: 'Pending Review',
+        notifyCohort: true
+      });
+    }
+
     triggerWebPushAndBanner(
-      wasResubmission ? 'Revised Video Link Sent to Coach!' : 'Daily Video Link Verified!',
+      wasResubmission
+        ? 'Revised Video Link Sent to Coach!'
+        : shouldShareToGroup
+        ? 'Video Verified & Shared to Cohort Group!'
+        : 'Daily Video Link Verified!',
       wasResubmission
         ? `Your updated link (${videoUrl}) is back in Coach Josh's Review Queue.`
+        : shouldShareToGroup
+        ? `Posted to the Cohort Group Feed (notified all students) + queued for Coach Josh's review! Streak: ${nextStreak}d.`
         : `Your social link (${videoUrl}) has been queued for Coach Review and your streak is now ${nextStreak} days.`,
       'DAILY_LESSON'
     );
@@ -715,12 +1051,15 @@ export function App() {
     coreId: string,
     status: 'Not Started' | 'In Progress' | 'Completed',
     url?: string,
-    scriptDraft?: { S: string; H: string; I: string; F: string; T: string }
+    scriptDraft?: { S: string; H: string; I: string; F: string; T: string },
+    options?: { shareToGroup?: boolean }
   ) => {
     const formattedTime = new Date().toLocaleTimeString([], {
       hour: 'numeric',
       minute: '2-digit'
     });
+    const shouldShareCore = Boolean(status === 'Completed' && url && (options?.shareToGroup ?? true));
+    const deterministicPostId = `group-video-${currentStudent.id}-CORE-${coreId}`;
 
     updateStudent(currentStudent.id, st => {
       const existingCore = st.coreVideos.find(c => c.id === coreId);
@@ -795,7 +1134,9 @@ export function App() {
                 videoUrl: url !== undefined ? url : c.videoUrl,
                 scriptDraft: scriptDraft !== undefined ? scriptDraft : c.scriptDraft,
                 coachReviewStatus:
-                  status === 'Completed' ? 'Pending Review' : c.coachReviewStatus
+                  status === 'Completed' ? 'Pending Review' : c.coachReviewStatus,
+                sharedToGroup: shouldShareCore || c.sharedToGroup,
+                groupPostId: shouldShareCore ? deterministicPostId : c.groupPostId
               }
             : c
         ),
@@ -803,10 +1144,25 @@ export function App() {
       };
     });
 
+    if (shouldShareCore && url) {
+      upsertVideoShareInGroupFeed({
+        student: currentStudent,
+        videoType: 'CORE',
+        videoId: coreId,
+        videoUrl: url,
+        coachReviewStatus: 'Pending Review',
+        notifyCohort: true
+      });
+    }
+
     if (status === 'Completed' && url) {
       triggerWebPushAndBanner(
-        'Core Brand Video Submitted!',
-        `Your Core Brand Video link (${url}) has been queued for Coach Review.`,
+        shouldShareCore
+          ? 'Core Video Submitted & Shared to Cohort Group!'
+          : 'Core Brand Video Submitted!',
+        shouldShareCore
+          ? `Your Core Brand Video (${url}) is live in the Cohort Group Feed and queued for Coach Review.`
+          : `Your Core Brand Video link (${url}) has been queued for Coach Review.`,
         'DAILY_LESSON'
       );
     }
@@ -817,7 +1173,8 @@ export function App() {
     videoType: 'SUPPORTING' | 'CORE',
     videoId: string,
     reviewStatus: CoachReviewStatus,
-    feedback: string
+    feedback: string,
+    appendToGroupThread = true
   ) => {
     const reviewedTime = new Date().toLocaleDateString('en-US', {
       month: 'short',
@@ -825,6 +1182,9 @@ export function App() {
       hour: 'numeric',
       minute: '2-digit'
     });
+    const deterministicPostId = `group-video-${studentId}-${videoType}-${videoId}`;
+
+    let resolvedVideoLabel = 'Video';
 
     updateStudent(studentId, st => {
       let videoLabel = 'Video';
@@ -837,7 +1197,9 @@ export function App() {
                   ...v,
                   coachReviewStatus: reviewStatus,
                   coachFeedback: feedback,
-                  coachReviewedAt: reviewedTime
+                  coachReviewedAt: reviewedTime,
+                  sharedToGroup: appendToGroupThread ? true : v.sharedToGroup,
+                  groupPostId: appendToGroupThread ? deterministicPostId : v.groupPostId
                 };
               }
               return v;
@@ -853,38 +1215,48 @@ export function App() {
                   ...c,
                   coachReviewStatus: reviewStatus,
                   coachFeedback: feedback,
-                  coachReviewedAt: reviewedTime
+                  coachReviewedAt: reviewedTime,
+                  sharedToGroup: appendToGroupThread ? true : c.sharedToGroup,
+                  groupPostId: appendToGroupThread ? deterministicPostId : c.groupPostId
                 };
               }
               return c;
             })
           : st.coreVideos;
 
+      resolvedVideoLabel = videoLabel;
       const statusPrefix = reviewStatus === 'Approved' ? '✓ APPROVED' : '↻ REVISION REQUESTED';
       const noteMsg: ChatMessage = {
         id: `msg-review-${Date.now()}`,
         senderRole: 'COACH',
         senderName: 'Coach Josh Beechraft',
-        text: `[${statusPrefix}] ${videoLabel}${feedback ? ` — "${feedback}"` : ''}`,
+        text: `[${statusPrefix}] ${videoLabel}${feedback ? ` — "${feedback}"` : ''}${
+          appendToGroupThread ? ' (Also appended to Cohort Group Thread for discussion)' : ''
+        }`,
         timestamp: reviewedTime,
         relatedVideoTitle: videoLabel,
         isAlert: reviewStatus === 'Needs Revision',
         readByCoach: true,
         readByStudent: false,
-        actionTarget:
-          videoType === 'SUPPORTING'
-            ? {
-                label: reviewStatus === 'Needs Revision' ? 'Fix & Resubmit Video' : 'View Video in Studio',
-                tab: 'CADENCE',
-                subTab: 'STUDIO',
-                videoId
-              }
-            : {
-                label: reviewStatus === 'Needs Revision' ? 'Update Core Video' : 'View Core Video',
-                tab: 'CADENCE',
-                subTab: 'CORE5',
-                coreVideoId: videoId
-              }
+        actionTarget: appendToGroupThread
+          ? {
+              label: 'View Breakdown in Group Thread',
+              tab: 'GROUP',
+              groupPostId: deterministicPostId
+            }
+          : videoType === 'SUPPORTING'
+          ? {
+              label: reviewStatus === 'Needs Revision' ? 'Fix & Resubmit Video' : 'View Video in Studio',
+              tab: 'CADENCE',
+              subTab: 'STUDIO',
+              videoId
+            }
+          : {
+              label: reviewStatus === 'Needs Revision' ? 'Update Core Video' : 'View Core Video',
+              tab: 'CADENCE',
+              subTab: 'CORE5',
+              coreVideoId: videoId
+            }
       };
 
       return {
@@ -895,12 +1267,208 @@ export function App() {
       };
     });
 
-    const recipient = students.find(s => s.id === studentId);
+    const recipient = latestStudentsRef.current.find(s => s.id === studentId);
+
+    // Append Coach Josh's feedback to the Cohort Group thread (and create the thread if appendToGroupThread is enabled)
+    if (recipient) {
+      const existingThread = groupPosts.find(
+        p =>
+          p.id === deterministicPostId ||
+          (p.type === 'VIDEO_SHARE' &&
+            p.studentId === studentId &&
+            p.videoType === videoType &&
+            p.videoId === videoId)
+      );
+
+      if (appendToGroupThread || existingThread) {
+        upsertVideoShareInGroupFeed({
+          student: recipient,
+          videoType,
+          videoId,
+          coachReviewStatus: reviewStatus,
+          coachFeedback: feedback,
+          coachReviewedAt: reviewedTime,
+          notifyCohort: false
+        });
+
+        // Also append an official Coach Review comment inside the thread's discussion stream
+        const coachComment: GroupDiscussionComment = {
+          id: `comment-coach-review-${Date.now()}`,
+          authorId: 'coach-josh',
+          authorName: 'Coach Josh Beechraft',
+          authorAvatar: 'JB',
+          authorCompany: '2mmShift Architect',
+          authorRole: 'COACH',
+          text: `${
+            reviewStatus === 'Approved' ? '✓ [APPROVED]' : '↻ [REVISION REQUESTED]'
+          } ${feedback || `Reviewed and marked as ${reviewStatus}.`}`,
+          timestamp: reviewedTime,
+          createdAtISO: new Date().toISOString(),
+          isOfficialCoachReview: true,
+          reviewStatus
+        };
+
+        saveGroupPosts(prev =>
+          prev.map(p =>
+            p.id === (existingThread?.id || deterministicPostId)
+              ? {
+                  ...p,
+                  coachReviewStatus: reviewStatus,
+                  coachFeedback: feedback,
+                  coachReviewedAt: reviewedTime,
+                  comments: [...p.comments, coachComment]
+                }
+              : p
+          )
+        );
+
+        broadcastCohortGroupNotification({
+          senderName: 'Coach Josh Beechraft',
+          text: `💬 Coach Josh appended feedback on ${recipient.name}’s video (${resolvedVideoLabel}): "${
+            feedback || reviewStatus
+          }" — Jump into the thread to discuss!`,
+          relatedVideoTitle: resolvedVideoLabel,
+          groupPostId: existingThread?.id || deterministicPostId,
+          actionLabel: 'Read Feedback & Discuss'
+        });
+      }
+    }
+
     triggerWebPushAndBanner(
-      `Review Sent to ${recipient?.name || 'Student'} (${reviewStatus})`,
-      feedback || `Marked video as ${reviewStatus}.`,
+      `Review Sent & Appended to Group (${reviewStatus})`,
+      feedback || `Marked video as ${reviewStatus} and updated Cohort Group Thread.`,
       reviewStatus === 'Needs Revision' ? 'MISSED_ALERT' : 'COACH_NUDGE'
     );
+  };
+
+  // Cohort Group Discussion Handlers
+  const handleCreateGeneralGroupPost = (params: {
+    title: string;
+    body: string;
+    category: GroupDiscussionCategory;
+    videoUrl?: string;
+    notifyCohort: boolean;
+  }) => {
+    const isCoach = authSession.role === 'ADMIN';
+    const formattedStamp = new Date().toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    const newPostId = `group-thread-${Date.now()}`;
+    const authorName = isCoach ? 'Coach Josh Beechraft' : currentStudent.name;
+
+    const newPost: GroupDiscussionPost = {
+      id: newPostId,
+      type: 'GENERAL_THREAD',
+      category: params.category,
+      authorId: isCoach ? 'coach-josh' : currentStudent.id,
+      authorName,
+      authorAvatar: isCoach ? 'JB' : currentStudent.avatar,
+      authorCompany: isCoach ? '2mmShift / Market Concussion' : currentStudent.company,
+      authorNiche: isCoach ? '2mmShift Architect' : currentStudent.niche,
+      authorRole: isCoach ? 'COACH' : 'STUDENT',
+      title: params.title,
+      body: params.body,
+      timestamp: formattedStamp,
+      createdAtISO: new Date().toISOString(),
+      videoUrl: params.videoUrl,
+      reactions: {
+        fire: [],
+        shift: [],
+        props: []
+      },
+      comments: []
+    };
+
+    saveGroupPosts(prev => [newPost, ...prev]);
+
+    if (params.notifyCohort) {
+      broadcastCohortGroupNotification({
+        excludeStudentId: isCoach ? undefined : currentStudent.id,
+        senderName: authorName,
+        text: `💬 ${authorName} started a new Cohort Discussion: "${params.title}"`,
+        groupPostId: newPostId,
+        actionLabel: 'Join Discussion'
+      });
+    }
+
+    triggerWebPushAndBanner(
+      'Discussion Thread Posted!',
+      params.notifyCohort
+        ? `"${params.title}" is live in the Cohort Group Room and all students have been notified.`
+        : `"${params.title}" is now live in the Cohort Group Room.`,
+      'DAILY_LESSON'
+    );
+  };
+
+  const handleAddGroupComment = (postId: string, text: string) => {
+    const isCoach = authSession.role === 'ADMIN';
+    const formattedStamp = new Date().toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    const authorName = isCoach ? 'Coach Josh Beechraft' : currentStudent.name;
+
+    const newComment: GroupDiscussionComment = {
+      id: `group-comment-${Date.now()}`,
+      authorId: isCoach ? 'coach-josh' : currentStudent.id,
+      authorName,
+      authorAvatar: isCoach ? 'JB' : currentStudent.avatar,
+      authorCompany: isCoach ? '2mmShift Architect' : currentStudent.company,
+      authorRole: isCoach ? 'COACH' : 'STUDENT',
+      text,
+      timestamp: formattedStamp,
+      createdAtISO: new Date().toISOString()
+    };
+
+    const targetPost = groupPosts.find(p => p.id === postId);
+
+    saveGroupPosts(prev =>
+      prev.map(p => (p.id === postId ? { ...p, comments: [...p.comments, newComment] } : p))
+    );
+
+    if (targetPost) {
+      broadcastCohortGroupNotification({
+        excludeStudentId: isCoach ? undefined : currentStudent.id,
+        senderName: authorName,
+        text: `↩ ${authorName} replied in "${targetPost.title}": "${text}"`,
+        groupPostId: postId,
+        actionLabel: 'View Thread Reply'
+      });
+    }
+  };
+
+  const handleToggleGroupReaction = (postId: string, reaction: 'fire' | 'shift' | 'props') => {
+    const viewerId = authSession.role === 'ADMIN' ? 'coach-josh' : currentStudent.id;
+    saveGroupPosts(prev =>
+      prev.map(p => {
+        if (p.id !== postId) return p;
+        const list = p.reactions[reaction] || [];
+        const exists = list.includes(viewerId);
+        const nextList = exists ? list.filter(id => id !== viewerId) : [...list, viewerId];
+        return {
+          ...p,
+          reactions: {
+            ...p.reactions,
+            [reaction]: nextList
+          }
+        };
+      })
+    );
+  };
+
+  const handleTogglePinGroupPost = (postId: string) => {
+    saveGroupPosts(prev =>
+      prev.map(p => (p.id === postId ? { ...p, pinned: !p.pinned } : p))
+    );
+  };
+
+  const handleDeleteGroupPost = (postId: string) => {
+    saveGroupPosts(prev => prev.filter(p => p.id !== postId));
   };
 
   const applyWorksheetUpdatesWithCoreSync = (
@@ -1520,11 +2088,16 @@ export function App() {
   }
 
   const unreadMessagesForCurrentViewer = isAdminSession
-    ? currentStudent.messages.filter(m => m.senderRole === 'STUDENT' && m.readByCoach === false).length
-    : currentStudent.messages.filter(m => m.senderRole === 'COACH' && m.readByStudent === false).length;
+    ? currentStudent.messages.filter(
+        m => (m.senderRole === 'STUDENT' || m.senderRole === 'SYSTEM') && m.readByCoach === false
+      ).length
+    : currentStudent.messages.filter(
+        m => (m.senderRole === 'COACH' || m.senderRole === 'SYSTEM') && m.readByStudent === false
+      ).length;
 
   const allNavItems = [
     { id: 'CADENCE' as const, label: 'Studio', shortLabel: 'Studio', icon: Video, role: 'STUDENT' as const },
+    { id: 'GROUP' as const, label: `Cohort Group (${groupPosts.length})`, shortLabel: 'Group', icon: Users, role: 'STUDENT' as const },
     { id: 'WORKBOOK' as const, label: 'Lessons 1–26', shortLabel: 'Lessons', icon: BookOpen, role: 'STUDENT' as const },
     { id: 'MAGNETS' as const, label: 'Shift Magnets', shortLabel: 'Magnets', icon: Magnet, role: 'STUDENT' as const },
     { id: 'COACH' as const, label: 'Admin', shortLabel: 'Admin', icon: UserCheck, role: 'COACH' as const }
@@ -1815,6 +2388,11 @@ export function App() {
               onMarkVideoDone={handleMarkVideoDone}
               onUpdatePillarStatus={handleUpdatePillarStatus}
               onUpdateCoreVideoStatus={handleUpdateCoreVideoStatus}
+              onShareVideoToGroup={handleShareVideoToGroup}
+              onOpenGroupThread={postId => {
+                setActiveTab('GROUP');
+                if (postId) setRequestedGroupPostId(postId);
+              }}
               requestedSubTab={requestedCadenceSubTab}
               requestedVideoId={requestedVideoId}
               requestedCoreVideoId={requestedCoreVideoId}
@@ -1827,6 +2405,24 @@ export function App() {
                 setImportStatus(null);
                 setShowImportModal(true);
               }}
+            />
+          )}
+
+          {activeTab === 'GROUP' && (
+            <GroupDiscussionView
+              students={students}
+              currentStudent={currentStudent}
+              isAdminSession={isAdminSession}
+              posts={groupPosts}
+              requestedPostId={requestedGroupPostId}
+              onClearRequestedPostId={() => setRequestedGroupPostId(undefined)}
+              onCreateGeneralPost={handleCreateGeneralGroupPost}
+              onShareVideoToGroup={handleShareVideoToGroup}
+              onAddComment={handleAddGroupComment}
+              onToggleReaction={handleToggleGroupReaction}
+              onTogglePinPost={handleTogglePinGroupPost}
+              onDeletePost={handleDeleteGroupPost}
+              onReviewStudentVideo={handleReviewStudentVideo}
             />
           )}
 

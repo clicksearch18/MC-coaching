@@ -21,7 +21,9 @@ import {
   Play,
   BookOpen,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Users,
+  Share2
 } from 'lucide-react';
 import { StudentProfile, SupportingVideoItem, PlaybookPillar } from '../types';
 import { ModalDialog } from './ModalDialog';
@@ -30,14 +32,27 @@ import { resolveMatchingPillar } from '../utils/excelParser';
 interface DailyCadenceViewProps {
   student: StudentProfile;
   onUpdateVideo: (videoId: string, updates: Partial<SupportingVideoItem>) => void;
-  onMarkVideoDone: (videoId: string, videoUrl: string) => void;
+  onMarkVideoDone: (
+    videoId: string,
+    videoUrl: string,
+    options?: { shareToGroup?: boolean; groupNote?: string }
+  ) => void;
   onUpdatePillarStatus: (pillarId: string, status: string) => void;
   onUpdateCoreVideoStatus: (
     coreId: string,
     status: 'Not Started' | 'In Progress' | 'Completed',
     url?: string,
-    scriptDraft?: { S: string; H: string; I: string; F: string; T: string }
+    scriptDraft?: { S: string; H: string; I: string; F: string; T: string },
+    options?: { shareToGroup?: boolean }
   ) => void;
+  onShareVideoToGroup?: (params: {
+    studentId: string;
+    videoType: 'SUPPORTING' | 'CORE';
+    videoId: string;
+    note?: string;
+    notifyCohort: boolean;
+  }) => void;
+  onOpenGroupThread?: (postId?: string) => void;
   onOpenImportModal: () => void;
   requestedSubTab?: 'STUDIO' | 'QUEUE' | 'CORE5' | 'PLAYBOOK' | null;
   requestedVideoId?: string | null;
@@ -67,6 +82,8 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
   onMarkVideoDone,
   onUpdatePillarStatus,
   onUpdateCoreVideoStatus,
+  onShareVideoToGroup,
+  onOpenGroupThread,
   requestedSubTab,
   requestedVideoId,
   requestedCoreVideoId,
@@ -84,6 +101,9 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
   const [stageFilter, setStageFilter] = useState<string>('ALL');
   const [videoLinkInput, setVideoLinkInput] = useState('');
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [shareToGroupOnVerify, setShareToGroupOnVerify] = useState(true);
+  const [groupShareNote, setGroupShareNote] = useState('');
+  const [shareCoreToGroup, setShareCoreToGroup] = useState(true);
   const [coreUrlDrafts, setCoreUrlDrafts] = useState<Record<string, string>>({});
   const [coreUrlError, setCoreUrlError] = useState<string | null>(null);
   const [showQueueDrawer, setShowQueueDrawer] = useState(false);
@@ -206,7 +226,11 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
       ? videoLinkInput.trim()
       : `https://${videoLinkInput.trim()}`;
     setLinkError(null);
-    onMarkVideoDone(currentVideo.id, normalizedUrl);
+    onMarkVideoDone(currentVideo.id, normalizedUrl, {
+      shareToGroup: shareToGroupOnVerify,
+      groupNote: groupShareNote.trim() || undefined
+    });
+    setGroupShareNote('');
   };
 
   const uniqueStages = Array.from(new Set(student.supportingVideos.map(v => v.pillarStage)));
@@ -1128,6 +1152,37 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                       <span>{linkError}</span>
                     </div>
                   )}
+
+                  {/* Option to Post Video Link to Cohort Group & Notify All Students */}
+                  <div className="p-3.5 sm:p-4 rounded-xl bg-[#040507] border border-[#09ADEF]/30 space-y-3">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={shareToGroupOnVerify}
+                        onChange={e => setShareToGroupOnVerify(e.target.checked)}
+                        className="mt-0.5 rounded accent-[#09ADEF] w-4 h-4 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                          <Users className="w-3.5 h-3.5 text-[#09ADEF]" />
+                          <span>Post Link to Cohort Group & Notify All Students</span>
+                        </div>
+                        <p className="text-[11px] text-neutral-400 mt-0.5 leading-relaxed">
+                          Notifies all cohort operators that you posted a new video so they can learn from your output. When Coach Josh reviews this video, his feedback will automatically append to the group thread for open discussion.
+                        </p>
+                      </div>
+                    </label>
+
+                    {shareToGroupOnVerify && (
+                      <input
+                        type="text"
+                        value={groupShareNote}
+                        onChange={e => setGroupShareNote(e.target.value)}
+                        placeholder="Add a takeaway or question for the cohort discussion thread (optional)..."
+                        className="w-full rounded-lg bg-black border border-white/12 px-3 py-2 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#09ADEF]"
+                      />
+                    )}
+                  </div>
                 </div>
 
                 {currentVideo.status === 'Completed' && currentVideo.coachReviewStatus !== 'Needs Revision' ? (
@@ -1162,6 +1217,38 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                               Update Link
                             </button>
                           )}
+
+                        {currentVideo.sharedToGroup && onOpenGroupThread ? (
+                          <button
+                            type="button"
+                            onClick={() => onOpenGroupThread(currentVideo.groupPostId)}
+                            className="px-3.5 py-2.5 rounded-lg bg-[#09ADEF]/15 hover:bg-[#09ADEF]/25 border border-[#09ADEF]/40 text-[#09ADEF] text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Users className="w-3.5 h-3.5" />
+                            <span>Open Group Thread →</span>
+                          </button>
+                        ) : (
+                          onShareVideoToGroup && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onShareVideoToGroup({
+                                  studentId: student.id,
+                                  videoType: 'SUPPORTING',
+                                  videoId: currentVideo.id,
+                                  note: groupShareNote.trim() || undefined,
+                                  notifyCohort: true
+                                });
+                                setGroupShareNote('');
+                              }}
+                              className="px-3.5 py-2.5 rounded-lg bg-[#09ADEF]/15 hover:bg-[#09ADEF]/25 border border-[#09ADEF]/40 text-[#09ADEF] text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Share2 className="w-3.5 h-3.5" />
+                              <span>Post to Group & Notify</span>
+                            </button>
+                          )
+                        )}
+
                         <button
                           type="button"
                           onClick={() => {
@@ -1202,6 +1289,8 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                       <span>
                         {currentVideo.coachReviewStatus === 'Needs Revision'
                           ? `Resubmit Revised Link for Day #${currentVideo.dayNumber}`
+                          : shareToGroupOnVerify
+                          ? `Verify Day #${currentVideo.dayNumber} & Share to Group`
                           : `Verify & Complete Day #${currentVideo.dayNumber}`}
                       </span>
                     </button>
@@ -1338,7 +1427,9 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
             ? currentCoreUrl.trim()
             : `https://${currentCoreUrl.trim()}`;
           setCoreUrlError(null);
-          onUpdateCoreVideoStatus(core.id, 'Completed', normalized);
+          onUpdateCoreVideoStatus(core.id, 'Completed', normalized, undefined, {
+            shareToGroup: shareCoreToGroup
+          });
         };
 
         return (
@@ -1482,7 +1573,9 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                           );
                           return;
                         }
-                        onUpdateCoreVideoStatus(core.id, nextStatus, currentCoreUrl.trim() || core.videoUrl);
+                        onUpdateCoreVideoStatus(core.id, nextStatus, currentCoreUrl.trim() || core.videoUrl, undefined, {
+                          shareToGroup: shareCoreToGroup
+                        });
                       }}
                       className={`rounded-xl border px-3 py-2 text-xs font-bold uppercase tracking-wider cursor-pointer ${
                         core.status === 'Completed'
@@ -1497,6 +1590,50 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                       <option value="Completed">Completed</option>
                     </select>
                   </div>
+                </div>
+
+                {/* Core Video Group Share Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-[#040507] border border-[#09ADEF]/25">
+                  <label className="flex items-center gap-2 text-xs text-neutral-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={shareCoreToGroup}
+                      onChange={e => setShareCoreToGroup(e.target.checked)}
+                      className="rounded accent-[#09ADEF] w-3.5 h-3.5"
+                    />
+                    <span>Post Core Video link to Cohort Group & notify all students when verified</span>
+                  </label>
+
+                  {core.status === 'Completed' && core.videoUrl && (
+                    core.sharedToGroup && onOpenGroupThread ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenGroupThread(core.groupPostId)}
+                        className="px-3 py-1 rounded-lg bg-[#09ADEF]/15 hover:bg-[#09ADEF]/25 border border-[#09ADEF]/40 text-[10px] font-bold uppercase tracking-wider text-[#09ADEF] inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <Users className="w-3 h-3" />
+                        <span>Open Group Thread →</span>
+                      </button>
+                    ) : (
+                      onShareVideoToGroup && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onShareVideoToGroup({
+                              studentId: student.id,
+                              videoType: 'CORE',
+                              videoId: core.id,
+                              notifyCohort: true
+                            })
+                          }
+                          className="px-3 py-1 rounded-lg bg-[#09ADEF]/15 hover:bg-[#09ADEF]/25 border border-[#09ADEF]/40 text-[10px] font-bold uppercase tracking-wider text-[#09ADEF] inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <Share2 className="w-3 h-3" />
+                          <span>Post to Group Now</span>
+                        </button>
+                      )
+                    )
+                  )}
                 </div>
 
                 {coreUrlError && (

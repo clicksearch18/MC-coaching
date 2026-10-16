@@ -83,7 +83,8 @@ interface CoachDashboardViewProps {
     videoType: 'SUPPORTING' | 'CORE',
     videoId: string,
     reviewStatus: CoachReviewStatus,
-    feedback: string
+    feedback: string,
+    appendToGroupThread?: boolean
   ) => void;
   onTriggerMissedAlertPush: (student: StudentProfile) => void;
   onApproveGate: (studentId: string, phaseNum: number) => void;
@@ -148,6 +149,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
   const [expandedReviewKey, setExpandedReviewKey] = useState<string | null>(null);
   const [reviewDraftNotes, setReviewDraftNotes] = useState<Record<string, string>>({});
   const [reviewDraftStatus, setReviewDraftStatus] = useState<Record<string, CoachReviewStatus>>({});
+  const [reviewAppendToGroup, setReviewAppendToGroup] = useState<Record<string, boolean>>({});
 
   // New Student Onboarding Modal State
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
@@ -1757,6 +1759,23 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                               />
                             </div>
 
+                            <label className="flex items-center gap-2.5 p-3 rounded-xl bg-[#09ADEF]/10 border border-[#09ADEF]/30 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={reviewAppendToGroup[item.key] ?? true}
+                                onChange={e =>
+                                  setReviewAppendToGroup(prev => ({
+                                    ...prev,
+                                    [item.key]: e.target.checked
+                                  }))
+                                }
+                                className="rounded accent-[#09ADEF] w-4 h-4"
+                              />
+                              <span className="text-xs text-white font-medium">
+                                Append Coach Feedback to Cohort Group Thread & notify students so the group can study & discuss
+                              </span>
+                            </label>
+
                             <div className="flex items-center justify-end gap-2 pt-1">
                               <button
                                 type="button"
@@ -1768,15 +1787,19 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                               <button
                                 type="button"
                                 onClick={() => {
+                                  const shouldAppend = reviewAppendToGroup[item.key] ?? true;
                                   onReviewStudentVideo(
                                     item.studentId,
                                     item.videoType,
                                     item.videoId,
                                     draftStatus,
-                                    draftNote.trim()
+                                    draftNote.trim(),
+                                    shouldAppend
                                   );
                                   setSaveBanner(
-                                    `Sent "${draftStatus}" review & notes for ${item.badge} directly to ${item.studentName}!`
+                                    `Sent "${draftStatus}" review & notes for ${item.badge} to ${item.studentName}${
+                                      shouldAppend ? ' and appended to Cohort Group Thread!' : '!'
+                                    }`
                                   );
                                   setTimeout(() => setSaveBanner(null), 4000);
                                   setExpandedReviewKey(null);
@@ -1784,7 +1807,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                                 className="btn-2mm inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-xs cursor-pointer"
                               >
                                 <Send className="w-3.5 h-3.5" />
-                                <span>Send Review & Notes to Student</span>
+                                <span>Send Review & Append to Group</span>
                               </button>
                             </div>
                           </div>
