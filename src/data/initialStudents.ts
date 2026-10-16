@@ -24,7 +24,13 @@ const defaultShiftMagnets: ShiftMagnet[] = [
     deliveryFormat: 'Checklist',
     keywordTrigger: 'AUDIT',
     trackingLink: 'https://marketconcussion.com/audit-scorecard',
-    dmHandoffScript: 'Hey [First Name]! Saw you commented AUDIT on today’s video. Here is the 1-Page Pipeline Equity Scorecard. Quick question before you open it: are you currently relying mostly on referrals, or running paid traffic?',
+    dmHandoffScript: 'Hey [First Name]! Saw you commented AUDIT on today’s video — here is the 1-Page Pipeline Equity Scorecard: https://marketconcussion.com/audit-scorecard',
+    publicCommentReply: 'Just sent the 1-Page Pipeline Audit straight to your DMs! Check your message requests.',
+    dmDiagnosticQuestion: 'Quick question while you open it: are you currently focused on A) Fixing leaky ad funnels, B) Escaping referral-only spiky months, or C) Closing deals in DMs without sales calls?',
+    dmBridgeScript: 'Got it — when operators score low on Section 2, it’s almost always because strangers haven’t consumed 7 hours of structured belief-shifting content yet. Want me to send over our 2-Page Offer Doc showing how we install the 25-video engine in 8 weeks?',
+    sectionsSteps: '1. Current Time-on-Brand Calculator · 2. The 25% Ad Gate Check · 3. DM Handoff & Offer Doc Score',
+    bridgeToOffer: 'Once they see their Time-on-Brand gap, invite them to review the 2-Page Super Signature Offer Doc.',
+    hostedWhere: 'ManyChat / HighLevel Comment-to-DM Trigger ("AUDIT") + Notion 1-Pager',
     status: 'Live'
   },
   {
@@ -39,7 +45,13 @@ const defaultShiftMagnets: ShiftMagnet[] = [
     deliveryFormat: 'PDF',
     keywordTrigger: 'FIVE',
     trackingLink: 'https://marketconcussion.com/5-dollar-wiring',
-    dmHandoffScript: 'Hey [First Name]! Grab the $5/Day Andromeda Wiring Guide right here. Curious — are you running any video view campaigns right now, or starting fresh?',
+    dmHandoffScript: 'Hey [First Name]! Grab the $5/Day Andromeda Wiring Guide right here: https://marketconcussion.com/5-dollar-wiring',
+    publicCommentReply: 'Sent the $5/Day Andromeda Wiring Guide to your DMs! Let me know once you’ve got it.',
+    dmDiagnosticQuestion: 'Curious — are you currently A) Running paid traffic to a VSL/webinar, B) Boosting posts randomly, or C) 100% organic right now?',
+    dmBridgeScript: 'Makes total sense. The reason $5/day ThruPlay sequencing works so well is every 25% viewer rolls into one permanent Full List. If you want, I can share the 2-Page breakdown of how we wire all 6 sequenced videos for you.',
+    sectionsSteps: '1. Pixel & Custom Audience Naming · 2. The V1–V6 25% Viewer Ladder · 3. The Master Full List Rollup',
+    bridgeToOffer: 'Shows how the 6-video ad ladder works, then bridges to building the actual 25 videos together.',
+    hostedWhere: 'ManyChat Keyword ("FIVE") + Google Drive / PDF Blueprint',
     status: 'Live'
   },
   {
@@ -54,7 +66,13 @@ const defaultShiftMagnets: ShiftMagnet[] = [
     deliveryFormat: 'PDF',
     keywordTrigger: 'DOC',
     trackingLink: 'https://marketconcussion.com/offer-doc-template',
-    dmHandoffScript: 'Hey [First Name]! Sending over the 2-Page Offer Doc template now. What price point is your core offer at right now?',
+    dmHandoffScript: 'Hey [First Name]! Sending over the 2-Page Super Signature Offer Doc template now: https://marketconcussion.com/offer-doc-template',
+    publicCommentReply: 'Just dropped the 2-Page Offer Doc template in your DMs!',
+    dmDiagnosticQuestion: 'Quick context check so I can point you to the best example: is your core offer A) Under $3k, B) $3k–$15k, or C) $15k+?',
+    dmBridgeScript: 'At that price point, a 2-Page Offer Doc works best when paired with a Monthly Conversion Workshop and 7 hours of pre-call video equity. Want to see how our own 2-Page Offer Doc is structured?',
+    sectionsSteps: '1. Problem in Their Words & Named Mechanism · 2. Scope, Timeline & Shared Responsibilities · 3. Risk Reversal & 5-Minute First Step',
+    bridgeToOffer: 'Demonstrates the exact 17-point Offer Doc framework from Lesson 24.',
+    hostedWhere: 'Google Docs Template + Comment Keyword ("DOC")',
     status: 'Live'
   }
 ];

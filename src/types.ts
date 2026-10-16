@@ -86,6 +86,13 @@ export interface ShiftMagnet {
   trackingLink: string;
   dmHandoffScript: string;
   status: 'Draft' | 'Live';
+  sectionsSteps?: string;
+  immediateWin?: string;
+  bridgeToOffer?: string;
+  hostedWhere?: string;
+  publicCommentReply?: string;
+  dmDiagnosticQuestion?: string;
+  dmBridgeScript?: string;
 }
 
 export interface WorkbookField {

@@ -1684,6 +1684,11 @@ export function App() {
       ...st,
       shiftMagnets: [magnet, ...st.shiftMagnets]
     }));
+    triggerWebPushAndBanner(
+      `Shift Magnet Created: "${magnet.workingTitle}"`,
+      `Keyword "${magnet.keywordTrigger}" is now available in your Studio Step 2 CTA dropdown and DM Playbook.`,
+      'DAILY_LESSON'
+    );
   };
 
   const handleUpdateShiftMagnet = (id: string, updates: Partial<ShiftMagnet>) => {
@@ -1691,6 +1696,42 @@ export function App() {
       ...st,
       shiftMagnets: st.shiftMagnets.map(m => (m.id === id ? { ...m, ...updates } : m))
     }));
+  };
+
+  const handleDeleteShiftMagnet = (id: string) => {
+    updateStudent(currentStudent.id, st => {
+      const remaining = st.shiftMagnets.filter(m => m.id !== id);
+      const fallbackId = remaining[0]?.id;
+      return {
+        ...st,
+        shiftMagnets: remaining,
+        supportingVideos: st.supportingVideos.map(v =>
+          v.attachedMagnetId === id ? { ...v, attachedMagnetId: fallbackId } : v
+        )
+      };
+    });
+    triggerWebPushAndBanner(
+      'Shift Magnet Removed',
+      'Deleted Shift Magnet and updated any attached Studio video CTAs.',
+      'DAILY_LESSON'
+    );
+  };
+
+  const handleAssignShiftMagnetToPendingVideos = (magnetId: string) => {
+    const targetMag = currentStudent.shiftMagnets.find(m => m.id === magnetId);
+    updateStudent(currentStudent.id, st => ({
+      ...st,
+      supportingVideos: st.supportingVideos.map(v =>
+        v.status !== 'Completed' ? { ...v, attachedMagnetId: magnetId } : v
+      )
+    }));
+    if (targetMag) {
+      triggerWebPushAndBanner(
+        `Default Studio CTA Updated`,
+        `Assigned "${targetMag.workingTitle}" (Keyword: ${targetMag.keywordTrigger}) to all upcoming Daily Concussion Content videos.`,
+        'DAILY_LESSON'
+      );
+    }
   };
 
   const handleSendMessage = (studentId: string, text: string, triggerPush = false) => {
@@ -2449,6 +2490,14 @@ export function App() {
               student={currentStudent}
               onAddShiftMagnet={handleAddShiftMagnet}
               onUpdateShiftMagnet={handleUpdateShiftMagnet}
+              onDeleteShiftMagnet={handleDeleteShiftMagnet}
+              onAssignToPendingVideos={handleAssignShiftMagnetToPendingVideos}
+              onUpdateField={handleUpdateField}
+              onSyncFromLesson21={handleSyncShiftMagnetFromLesson21}
+              onOpenLesson={lessonNum => {
+                setActiveTab('WORKBOOK');
+                setRequestedLessonNumber(lessonNum);
+              }}
             />
           )}
 
