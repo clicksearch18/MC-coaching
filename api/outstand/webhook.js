@@ -187,68 +187,71 @@ export default async function handler(req, res) {
           }
         })();
 
-        // Deduplicate by commentId
-        const alreadyExists = existingThreads.some(t => t.commentId && t.commentId === commentId);
+        // Deduplicate by sourceCommentId
+        const alreadyExists = existingThreads.some(
+          t => (t.sourceCommentId || t.commentId) && (t.sourceCommentId === commentId || t.commentId === commentId)
+        );
         if (!alreadyExists) {
           const nowISO = new Date().toISOString();
           const formattedTime = new Date().toLocaleTimeString('en-US', {
             hour: 'numeric',
             minute: '2-digit'
           });
+          const cleanHandle = String(handle).replace(/^@/, '');
+          const threadId = `crm-${commentId || Date.now()}`;
 
           const newThread = {
-            id: `dm-thread-${commentId || Date.now()}`,
-            outstandConversationId: outstandConvoId,
-            outstandAccountId: accountId || '',
-            commentId: commentId || '',
-            postId: postId || '',
-            postTitle: `Post ${postId || ''}`,
-            authorId: authorId || '',
-            network: network === 'facebook' ? 'facebook' : 'instagram',
-            prospectHandle: handle,
+            id: threadId,
+            outstandConversationId: outstandConvoId || null,
+            socialAccountId: accountId || null,
+            platform: network === 'facebook' ? 'facebook' : 'instagram',
+            prospectHandle: cleanHandle,
             prospectName: firstName,
-            prospectAvatar: firstName.slice(0, 2).toUpperCase(),
-            triggeredKeyword: matchedMagnet.keywordTrigger,
-            magnetId: matchedMagnet.id,
-            magnetTitle: matchedMagnet.workingTitle,
+            matchedKeyword: matchedMagnet.keywordTrigger,
+            matchedMagnetId: matchedMagnet.id,
+            matchedMagnetTitle: matchedMagnet.workingTitle,
+            sourceCommentId: commentId || null,
+            sourcePostId: postId || null,
             stage: 'STAGE_S',
+            constraintPicked: '',
             windowOpen: false, // Opens once prospect replies to the Private Reply
+            lastUserReplyAt: null,
+            scheduledFollowup: null,
             unreadCount: 1,
-            lastActivityAt: `Just now · ${formattedTime}`,
-            lastActivityISO: nowISO,
-            commentText: text,
+            updatedAt: nowISO,
             messages: [
               {
                 id: `msg-comment-${Date.now()}-1`,
-                sender: 'PROSPECT',
-                text: `[Commented on Post]: "${text}"`,
-                timestamp: formattedTime,
-                createdAtISO: nowISO,
-                status: 'DELIVERED'
+                direction: 'inbound_comment',
+                text,
+                stageTag: `Comment Trigger (${matchedMagnet.keywordTrigger})`,
+                createdAt: nowISO,
+                deliveryStatus: 'delivered'
               },
               {
                 id: `msg-auto-${Date.now()}-2`,
-                sender: 'AUTO_TRIGGER',
+                direction: 'outbound_dm',
                 text: combinedPrivateReply,
-                timestamp: formattedTime,
-                createdAtISO: nowISO,
-                status: 'SENT'
+                stageTag: 'Stage S + H · Outstand Private Reply',
+                createdAt: nowISO,
+                deliveryStatus: 'sent'
               }
             ]
           };
 
           const updatedThreads = [newThread, ...existingThreads];
           const notifMsg = {
-            id: `msg-outstand-${Date.now()}`,
+            id: `msg-outstand-cmt-${Date.now()}`,
             senderRole: 'SYSTEM',
-            senderName: 'Outstand DM Trigger',
-            text: `⚡ ${handle} commented "${text}" → Auto-sent "${matchedMagnet.workingTitle}" + Stage H (A/B/C Diagnostic) in DMs!`,
+            senderName: 'Live DM CRM · Comment Trigger',
+            text: `⚡ @${cleanHandle} commented "${text}" → Outstand auto-sent "${matchedMagnet.workingTitle}" + Stage H (A/B/C Diagnostic) Private Reply!`,
             timestamp: formattedTime,
             readByStudent: false,
             readByCoach: false,
             actionTarget: {
-              label: 'Open DM CRM Thread',
-              tab: 'MAGNETS'
+              label: 'Open DM Thread in Live CRM',
+              tab: 'CRM',
+              crmThreadId: threadId
             }
           };
 
@@ -332,76 +335,110 @@ export default async function handler(req, res) {
             ? 'C'
             : undefined;
 
+        const cleanSenderHandle = String(senderUsername || senderName || 'prospect').replace(/^@/, '');
+        let activeThreadId = `crm-${conversationId || Date.now()}`;
         let matchedThread = false;
+
         const updatedThreads = existingThreads.map(t => {
           const isMatch =
             (conversationId && t.outstandConversationId === conversationId) ||
-            (senderUsername && t.prospectHandle.toLowerCase() === `@${senderUsername.toLowerCase()}`);
+            (senderUsername &&
+              String(t.prospectHandle).replace(/^@/, '').toLowerCase() ===
+                cleanSenderHandle.toLowerCase());
           if (!isMatch) return t;
           matchedThread = true;
+          activeThreadId = t.id;
 
           const inboundMsg = {
             id: messageId || `msg-in-${Date.now()}`,
-            outstandMessageId: messageId,
-            sender: 'PROSPECT',
+            outstandMessageId: messageId || null,
+            direction: 'inbound_dm',
             text,
-            timestamp: formattedTime,
-            createdAtISO: nowISO,
-            status: 'DELIVERED'
+            stageTag: pickedLetter
+              ? `Prospect Picked ${pickedLetter} · 24h Window Unlocked`
+              : 'Inbound Prospect Reply · 24h Window Open',
+            createdAt: nowISO,
+            deliveryStatus: 'read'
           };
 
           // Cancel any scheduled re-engagement messages since the prospect replied!
-          const filteredMsgs = (t.messages || []).filter(m => m.status !== 'SCHEDULED');
+          const filteredMsgs = (t.messages || []).filter(
+            m => m.deliveryStatus !== 'scheduled' && m.status !== 'SCHEDULED'
+          );
 
           return {
             ...t,
             windowOpen: true, // 24-hour Meta window is now OPEN!
+            lastUserReplyAt: nowISO,
             stage: t.stage === 'STAGE_S' && pickedLetter ? 'STAGE_H' : t.stage,
-            constraintIdentified: pickedLetter || t.constraintIdentified,
+            constraintPicked: pickedLetter ? `Option ${pickedLetter}` : t.constraintPicked || '',
+            scheduledFollowup: null,
             unreadCount: (t.unreadCount || 0) + 1,
-            lastActivityAt: `Replied · ${formattedTime}`,
-            lastActivityISO: nowISO,
+            updatedAt: nowISO,
             messages: [...filteredMsgs, inboundMsg]
           };
         });
 
         if (!matchedThread) {
-          const handle = senderUsername ? `@${senderUsername}` : senderName || '@prospect';
           const firstName = (senderName || senderUsername || 'Prospect').split(/[ ._@-]/)[0];
           updatedThreads.unshift({
-            id: `dm-thread-${conversationId || Date.now()}`,
-            outstandConversationId: conversationId || '',
-            outstandAccountId: accountId || '',
-            network: 'instagram',
-            prospectHandle: handle,
+            id: activeThreadId,
+            outstandConversationId: conversationId || null,
+            socialAccountId: accountId || null,
+            platform: 'instagram',
+            prospectHandle: cleanSenderHandle,
             prospectName: firstName,
-            prospectAvatar: firstName.slice(0, 2).toUpperCase(),
-            triggeredKeyword: 'INBOUND DM',
+            matchedKeyword: 'INBOUND DM',
+            matchedMagnetId: null,
+            matchedMagnetTitle: 'Direct Inbound DM',
+            sourceCommentId: null,
+            sourcePostId: null,
             stage: pickedLetter ? 'STAGE_H' : 'STAGE_S',
-            constraintIdentified: pickedLetter,
+            constraintPicked: pickedLetter ? `Option ${pickedLetter}` : '',
             windowOpen: true,
+            lastUserReplyAt: nowISO,
+            scheduledFollowup: null,
             unreadCount: 1,
-            lastActivityAt: `Replied · ${formattedTime}`,
-            lastActivityISO: nowISO,
+            updatedAt: nowISO,
             messages: [
               {
                 id: messageId || `msg-in-${Date.now()}`,
-                sender: 'PROSPECT',
+                outstandMessageId: messageId || null,
+                direction: 'inbound_dm',
                 text,
-                timestamp: formattedTime,
-                createdAtISO: nowISO,
-                status: 'DELIVERED'
+                stageTag: 'Inbound Prospect DM · 24h Window Open',
+                createdAt: nowISO,
+                deliveryStatus: 'read'
               }
             ]
           });
         }
+
+        const replyNotifMsg = {
+          id: `msg-outstand-reply-${Date.now()}`,
+          senderRole: 'SYSTEM',
+          senderName: 'Live DM CRM · Prospect Reply',
+          text: `💬 @${cleanSenderHandle} replied in DMs: "${text}" — 24h Meta Messaging Window is now OPEN${
+            pickedLetter ? ` (Diagnosed Option ${pickedLetter} · Stage H)` : ''
+          }!`,
+          timestamp: formattedTime,
+          isAlert: true,
+          readByStudent: false,
+          readByCoach: false,
+          actionTarget: {
+            label: 'Reply in Live DM CRM',
+            tab: 'CRM',
+            crmThreadId: activeThreadId
+          }
+        };
 
         const updatedStudent = {
           ...targetStudent,
           worksheetAnswers: {
             ...(targetStudent.worksheetAnswers || {}),
             dm_crm_threads_json: JSON.stringify(updatedThreads)
-          }
+          },
+          messages: [...(targetStudent.messages || []), replyNotifMsg]
         };
 
         await supabase.from('mc_students').upsert(

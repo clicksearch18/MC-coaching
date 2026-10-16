@@ -10,7 +10,8 @@ import {
   UserCheck,
   LogOut,
   ExternalLink,
-  Users
+  Users,
+  Radio
 } from 'lucide-react';
 import {
   INITIAL_STUDENTS,
@@ -36,6 +37,7 @@ import {
 import { DailyCadenceView } from './components/DailyCadenceView';
 import { WorkbookView } from './components/WorkbookView';
 import { ShiftMagnetsView } from './components/ShiftMagnetsView';
+import { OutstandDmCrmPanel } from './components/OutstandDmCrmPanel';
 import { CoachDashboardView } from './components/CoachDashboardView';
 import { GroupDiscussionView } from './components/GroupDiscussionView';
 import { LoginView } from './components/LoginView';
@@ -183,7 +185,7 @@ export function App() {
     window.location.pathname.toLowerCase() === '/admin' ? 'COACH' : 'STUDENT'
   );
   const [activeTab, setActiveTab] = useState<
-    'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'GROUP' | 'COACH'
+    'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'CRM' | 'GROUP' | 'COACH'
   >(() => (window.location.pathname.toLowerCase() === '/admin' ? 'COACH' : 'CADENCE'));
   const [activeStudentId, setActiveStudentId] = useState<string>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -202,6 +204,7 @@ export function App() {
   const [requestedCoreVideoId, setRequestedCoreVideoId] = useState<string | undefined>(undefined);
   const [requestedLessonNumber, setRequestedLessonNumber] = useState<number | undefined>(undefined);
   const [requestedGroupPostId, setRequestedGroupPostId] = useState<string | undefined>(undefined);
+  const [requestedCrmThreadId, setRequestedCrmThreadId] = useState<string | undefined>(undefined);
 
   // Modals & Push Banners
   const [showImportModal, setShowImportModal] = useState(false);
@@ -689,12 +692,62 @@ export function App() {
     } else if (target.tab === 'MAGNETS') {
       setRoleMode('STUDENT');
       setActiveTab('MAGNETS');
+    } else if (target.tab === 'CRM') {
+      setRoleMode('STUDENT');
+      setActiveTab('CRM');
+      if (target.crmThreadId) setRequestedCrmThreadId(target.crmThreadId);
     } else if (target.tab === 'GROUP') {
       setRoleMode('STUDENT');
       setActiveTab('GROUP');
       if (target.groupPostId) setRequestedGroupPostId(target.groupPostId);
     }
   };
+
+  const handleTriggerCrmNotification = useCallback(
+    (params: {
+      senderLabel: string;
+      text: string;
+      bannerTitle: string;
+      bannerBody: string;
+      threadId: string;
+      isAlert?: boolean;
+      actionLabel?: string;
+    }) => {
+      const formattedTime = new Date().toLocaleTimeString([], {
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+
+      const notifMsg: ChatMessage = {
+        id: `msg-crm-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        senderRole: 'SYSTEM',
+        senderName: params.senderLabel,
+        text: params.text,
+        timestamp: formattedTime,
+        isAlert: params.isAlert,
+        readByStudent: false,
+        readByCoach: false,
+        actionTarget: {
+          label: params.actionLabel || 'Open DM Thread in Live CRM',
+          tab: 'CRM',
+          crmThreadId: params.threadId
+        }
+      };
+
+      updateStudent(currentStudent.id, st => ({
+        ...st,
+        dmConversationsWeekly: (st.dmConversationsWeekly || 0) + 1,
+        messages: [...st.messages, notifMsg]
+      }));
+
+      triggerWebPushAndBanner(
+        params.bannerTitle,
+        params.bannerBody,
+        params.isAlert ? 'COACH_NUDGE' : 'DAILY_LESSON'
+      );
+    },
+    [currentStudent.id, updateStudent, triggerWebPushAndBanner]
+  );
 
   const handleUpdateLesson = (lessonNumber: number, updated: WorkbookWeek) => {
     setLessons(prev => prev.map(l => (l.weekNumber === lessonNumber ? updated : l)));
@@ -2136,11 +2189,23 @@ export function App() {
         m => (m.senderRole === 'COACH' || m.senderRole === 'SYSTEM') && m.readByStudent === false
       ).length;
 
+  const crmThreadsCount = (() => {
+    const raw = currentStudent.worksheetAnswers['dm_crm_threads_json'];
+    if (!raw) return 2;
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed.length : 2;
+    } catch {
+      return 2;
+    }
+  })();
+
   const allNavItems = [
     { id: 'CADENCE' as const, label: 'Studio', shortLabel: 'Studio', icon: Video, role: 'STUDENT' as const },
     { id: 'GROUP' as const, label: `Discussion (${groupPosts.length})`, shortLabel: 'Discussion', icon: Users, role: 'STUDENT' as const },
     { id: 'WORKBOOK' as const, label: 'Lessons 1–26', shortLabel: 'Lessons', icon: BookOpen, role: 'STUDENT' as const },
     { id: 'MAGNETS' as const, label: 'Shift Magnets', shortLabel: 'Magnets', icon: Magnet, role: 'STUDENT' as const },
+    { id: 'CRM' as const, label: `Live DM CRM (${crmThreadsCount})`, shortLabel: 'DM CRM', icon: Radio, role: 'STUDENT' as const },
     { id: 'COACH' as const, label: 'Admin', shortLabel: 'Admin', icon: UserCheck, role: 'COACH' as const }
   ];
 
@@ -2498,6 +2563,18 @@ export function App() {
                 setActiveTab('WORKBOOK');
                 setRequestedLessonNumber(lessonNum);
               }}
+              onOpenLiveCrm={() => setActiveTab('CRM')}
+            />
+          )}
+
+          {activeTab === 'CRM' && (
+            <OutstandDmCrmPanel
+              student={currentStudent}
+              onUpdateField={handleUpdateField}
+              requestedThreadId={requestedCrmThreadId}
+              onClearRequestedThreadId={() => setRequestedCrmThreadId(undefined)}
+              onOpenMagnetsTab={() => setActiveTab('MAGNETS')}
+              onTriggerCrmNotification={handleTriggerCrmNotification}
             />
           )}
 

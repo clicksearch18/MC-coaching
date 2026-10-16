@@ -151,12 +151,13 @@ export interface WorkbookWeek {
 }
 
 export interface ChatMessageActionTarget {
-  tab: 'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'GROUP';
+  tab: 'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'GROUP' | 'CRM';
   subTab?: 'STUDIO' | 'QUEUE' | 'CORE5' | 'PLAYBOOK';
   videoId?: string;
   coreVideoId?: string;
   lessonNumber?: number;
   groupPostId?: string;
+  crmThreadId?: string;
   label?: string;
 }
 

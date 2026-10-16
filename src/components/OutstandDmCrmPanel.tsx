@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   MessageSquare,
   Zap,
@@ -18,7 +18,8 @@ import {
   UserCheck,
   Repeat,
   Radio,
-  Search
+  Search,
+  Magnet
 } from 'lucide-react';
 import { StudentProfile, ShiftMagnet } from '../types';
 import { ModalDialog } from './ModalDialog';
@@ -86,6 +87,18 @@ export interface OutstandConfig {
 interface OutstandDmCrmPanelProps {
   student: StudentProfile;
   onUpdateField?: (fieldId: string, value: string) => void;
+  requestedThreadId?: string;
+  onClearRequestedThreadId?: () => void;
+  onOpenMagnetsTab?: () => void;
+  onTriggerCrmNotification?: (params: {
+    senderLabel: string;
+    text: string;
+    bannerTitle: string;
+    bannerBody: string;
+    threadId: string;
+    isAlert?: boolean;
+    actionLabel?: string;
+  }) => void;
 }
 
 export const STAGE_METADATA: Record<
@@ -257,7 +270,11 @@ function createStarterThreads(student: StudentProfile): DmCrmThread[] {
 
 export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
   student,
-  onUpdateField
+  onUpdateField,
+  requestedThreadId,
+  onClearRequestedThreadId,
+  onOpenMagnetsTab,
+  onTriggerCrmNotification
 }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -338,6 +355,20 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
   const saveThreads = (nextThreads: DmCrmThread[]) => {
     onUpdateField?.('dm_crm_threads_json', JSON.stringify(nextThreads));
   };
+
+  useEffect(() => {
+    if (requestedThreadId) {
+      setStageFilter('ALL');
+      setSelectedThreadId(requestedThreadId);
+      const target = threads.find(t => t.id === requestedThreadId);
+      if (target && target.unreadCount > 0) {
+        saveThreads(
+          threads.map(t => (t.id === requestedThreadId ? { ...t, unreadCount: 0 } : t))
+        );
+      }
+      onClearRequestedThreadId?.();
+    }
+  }, [requestedThreadId]);
 
   const saveOutstandConfig = (nextCfg: OutstandConfig) => {
     onUpdateField?.('outstand_config_json', JSON.stringify(nextCfg));
@@ -541,6 +572,17 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
       type: 'success',
       text: `Comment trigger "${keyword}" fired! Outstand sent combined Stage S (Link) + Stage H (A/B/C Diagnostic) Private Reply to @${cleanHandle}.`
     });
+
+    onTriggerCrmNotification?.({
+      senderLabel: 'Live DM CRM · Comment Trigger',
+      text: `⚡ @${cleanHandle} commented "${simCommentText.trim() || keyword}" → Outstand auto-sent "${
+        matchedMag?.workingTitle || 'Shift Magnet'
+      }" + Stage H (A/B/C Diagnostic) Private Reply!`,
+      bannerTitle: `⚡ Comment Trigger Fired: @${cleanHandle}`,
+      bannerBody: `Sent "${matchedMag?.workingTitle || 'Shift Magnet'}" + Stage H A/B/C Question to @${cleanHandle}.`,
+      threadId: newThread.id,
+      actionLabel: 'Open DM Thread in Live CRM'
+    });
   };
 
   // 2. Simulate Prospect Replying "A", "B", or "C" (`message.received` -> Unlocks 24-Hour Meta Window!)
@@ -593,6 +635,16 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     setStatusBanner({
       type: 'info',
       text: `@${activeThread.prospectHandle} replied "${choice}"! Meta's 24-Hour Messaging Window is now OPEN and thread auto-advanced to Stage H. Click "Stage I · Illuminate Gap" below to reply.`
+    });
+
+    onTriggerCrmNotification?.({
+      senderLabel: 'Live DM CRM · Prospect Reply',
+      text: `💬 @${activeThread.prospectHandle} replied "${choice}" (${picked.constraint}) — 24h Meta Messaging Window is now OPEN!`,
+      bannerTitle: `💬 Inbound DM Reply: @${activeThread.prospectHandle}`,
+      bannerBody: `Picked Option ${choice} (${picked.constraint}). 24-Hour Meta Window unlocked!`,
+      threadId: activeThread.id,
+      isAlert: true,
+      actionLabel: 'Reply in Live DM CRM'
     });
   };
 
@@ -791,6 +843,28 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           ).toLocaleDateString()}). Auto-cancels if @${activeThread.prospectHandle} replies first!`
         : `Sent ${composerStageTag} to @${activeThread.prospectHandle} and updated pipeline stage to ${STAGE_METADATA[nextStage].short}.`
     });
+
+    if (isScheduled) {
+      onTriggerCrmNotification?.({
+        senderLabel: 'Live DM CRM · Re-Engagement Loop',
+        text: `⏰ Scheduled ${scheduleOption.replace('_', ' ')} Re-Engagement Nudge for @${
+          activeThread.prospectHandle
+        } (${new Date(scheduledIso!).toLocaleDateString()}). Auto-cancels if they reply first.`,
+        bannerTitle: `⏰ ${scheduleOption.replace('_', ' ')} Nudge Scheduled`,
+        bannerBody: `Queued via Outstand scheduled_at for @${activeThread.prospectHandle}.`,
+        threadId: activeThread.id,
+        actionLabel: 'View Scheduled Loop in CRM'
+      });
+    } else if (nextStage === 'STAGE_T') {
+      onTriggerCrmNotification?.({
+        senderLabel: 'Live DM CRM · Stage T Offer Doc',
+        text: `🚀 Sent Stage T (2-Page Offer Doc Invite) to @${activeThread.prospectHandle} in DMs!`,
+        bannerTitle: `🚀 Stage T Offer Doc Invite Sent`,
+        bannerBody: `@${activeThread.prospectHandle} advanced to Stage T in your S.H.I.F.T. DM pipeline.`,
+        threadId: activeThread.id,
+        actionLabel: 'Open Thread in Live CRM'
+      });
+    }
   };
 
   // Cancel a scheduled Re-Engagement message (`DELETE /v1/conversations/{id}/messages/{messageId}`)
@@ -900,14 +974,14 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
 
   return (
     <div className="space-y-5">
-      {/* Top Outstand.so Status & Comment-to-DM Automation Banner */}
-      <div className="glass-panel rounded-2xl p-4 sm:p-5 border border-[#09ADEF]/30 bg-gradient-to-r from-[#09ADEF]/[0.08] via-[#070A10] to-emerald-500/[0.06] space-y-4">
+      {/* TopOutstand.so Command Header, KPI Strip & Comment-to-DM Automation Banner */}
+      <div className="glass-panel rounded-2xl p-4 sm:p-6 border border-[#09ADEF]/30 bg-gradient-to-r from-[#09ADEF]/[0.08] via-[#070A10] to-emerald-500/[0.06] space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#09ADEF]/15 border border-[#09ADEF]/40 text-[10px] font-bold uppercase tracking-[0.14em] text-[#09ADEF]">
                 <Radio className="w-3 h-3 animate-pulse" />
-                <span>OUTSTAND.SO COMMENT-TO-DM ENGINE + S.H.I.F.T. CRM</span>
+                <span>LIVE DM CRM · OUTSTAND.SO COMMENT-TO-DM ENGINE</span>
               </span>
               <span
                 className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
@@ -922,22 +996,33 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
               </span>
             </div>
 
-            <h2 className="font-display text-xl sm:text-2xl text-white tracking-wide uppercase">
-              AUTOMATED COMMENT TRIGGERS & IN-APP S.H.I.F.T. DM INBOX
-            </h2>
-            <p className="text-xs text-neutral-300 max-w-3xl leading-relaxed">
+            <h1 className="font-display text-2xl sm:text-4xl text-white tracking-wide uppercase">
+              LIVE S.H.I.F.T. DM CRM &amp; COMMENT TRIGGERS
+            </h1>
+            <p className="text-xs sm:text-sm text-neutral-300 max-w-3xl leading-relaxed">
               When a viewer comments any of your Shift Magnet keywords (
               {student.shiftMagnets.map(m => `"${m.keywordTrigger}"`).join(', ') || '"AUDIT"'}
               ), Outstand’s <code className="text-[#09ADEF]">comment.received</code> webhook fires{' '}
               <code className="text-[#09ADEF]">POST /v1/conversations</code> with a single combined{' '}
               <strong>Stage S (Magnet Link) + Stage H (A/B/C Constraint Diagnostic)</strong> Private
-              Reply. The moment they reply <strong>A, B, or C</strong>, Meta’s 24-hour messaging
-              window unlocks so you can run Stages I, F, T and schedule Day 2–30 Re-Engagement
-              loops right inside this inbox.
+              Reply and triggers an in-app notification. Once they reply <strong>A, B, or C</strong>
+              , Meta’s 24-hour window unlocks so you can run Stages I, F, T and schedule Day 2–30
+              Re-Engagement loops.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {onOpenMagnetsTab && (
+              <button
+                type="button"
+                onClick={onOpenMagnetsTab}
+                className="px-3.5 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.09] border border-white/12 text-xs font-semibold text-neutral-200 inline-flex items-center gap-1.5 cursor-pointer transition"
+              >
+                <Magnet className="w-3.5 h-3.5 text-[#09ADEF]" />
+                <span>Manage Shift Magnets ({student.shiftMagnets.length})</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => {
@@ -948,11 +1033,52 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                 setCfgCombineSH(outstandConfig.combineStageSandH);
                 setShowConfigModal(true);
               }}
-              className="px-3.5 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 text-xs font-bold text-white inline-flex items-center gap-1.5 cursor-pointer transition"
+              className="btn-2mm px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
             >
-              <Settings className="w-3.5 h-3.5 text-[#09ADEF]" />
-              <span>Configure Outstand API & Webhook</span>
+              <Settings className="w-3.5 h-3.5" />
+              <span>Configure Outstand API &amp; Webhook</span>
             </button>
+          </div>
+        </div>
+
+        {/* 4-Metric Live DM CRM Summary Strip */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3 border-t border-white/[0.08]">
+          <div className="p-3 rounded-xl bg-[#040507]/90 border border-white/[0.06]">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#09ADEF]">
+              ACTIVE DM THREADS
+            </div>
+            <div className="font-display text-xl sm:text-2xl text-white mt-0.5">
+              {threads.length} CONVERSATIONS
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-[#040507]/90 border border-white/[0.06]">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-400">
+              24H META WINDOW OPEN
+            </div>
+            <div className="font-display text-xl sm:text-2xl text-white mt-0.5">
+              {threads.filter(t => t.windowOpen).length} UNLOCKED
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-[#040507]/90 border border-white/[0.06]">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-300">
+              RE-ENGAGEMENT LOOPS
+            </div>
+            <div className="font-display text-xl sm:text-2xl text-white mt-0.5">
+              {threads.filter(t => t.stage.startsWith('LOOP_') || t.scheduledFollowup).length}{' '}
+              SCHEDULED
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-[#040507]/90 border border-white/[0.06]">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-purple-300">
+              OFFER DOCS / WON
+            </div>
+            <div className="font-display text-xl sm:text-2xl text-white mt-0.5">
+              {threads.filter(t => t.stage === 'STAGE_T' || t.stage === 'CLOSED_WON').length}{' '}
+              STAGE T / WON
+            </div>
           </div>
         </div>
 
