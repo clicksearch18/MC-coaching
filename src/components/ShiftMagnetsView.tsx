@@ -15,10 +15,12 @@ import {
   Clock,
   BookOpen,
   Layers,
-  UserCheck
+  UserCheck,
+  Radio
 } from 'lucide-react';
 import { StudentProfile, ShiftMagnet } from '../types';
 import { ModalDialog } from './ModalDialog';
+import { OutstandDmCrmPanel } from './OutstandDmCrmPanel';
 
 interface ShiftMagnetsViewProps {
   student: StudentProfile;
@@ -359,7 +361,7 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
   onSyncFromLesson21,
   onOpenLesson
 }) => {
-  const [subTab, setSubTab] = useState<'MAGNETS' | 'DM_MATRIX' | 'REENGAGE'>('MAGNETS');
+  const [subTab, setSubTab] = useState<'MAGNETS' | 'LIVE_CRM' | 'DM_MATRIX' | 'REENGAGE'>('MAGNETS');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Add / Edit Modal State
@@ -652,6 +654,15 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
 
             <button
               type="button"
+              onClick={() => setSubTab('LIVE_CRM')}
+              className="px-3.5 py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/35 text-xs font-bold text-emerald-200 inline-flex items-center gap-1.5 cursor-pointer transition"
+            >
+              <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+              <span>Open Live DM CRM (Outstand.so)</span>
+            </button>
+
+            <button
+              type="button"
               onClick={openCreateModal}
               className="btn-2mm px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
             >
@@ -691,12 +702,15 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-[#040507] border border-white/[0.06]">
+          <div
+            onClick={() => setSubTab('LIVE_CRM')}
+            className="p-3 rounded-xl bg-[#040507] hover:bg-white/[0.03] border border-[#09ADEF]/25 cursor-pointer transition"
+          >
             <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-300">
-              TRACKED DM THREADS
+              OUTSTAND DM CRM + TRIGGERS
             </div>
             <div className="font-display text-xl sm:text-2xl text-white mt-0.5">
-              {dmConvoRecords.length} LOGGED
+              LIVE INBOX →
             </div>
           </div>
         </div>
@@ -713,14 +727,20 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
               icon: Magnet
             },
             {
+              id: 'LIVE_CRM' as const,
+              label: '2. Live DM CRM & Comment Triggers',
+              shortLabel: 'Live DM CRM',
+              icon: Radio
+            },
+            {
               id: 'DM_MATRIX' as const,
-              label: '2. S.H.I.F.T. DM Playbook & Tracker',
+              label: '3. S.H.I.F.T. DM Playbook & Scripts',
               shortLabel: 'DM Playbook',
               icon: MessageSquare
             },
             {
               id: 'REENGAGE' as const,
-              label: '3. Re-Engagement Loops (Day 2–30)',
+              label: '4. Re-Engagement Loops (Day 2–30)',
               shortLabel: 'Re-Engage Loops',
               icon: Repeat
             }
@@ -767,6 +787,13 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* =====================================================================
+          TAB 2: LIVE OUTSTAND.SO COMMENT-TO-DM ENGINE & S.H.I.F.T. DM CRM
+         ===================================================================== */}
+      {subTab === 'LIVE_CRM' && (
+        <OutstandDmCrmPanel student={student} onUpdateField={onUpdateField} />
+      )}
 
       {/* =====================================================================
           TAB 1: SHIFT MAGNETS REPOSITORY (ADD, EDIT, DUPLICATE, DELETE, ASSIGN)
