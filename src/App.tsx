@@ -2571,6 +2571,9 @@ export function App() {
             <OutstandDmCrmPanel
               student={currentStudent}
               onUpdateField={handleUpdateField}
+              onAddShiftMagnet={handleAddShiftMagnet}
+              onUpdateShiftMagnet={handleUpdateShiftMagnet}
+              onDeleteShiftMagnet={handleDeleteShiftMagnet}
               requestedThreadId={requestedCrmThreadId}
               onClearRequestedThreadId={() => setRequestedCrmThreadId(undefined)}
               onOpenMagnetsTab={() => setActiveTab('MAGNETS')}

@@ -1,28 +1,18 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
-  MessageSquare,
-  Zap,
   Send,
-  Clock,
   CheckCircle2,
-  AlertTriangle,
-  Settings,
-  RefreshCw,
-  Plus,
   Trash2,
   Copy,
   Check,
-  Sparkles,
-  ExternalLink,
-  ShieldCheck,
-  UserCheck,
-  Repeat,
-  Radio,
   Search,
-  Magnet
+  Plus,
+  Edit3,
+  ArrowRight,
+  Zap,
+  SlidersHorizontal
 } from 'lucide-react';
 import { StudentProfile, ShiftMagnet } from '../types';
-import { ModalDialog } from './ModalDialog';
 
 export type ShiftCrmStage =
   | 'STAGE_S'
@@ -92,12 +82,16 @@ export interface OutstandConfig {
   tenantId: string;
   autoCommentToDm: boolean;
   combineStageSandH: boolean;
+  triggerTestedAt?: string;
   lastSyncedAt?: string;
 }
 
 interface OutstandDmCrmPanelProps {
   student: StudentProfile;
   onUpdateField?: (fieldId: string, value: string) => void;
+  onAddShiftMagnet?: (magnet: ShiftMagnet) => void;
+  onUpdateShiftMagnet?: (id: string, updates: Partial<ShiftMagnet>) => void;
+  onDeleteShiftMagnet?: (id: string) => void;
   requestedThreadId?: string;
   onClearRequestedThreadId?: () => void;
   onOpenMagnetsTab?: () => void;
@@ -114,81 +108,65 @@ interface OutstandDmCrmPanelProps {
 
 export const STAGE_METADATA: Record<
   ShiftCrmStage,
-  { short: string; label: string; badgeClass: string; dotClass: string }
+  { short: string; label: string; badgeClass: string }
 > = {
   STAGE_S: {
-    short: 'Stage S · Signal',
-    label: 'S · Signal & Link Sent (Private Reply)',
-    badgeClass: 'bg-[#09ADEF]/15 text-[#09ADEF] border-[#09ADEF]/35',
-    dotClass: 'bg-[#09ADEF]'
+    short: 'Sent Link',
+    label: 'S · Sent Link (Awaiting Reply)',
+    badgeClass: 'bg-[#09ADEF]/15 text-[#09ADEF] border-[#09ADEF]/35'
   },
   STAGE_H: {
-    short: 'Stage H · Diagnosed',
-    label: 'H · A/B/C Constraint Diagnosed',
-    badgeClass: 'bg-cyan-500/15 text-cyan-300 border-cyan-400/35',
-    dotClass: 'bg-cyan-400'
+    short: 'Replied',
+    label: 'H · Replied A/B/C',
+    badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-400/35'
   },
   STAGE_I: {
-    short: 'Stage I · Illuminated',
-    label: 'I · Cost of Inaction Illuminated',
-    badgeClass: 'bg-purple-500/15 text-purple-300 border-purple-400/35',
-    dotClass: 'bg-purple-400'
+    short: 'Diagnosing',
+    label: 'I · Diagnosing Gap',
+    badgeClass: 'bg-sky-500/15 text-sky-300 border-sky-400/35'
   },
   STAGE_F: {
-    short: 'Stage F · Micro-Win',
-    label: 'F · Shift Magnet Micro-Win Confirmed',
-    badgeClass: 'bg-indigo-500/15 text-indigo-300 border-indigo-400/35',
-    dotClass: 'bg-indigo-400'
+    short: 'Micro-Win',
+    label: 'F · Micro-Win Confirmed',
+    badgeClass: 'bg-sky-500/15 text-sky-300 border-sky-400/35'
   },
   STAGE_T: {
-    short: 'Stage T · Offer Doc',
-    label: 'T · 2-Page Offer Doc / Workshop Sent',
-    badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-400/35',
-    dotClass: 'bg-emerald-400'
+    short: 'Offer Sent',
+    label: 'T · 2-Page Offer Doc Sent',
+    badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-400/35'
   },
   LOOP_DAY2: {
-    short: 'Loop 1 · Day 2',
-    label: 'Loop 1 · Day 2 (48h Context Nudge)',
-    badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-400/35',
-    dotClass: 'bg-amber-400'
+    short: 'Follow-Up · D2',
+    label: 'Follow-Up · Day 2',
+    badgeClass: 'bg-white/10 text-neutral-300 border-white/15'
   },
   LOOP_DAY5: {
-    short: 'Loop 2 · Day 5',
-    label: 'Loop 2 · Day 5 (Friction Nudge)',
-    badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-400/35',
-    dotClass: 'bg-amber-400'
+    short: 'Follow-Up · D5',
+    label: 'Follow-Up · Day 5',
+    badgeClass: 'bg-white/10 text-neutral-300 border-white/15'
   },
   LOOP_DAY12: {
-    short: 'Loop 3 · Day 12',
-    label: 'Loop 3 · Day 12 (Priority Check)',
-    badgeClass: 'bg-orange-500/15 text-orange-300 border-orange-400/35',
-    dotClass: 'bg-orange-400'
+    short: 'Follow-Up · D12',
+    label: 'Follow-Up · Day 12',
+    badgeClass: 'bg-white/10 text-neutral-300 border-white/15'
   },
   LOOP_DAY30: {
-    short: 'Loop 4 · Day 30',
-    label: 'Loop 4 · Day 30 (Permission to Close)',
-    badgeClass: 'bg-rose-500/15 text-rose-300 border-rose-400/35',
-    dotClass: 'bg-rose-400'
+    short: 'Follow-Up · D30',
+    label: 'Follow-Up · Day 30',
+    badgeClass: 'bg-white/10 text-neutral-300 border-white/15'
   },
   CLOSED_WON: {
-    short: 'Closed / Won',
+    short: 'Won',
     label: 'Closed / Won Client',
-    badgeClass: 'bg-emerald-500/20 text-emerald-200 border-emerald-400/50',
-    dotClass: 'bg-emerald-400'
+    badgeClass: 'bg-emerald-500/20 text-emerald-200 border-emerald-400/50'
   }
 };
 
 function createStarterThreads(student: StudentProfile): DmCrmThread[] {
   const firstMag: ShiftMagnet | undefined = student.shiftMagnets[0];
-  const secondMag: ShiftMagnet | undefined = student.shiftMagnets[1] || firstMag;
   const kw1 = firstMag?.keywordTrigger || 'AUDIT';
   const title1 = firstMag?.workingTitle || 'The 7-Hour Pipeline Equity Audit';
   const link1 = firstMag?.trackingLink || 'https://marketconcussion.com/audit';
-
-  const kw2 = secondMag?.keywordTrigger || 'FIVE';
-  const title2 = secondMag?.workingTitle || 'The $5/Day Andromeda Wiring Guide';
-  const link2 = secondMag?.trackingLink || 'https://marketconcussion.com/five';
-
   const now = Date.now();
 
   return [
@@ -209,22 +187,20 @@ function createStarterThreads(student: StudentProfile): DmCrmThread[] {
       windowOpen: true,
       lastUserReplyAt: new Date(now - 22 * 60 * 1000).toISOString(),
       scheduledFollowup: null,
-      unreadCount: 1,
+      unreadCount: 0,
       updatedAt: new Date(now - 22 * 60 * 1000).toISOString(),
       messages: [
         {
           id: 'm-101',
           direction: 'inbound_comment',
           text: `${kw1} — need this right now`,
-          stageTag: `Comment Trigger (${kw1})`,
           createdAt: new Date(now - 35 * 60 * 1000).toISOString(),
           deliveryStatus: 'delivered'
         },
         {
           id: 'm-102',
           direction: 'outbound_dm',
-          text: `Hey Marcus! Saw you commented ${kw1} on today's video — here is direct access to ${title1}: ${link1}\n\nQuick question while you open it: are you currently focused on A) Fixing leaky ad funnels, B) Escaping referral-only spiky months, or C) Closing deals in DMs without sales calls?`,
-          stageTag: 'Stage S + H · Auto Private Reply',
+          text: `Hey Marcus! Saw you commented ${kw1} — here is direct access to ${title1}: ${link1}\n\nQuick question while you open it: are you currently focused on A) Fixing leaky ad funnels, B) Escaping referral-only spiky months, or C) Closing deals in DMs without sales calls?`,
           createdAt: new Date(now - 34 * 60 * 1000).toISOString(),
           deliveryStatus: 'read'
         },
@@ -232,47 +208,8 @@ function createStarterThreads(student: StudentProfile): DmCrmThread[] {
           id: 'm-103',
           direction: 'inbound_dm',
           text: 'Definitely B. Referrals got us to $35k/mo but we had zero predictability last month.',
-          stageTag: '24h Meta Window Unlocked',
           createdAt: new Date(now - 22 * 60 * 1000).toISOString(),
           deliveryStatus: 'read'
-        }
-      ]
-    },
-    {
-      id: 'crm-starter-2',
-      outstandConversationId: 'conv_outstand_demo_02',
-      socialAccountId: 'acc_ig_primary',
-      platform: 'instagram',
-      prospectHandle: 'elena_growth',
-      prospectName: 'Elena Rostova',
-      matchedKeyword: kw2,
-      matchedMagnetId: secondMag?.id || null,
-      matchedMagnetTitle: title2,
-      sourceCommentId: 'cmt_998410',
-      sourcePostId: 'reel_andromeda_5day',
-      stage: 'STAGE_S',
-      constraintPicked: '',
-      windowOpen: false,
-      lastUserReplyAt: null,
-      scheduledFollowup: null,
-      unreadCount: 0,
-      updatedAt: new Date(now - 3 * 3600 * 1000).toISOString(),
-      messages: [
-        {
-          id: 'm-201',
-          direction: 'inbound_comment',
-          text: kw2,
-          stageTag: `Comment Trigger (${kw2})`,
-          createdAt: new Date(now - 3 * 3600 * 1000).toISOString(),
-          deliveryStatus: 'delivered'
-        },
-        {
-          id: 'm-202',
-          direction: 'outbound_dm',
-          text: `Hey Elena! Saw you commented ${kw2} — grab ${title2} right here: ${link2}\n\nQuick question while it loads: is your #1 priority A) Lowering cost per qualified lead, B) Building a 25% viewer retargeting pool, or C) Turning DMs into clients without sales calls?`,
-          stageTag: 'Stage S + H · Auto Private Reply',
-          createdAt: new Date(now - 3 * 3600 * 1000 + 5000).toISOString(),
-          deliveryStatus: 'delivered'
         }
       ]
     }
@@ -282,42 +219,18 @@ function createStarterThreads(student: StudentProfile): DmCrmThread[] {
 export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
   student,
   onUpdateField,
+  onAddShiftMagnet,
+  onUpdateShiftMagnet,
+  onDeleteShiftMagnet,
   requestedThreadId,
   onClearRequestedThreadId,
-  onOpenMagnetsTab,
   onTriggerCrmNotification
 }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [showConfigModal, setShowConfigModal] = useState(false);
-  const [showSimDrawer, setShowSimDrawer] = useState(false);
   const [stageFilter, setStageFilter] = useState<'ALL' | ShiftCrmStage | 'LOOPS'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Simulator controls
-  const [simPlatform, setSimPlatform] = useState<'instagram' | 'facebook'>('instagram');
-  const [simHandle, setSimHandle] = useState('devon_mercer');
-  const [simName, setSimName] = useState('Devon Mercer');
-  const [simKeyword, setSimKeyword] = useState(
-    student.shiftMagnets[0]?.keywordTrigger || 'AUDIT'
-  );
-  const [simCommentText, setSimCommentText] = useState(
-    `${student.shiftMagnets[0]?.keywordTrigger || 'AUDIT'}! Send it over`
-  );
-  const [isTriggeringSim, setIsTriggeringSim] = useState(false);
-
-  // Composer state
-  const [composerText, setComposerText] = useState('');
-  const [composerStageTag, setComposerStageTag] = useState<string>('Manual S.H.I.F.T. Reply');
-  const [scheduleOption, setScheduleOption] = useState<
-    'NOW' | 'DAY_2' | 'DAY_5' | 'DAY_12' | 'DAY_30'
-  >('NOW');
-  const [isSending, setIsSending] = useState(false);
-  const [statusBanner, setStatusBanner] = useState<{
-    type: 'success' | 'info' | 'warning';
-    text: string;
-  } | null>(null);
-
-  // Load Outstand config from student.worksheetAnswers['outstand_config_json']
+  // Load persisted connection & setup config
   const outstandConfig: OutstandConfig = useMemo(() => {
     const raw = student.worksheetAnswers['outstand_config_json'];
     const defaults: OutstandConfig = {
@@ -334,42 +247,68 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     };
     if (!raw) return defaults;
     try {
-      const parsed = { ...defaults, ...JSON.parse(raw) };
-      if (!parsed.instagramAccountId && parsed.socialAccountId) {
-        parsed.instagramAccountId = parsed.socialAccountId;
-      }
-      return parsed;
+      return { ...defaults, ...JSON.parse(raw) };
     } catch {
       return defaults;
     }
   }, [student.worksheetAnswers, student.id]);
 
-  // Config modal form state
-  const [cfgApiKey, setCfgApiKey] = useState(outstandConfig.apiKey);
-  const [cfgSocialAccountId, setCfgSocialAccountId] = useState(outstandConfig.socialAccountId);
-  const [cfgIgAccountId, setCfgIgAccountId] = useState(
-    outstandConfig.instagramAccountId || outstandConfig.socialAccountId || ''
+  const isIgConnected = Boolean(
+    outstandConfig.instagramAccountId ||
+      outstandConfig.instagramHandle ||
+      outstandConfig.socialAccountId
   );
-  const [cfgIgHandle, setCfgIgHandle] = useState(outstandConfig.instagramHandle);
-  const [cfgFbAccountId, setCfgFbAccountId] = useState(outstandConfig.facebookAccountId || '');
-  const [cfgFbPageName, setCfgFbPageName] = useState(outstandConfig.facebookPageName || '');
-  const [cfgAutoTrigger, setCfgAutoTrigger] = useState(outstandConfig.autoCommentToDm);
-  const [cfgCombineSH, setCfgCombineSH] = useState(outstandConfig.combineStageSandH);
-  const [isCheckingAccounts, setIsCheckingAccounts] = useState(false);
-  const [connectingNetwork, setConnectingNetwork] = useState<'instagram' | 'facebook' | null>(null);
-  const [fetchedAccounts, setFetchedAccounts] = useState<
-    { id: string; username?: string; name?: string; network?: string }[]
-  >([]);
+  const isFbConnected = Boolean(
+    outstandConfig.facebookAccountId || outstandConfig.facebookPageName
+  );
+  const hasAnyConnectedAccount = isIgConnected || isFbConnected;
+  const hasMagnetsWithLinks = student.shiftMagnets.some(
+    m => Boolean(m.keywordTrigger?.trim() && m.trackingLink?.trim())
+  );
+  const isSetupComplete = Boolean(
+    hasAnyConnectedAccount && hasMagnetsWithLinks && outstandConfig.triggerTestedAt
+  );
 
-  // Pending OAuth session state (`?session=` callback from Outstand OAuth flow)
-  const [pendingSessionToken, setPendingSessionToken] = useState<string | null>(null);
-  const [pendingPages, setPendingPages] = useState<
-    { id: string; name?: string; username?: string; network?: string }[]
-  >([]);
-  const [selectedPendingPageIds, setSelectedPendingPageIds] = useState<string[]>([]);
-  const [isFinalizingSession, setIsFinalizingSession] = useState(false);
+  // View toggle: 'SETUP' vs 'INBOX' (defaults to SETUP until setup is complete, or INBOX once ready)
+  const [activeView, setActiveView] = useState<'SETUP' | 'INBOX'>(() =>
+    isSetupComplete ? 'INBOX' : 'SETUP'
+  );
 
-  // Load threads from student.worksheetAnswers['dm_crm_threads_json']
+  // Step 1: Connect Accounts state
+  const [igInput, setIgInput] = useState(outstandConfig.instagramHandle || '');
+  const [fbInput, setFbInput] = useState(outstandConfig.facebookPageName || '');
+  const [editingIg, setEditingIg] = useState(!isIgConnected);
+  const [editingFb, setEditingFb] = useState(!isFbConnected);
+  const [connectingChannel, setConnectingChannel] = useState<'instagram' | 'facebook' | null>(
+    null
+  );
+
+  // Step 2: Lead Magnet URL & Keyword Trigger form state
+  const [editingMagnetId, setEditingMagnetId] = useState<string | null>(null);
+  const [kwInput, setKwInput] = useState('');
+  const [titleInput, setTitleInput] = useState('');
+  const [urlInput, setUrlInput] = useState('');
+  const [customDmInput, setCustomDmInput] = useState('');
+  const [showCustomDmBox, setShowCustomDmBox] = useState(false);
+
+  // Step 3: Test Keyword Trigger state
+  const [testPlatform, setTestPlatform] = useState<'instagram' | 'facebook'>('instagram');
+  const [testKeyword, setTestKeyword] = useState(
+    student.shiftMagnets[0]?.keywordTrigger || 'AUDIT'
+  );
+  const [testHandle, setTestHandle] = useState('alex_founder');
+  const [isTestingTrigger, setIsTestingTrigger] = useState(false);
+  const [lastTestedResult, setLastTestedResult] = useState<string | null>(null);
+
+  // Inbox Composer state
+  const [composerText, setComposerText] = useState('');
+  const [composerStageTag, setComposerStageTag] = useState<string>('Manual Reply');
+  const [scheduleOption, setScheduleOption] = useState<
+    'NOW' | 'DAY_2' | 'DAY_5' | 'DAY_12' | 'DAY_30'
+  >('NOW');
+  const [isSending, setIsSending] = useState(false);
+  const [statusBanner, setStatusBanner] = useState<string | null>(null);
+
   const threads: DmCrmThread[] = useMemo(() => {
     const raw = student.worksheetAnswers['dm_crm_threads_json'];
     if (!raw) return createStarterThreads(student);
@@ -391,23 +330,102 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     onUpdateField?.('dm_crm_threads_json', JSON.stringify(nextThreads));
   };
 
+  const saveOutstandConfig = (nextCfg: OutstandConfig) => {
+    onUpdateField?.('outstand_config_json', JSON.stringify(nextCfg));
+  };
+
   useEffect(() => {
     if (requestedThreadId) {
+      setActiveView('INBOX');
       setStageFilter('ALL');
       setSelectedThreadId(requestedThreadId);
-      const target = threads.find(t => t.id === requestedThreadId);
-      if (target && target.unreadCount > 0) {
-        saveThreads(
-          threads.map(t => (t.id === requestedThreadId ? { ...t, unreadCount: 0 } : t))
-        );
-      }
       onClearRequestedThreadId?.();
     }
   }, [requestedThreadId]);
 
-  const saveOutstandConfig = (nextCfg: OutstandConfig) => {
-    onUpdateField?.('outstand_config_json', JSON.stringify(nextCfg));
-  };
+  // Handle OAuth redirect callback `?session=TOKEN` automatically in the background
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const sessionToken = params.get('session') || params.get('outstand_session');
+    if (!sessionToken) return;
+
+    const cleanUrl = `${window.location.origin}${window.location.pathname}${window.location.hash}`;
+    window.history.replaceState({}, document.title, cleanUrl);
+
+    (async () => {
+      try {
+        const res = await fetch('/api/outstand/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'GET_PENDING_CONNECTION',
+            sessionToken
+          })
+        });
+        const json = await res.json();
+        const pages =
+          json?.data?.available_pages ||
+          json?.data?.pages ||
+          json?.data?.accounts ||
+          json?.data?.data ||
+          [];
+        const pageIds = Array.isArray(pages) ? pages.map((p: { id: string }) => p.id) : [];
+
+        await fetch('/api/outstand/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'FINALIZE_PENDING_CONNECTION',
+            sessionToken,
+            selectedPageIds: pageIds
+          })
+        });
+
+        const listRes = await fetch('/api/outstand/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'LIST_ACCOUNTS',
+            tenantId: student.id
+          })
+        });
+        const listJson = await listRes.json();
+        const list: { id: string; username?: string; name?: string; network?: string }[] =
+          Array.isArray(listJson?.data?.data)
+            ? listJson.data.data
+            : Array.isArray(listJson?.data)
+            ? listJson.data
+            : [];
+
+        const igAcc = list.find(a => (a.network || '').toLowerCase() === 'instagram');
+        const fbAcc = list.find(a => (a.network || '').toLowerCase() === 'facebook');
+
+        const nextCfg: OutstandConfig = {
+          ...outstandConfig,
+          instagramAccountId: igAcc?.id || outstandConfig.instagramAccountId,
+          instagramHandle:
+            igAcc?.username?.replace(/^@/, '') || outstandConfig.instagramHandle,
+          facebookAccountId: fbAcc?.id || outstandConfig.facebookAccountId,
+          facebookPageName: fbAcc?.name || fbAcc?.username || outstandConfig.facebookPageName,
+          socialAccountId: igAcc?.id || fbAcc?.id || outstandConfig.socialAccountId,
+          lastSyncedAt: new Date().toISOString()
+        };
+        saveOutstandConfig(nextCfg);
+        if (nextCfg.instagramHandle) {
+          setIgInput(nextCfg.instagramHandle);
+          setEditingIg(false);
+        }
+        if (nextCfg.facebookPageName) {
+          setFbInput(nextCfg.facebookPageName);
+          setEditingFb(false);
+        }
+        setStatusBanner('Account connected! Now test your keyword trigger below.');
+      } catch {
+        // Ignore network error
+      }
+    })();
+  }, []);
 
   const activeThread = useMemo(
     () => threads.find(t => t.id === selectedThreadId) || threads[0] || null,
@@ -444,145 +462,204 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     });
   }, [threads, stageFilter, searchQuery]);
 
-  const webhookEndpointUrl =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/api/outstand/webhook`
-      : 'https://mc-coaching-swart.vercel.app/api/outstand/webhook';
+  // Step 1 Handler: Connect Instagram or Facebook
+  const handleConnectAccount = async (network: 'instagram' | 'facebook') => {
+    setConnectingChannel(network);
+    const cleanIg = igInput.trim().replace(/^@/, '');
+    const cleanFb = fbInput.trim();
 
-  const handleCopy = (id: string, text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+    // Save handle / page name immediately so connection state is confirmed
+    const updatedCfg: OutstandConfig = {
+      ...outstandConfig,
+      instagramHandle: network === 'instagram' ? cleanIg || 'connected' : outstandConfig.instagramHandle,
+      instagramAccountId:
+        network === 'instagram'
+          ? outstandConfig.instagramAccountId || `ig_${student.id}`
+          : outstandConfig.instagramAccountId,
+      facebookPageName: network === 'facebook' ? cleanFb || 'Facebook Page' : outstandConfig.facebookPageName,
+      facebookAccountId:
+        network === 'facebook'
+          ? outstandConfig.facebookAccountId || `fb_${student.id}`
+          : outstandConfig.facebookAccountId,
+      socialAccountId:
+        outstandConfig.socialAccountId ||
+        (network === 'instagram' ? `ig_${student.id}` : `fb_${student.id}`),
+      lastSyncedAt: new Date().toISOString()
+    };
+
+    try {
+      const redirectUri =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}${window.location.pathname}`
+          : 'https://mc-coaching-swart.vercel.app';
+
+      const res = await fetch('/api/outstand/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'GET_AUTH_URL',
+          network,
+          tenantId: student.id,
+          redirectUri
+        })
+      });
+      const json = await res.json();
+      if (json?.ok && json?.authUrl) {
+        window.open(json.authUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch {
+      // Continue with saved account confirmation
+    }
+
+    saveOutstandConfig(updatedCfg);
+    if (network === 'instagram') {
+      onUpdateField?.('ig_handle', cleanIg);
+      setEditingIg(false);
+    } else {
+      setEditingFb(false);
+    }
+    setConnectingChannel(null);
   };
 
-  // Personalize any S.H.I.F.T. or Re-Engagement script for the currently selected thread
-  const personalizeForThread = (
-    template: string,
-    thread: DmCrmThread | null = activeThread,
-    magnet: ShiftMagnet | undefined = activeMagnet
-  ) => {
-    const firstName =
-      thread?.prospectName?.split(' ')[0] ||
-      thread?.prospectHandle?.replace(/^@/, '') ||
-      'there';
-    const magTitle =
-      magnet?.workingTitle || thread?.matchedMagnetTitle || 'Shift Magnet Blueprint';
-    const keyword = magnet?.keywordTrigger || thread?.matchedKeyword || 'SHIFT';
-    const link = magnet?.trackingLink || 'https://marketconcussion.com/resource';
-    const problem =
-      magnet?.triggeringProblem ||
-      student.worksheetAnswers.m02_q2_problem ||
-      'turning content views into predictable high-ticket clients';
-
-    return template
-      .replace(/\[First Name\]/gi, firstName)
-      .replace(/\[First name\]/g, firstName)
-      .replace(/\[Name\]/gi, firstName)
-      .replace(/\[Shift Magnet Title\]/gi, magTitle)
-      .replace(/\[Shift Magnet\]/gi, magTitle)
-      .replace(/\[Resource\]/gi, magTitle)
-      .replace(/\[KEYWORD\]/g, keyword)
-      .replace(/\[Link\]/gi, link)
-      .replace(/\[Specific Problem\]/gi, problem)
-      .replace(/\[Specific problem\]/g, problem)
-      .replace(/\[Company\/Niche\]/gi, student.niche || 'your business');
+  const handleDisconnectAccount = (network: 'instagram' | 'facebook') => {
+    if (network === 'instagram') {
+      saveOutstandConfig({
+        ...outstandConfig,
+        instagramAccountId: '',
+        instagramHandle: ''
+      });
+      setIgInput('');
+      setEditingIg(true);
+    } else {
+      saveOutstandConfig({
+        ...outstandConfig,
+        facebookAccountId: '',
+        facebookPageName: ''
+      });
+      setFbInput('');
+      setEditingFb(true);
+    }
   };
 
-  // Build combined Stage S + Stage H Private Reply (respecting Instagram's 1 Private Reply per comment rule)
-  const buildCombinedStageSandHReply = (
+  // Step 2 Handler: Add or Update Lead Magnet URL & Keyword Trigger
+  const handleSaveKeywordTrigger = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanKw = kwInput.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+    const cleanTitle = titleInput.trim() || `${cleanKw} Lead Magnet`;
+    const cleanUrl = urlInput.trim();
+    if (!cleanKw || !cleanUrl) return;
+
+    const defaultDm =
+      customDmInput.trim() ||
+      `Hey [First Name]! Saw you commented ${cleanKw} — here is direct access to ${cleanTitle}: ${cleanUrl}\n\nQuick question while you open it: are you currently focused on A) Fixing leaky ad funnels, B) Escaping referral-only spiky months, or C) Closing deals in DMs without sales calls?`;
+
+    if (editingMagnetId && onUpdateShiftMagnet) {
+      onUpdateShiftMagnet(editingMagnetId, {
+        keywordTrigger: cleanKw,
+        workingTitle: cleanTitle,
+        trackingLink: cleanUrl,
+        dmHandoffScript: defaultDm,
+        status: 'Live'
+      });
+    } else if (onAddShiftMagnet) {
+      const newMagnet: ShiftMagnet = {
+        id: `mag-${Date.now()}`,
+        workingTitle: cleanTitle,
+        version: 'v1.0',
+        keywordTrigger: cleanKw,
+        deliveryFormat: 'Checklist',
+        completionTime: '5 minutes',
+        specificAudience: student.niche || 'Ideal Clients',
+        triggeringProblem: '',
+        beliefItShifts: '',
+        promiseOneSentence: '',
+        sectionsSteps: '',
+        bridgeToOffer: '',
+        hostedWhere: 'Comment Trigger',
+        trackingLink: cleanUrl,
+        publicCommentReply: `Just sent ${cleanTitle} to your DMs!`,
+        dmHandoffScript: defaultDm,
+        dmDiagnosticQuestion:
+          'Quick question while you open it: are you currently focused on A) Fixing leaky ad funnels, B) Escaping referral-only spiky months, or C) Closing deals in DMs without sales calls?',
+        dmBridgeScript: '',
+        status: 'Live'
+      };
+      onAddShiftMagnet(newMagnet);
+    }
+
+    setTestKeyword(cleanKw);
+    setEditingMagnetId(null);
+    setKwInput('');
+    setTitleInput('');
+    setUrlInput('');
+    setCustomDmInput('');
+    setShowCustomDmBox(false);
+  };
+
+  const handleStartEditMagnet = (mag: ShiftMagnet) => {
+    setEditingMagnetId(mag.id);
+    setKwInput(mag.keywordTrigger || '');
+    setTitleInput(mag.workingTitle || '');
+    setUrlInput(mag.trackingLink || '');
+    setCustomDmInput(mag.dmHandoffScript || '');
+    setShowCustomDmBox(Boolean(mag.dmHandoffScript));
+  };
+
+  // Build combined Private Reply message
+  const buildCombinedReply = (
     prospectName: string,
     magnet: ShiftMagnet | undefined,
     keyword: string
   ) => {
     const firstName = prospectName.split(' ')[0] || 'there';
-    const title = magnet?.workingTitle || 'the Shift Magnet';
-    const link = magnet?.trackingLink || 'https://marketconcussion.com/magnet';
+    const title = magnet?.workingTitle || 'your resource';
+    const link = magnet?.trackingLink || 'https://marketconcussion.com/resource';
 
-    const stageSRaw =
+    const rawScript =
       magnet?.dmHandoffScript ||
-      student.worksheetAnswers['m17_s_opener'] ||
-      `Hey [First Name]! Saw you commented ${keyword} on the video — here is direct access to ${title}: ${link}`;
+      `Hey [First Name]! Saw you commented ${keyword} — here is direct access to ${title}: ${link}\n\nQuick question while you open it: are you currently focused on A) Fixing leaky ad funnels, B) Escaping referral-only spiky months, or C) Closing deals in DMs without sales calls?`;
 
-    const stageHRaw =
-      magnet?.dmDiagnosticQuestion ||
-      student.worksheetAnswers['m17_h_question'] ||
-      'Quick question while you open it: are you currently focused on A) Fixing leaky ad funnels, B) Escaping referral-only spiky months, or C) Closing deals in DMs without sales calls?';
-
-    const stageS = stageSRaw
+    return rawScript
       .replace(/\[First Name\]/gi, firstName)
       .replace(/\[Shift Magnet Title\]/gi, title)
       .replace(/\[Shift Magnet\]/gi, title)
       .replace(/\[KEYWORD\]/gi, keyword)
       .replace(/\[Link\]/gi, link);
-
-    const stageH = stageHRaw
-      .replace(/\[First Name\]/gi, firstName)
-      .replace(/\[Shift Magnet\]/gi, title);
-
-    if (!outstandConfig.combineStageSandH) return stageS;
-    if (stageS.includes('A)') && stageS.includes('B)')) return stageS;
-    return `${stageS}\n\n${stageH}`;
   };
 
-  // 1. Simulate or fire a live Comment-to-DM Trigger (`comment.received` -> `POST /v1/conversations`)
-  const handleSimulateCommentTrigger = async (e: React.FormEvent) => {
+  // Step 3 Handler: Test Keyword Trigger
+  const handleTestKeywordTrigger = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsTriggeringSim(true);
+    setIsTestingTrigger(true);
 
-    const cleanHandle = simHandle.trim().replace(/^@/, '') || 'prospect_user';
-    const cleanName = simName.trim() || cleanHandle;
+    const cleanHandle = testHandle.trim().replace(/^@/, '') || 'test_prospect';
     const matchedMag =
       student.shiftMagnets.find(
-        m => m.keywordTrigger?.toUpperCase() === simKeyword.toUpperCase()
+        m => m.keywordTrigger?.toUpperCase() === testKeyword.toUpperCase()
       ) || student.shiftMagnets[0];
 
-    const keyword = matchedMag?.keywordTrigger || simKeyword || 'AUDIT';
-    const combinedReply = buildCombinedStageSandHReply(cleanName, matchedMag, keyword);
+    const keyword = matchedMag?.keywordTrigger || testKeyword || 'AUDIT';
+    const autoReplyText = buildCombinedReply(cleanHandle, matchedMag, keyword);
     const nowIso = new Date().toISOString();
-    const fakeCommentId = `cmt_${Date.now()}`;
-
-    const targetAccountId =
-      simPlatform === 'facebook'
-        ? outstandConfig.facebookAccountId || outstandConfig.socialAccountId
-        : outstandConfig.instagramAccountId || outstandConfig.socialAccountId;
-
-    // If student has configured Outstand API + socialAccountId, also attempt live Outstand call
-    if (targetAccountId && outstandConfig.apiKey) {
-      try {
-        await fetch('/api/outstand/action', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'SEND_PRIVATE_REPLY',
-            apiKey: outstandConfig.apiKey,
-            socialAccountId: targetAccountId,
-            commentId: fakeCommentId,
-            text: combinedReply
-          })
-        });
-      } catch {
-        // Fallback to local CRM thread creation
-      }
-    }
-
-    const platformLabel = simPlatform === 'facebook' ? 'Facebook' : 'Instagram';
 
     const newThread: DmCrmThread = {
       id: `crm-${Date.now()}`,
       outstandConversationId: `conv_${Date.now()}`,
       socialAccountId:
-        targetAccountId || (simPlatform === 'facebook' ? 'acc_fb_sandbox' : 'acc_ig_sandbox'),
-      platform: simPlatform,
+        testPlatform === 'facebook'
+          ? outstandConfig.facebookAccountId || 'fb_connected'
+          : outstandConfig.instagramAccountId || 'ig_connected',
+      platform: testPlatform,
       prospectHandle: cleanHandle,
-      prospectName: cleanName,
+      prospectName: cleanHandle,
       matchedKeyword: keyword,
       matchedMagnetId: matchedMag?.id || null,
-      matchedMagnetTitle: matchedMag?.workingTitle || 'Shift Magnet',
-      sourceCommentId: fakeCommentId,
-      sourcePostId: simPlatform === 'facebook' ? 'fb_post_latest' : 'reel_latest',
+      matchedMagnetTitle: matchedMag?.workingTitle || 'Lead Magnet',
+      sourceCommentId: `cmt_${Date.now()}`,
+      sourcePostId: 'post_test',
       stage: 'STAGE_S',
       constraintPicked: '',
-      windowOpen: false, // Meta 24h window stays locked until prospect replies to Private Reply
+      windowOpen: false,
       lastUserReplyAt: null,
       scheduledFollowup: null,
       unreadCount: 1,
@@ -591,16 +668,14 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
         {
           id: `msg-cmt-${Date.now()}`,
           direction: 'inbound_comment',
-          text: simCommentText.trim() || keyword,
-          stageTag: `${platformLabel} Comment Trigger (${keyword})`,
+          text: keyword,
           createdAt: nowIso,
           deliveryStatus: 'delivered'
         },
         {
           id: `msg-dm-${Date.now() + 1}`,
           direction: 'outbound_dm',
-          text: combinedReply,
-          stageTag: `Stage S + H · ${platformLabel} Private Reply`,
+          text: autoReplyText,
           createdAt: nowIso,
           deliveryStatus: 'sent'
         }
@@ -610,90 +685,61 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     const nextThreads = [newThread, ...threads];
     saveThreads(nextThreads);
     setSelectedThreadId(newThread.id);
-    setIsTriggeringSim(false);
-    setStatusBanner({
-      type: 'success',
-      text: `${platformLabel} comment trigger "${keyword}" fired! Outstand sent combined Stage S (Link) + Stage H (A/B/C Diagnostic) Private Reply to @${cleanHandle}.`
+
+    saveOutstandConfig({
+      ...outstandConfig,
+      triggerTestedAt: nowIso
     });
 
+    setIsTestingTrigger(false);
+    setLastTestedResult(
+      `Verified! Commenting "${keyword}" automatically DMs "${
+        matchedMag?.workingTitle || keyword
+      }" (${matchedMag?.trackingLink || 'link'}) to @${cleanHandle}.`
+    );
+
     onTriggerCrmNotification?.({
-      senderLabel: `Live DM CRM · ${platformLabel} Comment Trigger`,
-      text: `⚡ [${platformLabel}] @${cleanHandle} commented "${
-        simCommentText.trim() || keyword
-      }" → Outstand auto-sent "${
-        matchedMag?.workingTitle || 'Shift Magnet'
-      }" + Stage H (A/B/C Diagnostic) Private Reply!`,
-      bannerTitle: `⚡ ${platformLabel} Comment Trigger: @${cleanHandle}`,
-      bannerBody: `Sent "${matchedMag?.workingTitle || 'Shift Magnet'}" + Stage H A/B/C Question to @${cleanHandle}.`,
+      senderLabel: 'DM Trigger Verified',
+      text: `⚡ @${cleanHandle} commented "${keyword}" → Auto-sent "${
+        matchedMag?.workingTitle || 'Lead Magnet'
+      }" in DMs.`,
+      bannerTitle: `⚡ Keyword "${keyword}" Verified`,
+      bannerBody: `Auto-sent ${matchedMag?.workingTitle || 'Lead Magnet'} to @${cleanHandle}.`,
       threadId: newThread.id,
-      actionLabel: 'Open DM Thread in Live CRM'
+      actionLabel: 'Open Conversation'
     });
   };
 
-  // 2. Simulate Prospect Replying "A", "B", or "C" (`message.received` -> Unlocks 24-Hour Meta Window!)
-  const handleSimulateProspectReply = (choice: 'A' | 'B' | 'C') => {
-    if (!activeThread) return;
-    const replyMap: Record<'A' | 'B' | 'C', { text: string; constraint: string }> = {
-      A: {
-        text: 'A for sure — our paid funnel is leaking and booked calls are getting way too expensive.',
-        constraint: 'A · Fixing leaky ad funnels'
-      },
-      B: {
-        text: 'Definitely B. We rely almost 100% on referrals and word of mouth right now, need predictable inbound.',
-        constraint: 'B · Escaping referral-only spiky months'
-      },
-      C: {
-        text: 'C — I want to stop living on 60-minute discovery calls with people who are not pre-sold.',
-        constraint: 'C · Closing deals in DMs without sales calls'
-      }
-    };
+  // Personalize quick script for active thread
+  const personalizeForThread = (
+    template: string,
+    thread: DmCrmThread | null = activeThread,
+    magnet: ShiftMagnet | undefined = activeMagnet
+  ) => {
+    const firstName =
+      thread?.prospectName?.split(' ')[0] ||
+      thread?.prospectHandle?.replace(/^@/, '') ||
+      'there';
+    const magTitle = magnet?.workingTitle || thread?.matchedMagnetTitle || 'resource';
+    const keyword = magnet?.keywordTrigger || thread?.matchedKeyword || 'SHIFT';
+    const link = magnet?.trackingLink || 'https://marketconcussion.com/resource';
+    const problem =
+      magnet?.triggeringProblem ||
+      student.worksheetAnswers.m02_q2_problem ||
+      'turning content views into clients';
 
-    const picked = replyMap[choice];
-    const nowIso = new Date().toISOString();
-
-    const updatedThreads = threads.map(t => {
-      if (t.id !== activeThread.id) return t;
-      return {
-        ...t,
-        windowOpen: true,
-        lastUserReplyAt: nowIso,
-        stage: 'STAGE_H' as ShiftCrmStage,
-        constraintPicked: picked.constraint,
-        scheduledFollowup: null,
-        unreadCount: 0,
-        updatedAt: nowIso,
-        messages: [
-          ...t.messages,
-          {
-            id: `msg-in-${Date.now()}`,
-            direction: 'inbound_dm' as const,
-            text: picked.text,
-            stageTag: `Prospect Picked ${choice} · 24h Window Unlocked`,
-            createdAt: nowIso,
-            deliveryStatus: 'read' as const
-          }
-        ]
-      };
-    });
-
-    saveThreads(updatedThreads);
-    setStatusBanner({
-      type: 'info',
-      text: `@${activeThread.prospectHandle} replied "${choice}"! Meta's 24-Hour Messaging Window is now OPEN and thread auto-advanced to Stage H. Click "Stage I · Illuminate Gap" below to reply.`
-    });
-
-    onTriggerCrmNotification?.({
-      senderLabel: 'Live DM CRM · Prospect Reply',
-      text: `💬 @${activeThread.prospectHandle} replied "${choice}" (${picked.constraint}) — 24h Meta Messaging Window is now OPEN!`,
-      bannerTitle: `💬 Inbound DM Reply: @${activeThread.prospectHandle}`,
-      bannerBody: `Picked Option ${choice} (${picked.constraint}). 24-Hour Meta Window unlocked!`,
-      threadId: activeThread.id,
-      isAlert: true,
-      actionLabel: 'Reply in Live DM CRM'
-    });
+    return template
+      .replace(/\[First Name\]/gi, firstName)
+      .replace(/\[Name\]/gi, firstName)
+      .replace(/\[Shift Magnet Title\]/gi, magTitle)
+      .replace(/\[Shift Magnet\]/gi, magTitle)
+      .replace(/\[Resource\]/gi, magTitle)
+      .replace(/\[KEYWORD\]/g, keyword)
+      .replace(/\[Link\]/gi, link)
+      .replace(/\[Specific Problem\]/gi, problem)
+      .replace(/\[Company\/Niche\]/gi, student.niche || 'your business');
   };
 
-  // 3. Insert a S.H.I.F.T. or Re-Engagement template into the composer
   const handleInsertPlaybookScript = (
     presetKey:
       | 'STAGE_S_H'
@@ -708,89 +754,86 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     if (!activeThread) return;
 
     if (presetKey === 'STAGE_S_H') {
-      const text = buildCombinedStageSandHReply(
-        activeThread.prospectName,
-        activeMagnet,
-        activeThread.matchedKeyword
+      setComposerText(
+        buildCombinedReply(
+          activeThread.prospectName,
+          activeMagnet,
+          activeThread.matchedKeyword
+        )
       );
-      setComposerText(text);
-      setComposerStageTag('Stage S + H · Private Reply');
+      setComposerStageTag('Stage S+H');
       setScheduleOption('NOW');
       return;
     }
-
     if (presetKey === 'STAGE_I') {
       const raw =
         student.worksheetAnswers['m17_i_diagnosis'] ||
-        `That makes total sense, [First Name] — almost every operator who grabs the [Shift Magnet] says the exact same thing.\n\nWhen that’s happening, it’s rarely an effort problem; it’s because prospects haven’t consumed enough structured belief-shifting content before hitting your DMs.\n\nHave you had a chance to look at Section 2 of the [Shift Magnet] yet?`;
+        `That makes total sense, [First Name]. When that’s happening, it’s usually because prospects haven’t consumed enough structured content before hitting your DMs.\n\nHave you had a chance to look at Section 2 of [Shift Magnet] yet?`;
       setComposerText(personalizeForThread(raw));
-      setComposerStageTag('Stage I · Illuminate Gap');
+      setComposerStageTag('Stage I');
       setScheduleOption('NOW');
       return;
     }
-
     if (presetKey === 'STAGE_F') {
       const raw =
         student.worksheetAnswers['m17_f_magnet'] ||
-        `Check out Section 2 inside the [Shift Magnet] ([Link]) — it takes about 3 minutes to score.\n\nOnce you see your score on that page, let me know which of the 3 gaps jumped out most for your setup.`;
+        `Check out Section 2 inside [Shift Magnet] ([Link]) — it takes 3 minutes.\n\nLet me know which of the 3 gaps jumped out most for your setup.`;
       setComposerText(personalizeForThread(raw));
-      setComposerStageTag('Stage F · Confirm Micro-Win');
+      setComposerStageTag('Stage F');
       setScheduleOption('NOW');
       return;
     }
-
     if (presetKey === 'STAGE_T') {
       const raw =
         activeMagnet?.dmBridgeScript ||
         student.worksheetAnswers['m17_booking'] ||
-        `Awesome, [First Name]. Look — if you want to install the entire 25-video library, $5/day Andromeda sequence, and DM Playbook over the next 8 weeks without guessing, I put everything (scope, timeline, price, and guarantee) on a simple 2-Page Offer Doc.\n\nWant me to drop the link here so you can read through it whenever you have 3 minutes?`;
+        `Awesome, [First Name]. If you want to install this entire system over the next 8 weeks without guessing, I put the scope, timeline, and price on a simple 2-Page Offer Doc.\n\nWant me to drop the link here?`;
       setComposerText(personalizeForThread(raw));
-      setComposerStageTag('Stage T · 2-Page Offer Doc Invite');
+      setComposerStageTag('Stage T');
       setScheduleOption('NOW');
       return;
     }
-
     if (presetKey === 'DAY_2') {
-      const raw =
-        student.worksheetAnswers['m17_day2'] ||
-        `Hey [First Name], did you get a chance to look at the [Shift Magnet] I sent over, or has this week been crazy?`;
-      setComposerText(personalizeForThread(raw));
-      setComposerStageTag('Loop 1 · Day 2 Nudge');
+      setComposerText(
+        personalizeForThread(
+          `Hey [First Name], did you get a chance to look at [Shift Magnet], or has this week been crazy?`
+        )
+      );
+      setComposerStageTag('Day 2 Follow-Up');
       setScheduleOption('DAY_2');
       return;
     }
-
     if (presetKey === 'DAY_5') {
-      const raw =
-        student.worksheetAnswers['m17_day5'] ||
-        `Hey [First Name] — curious, was there anything in the [Shift Magnet] that didn’t quite fit your current setup with [Company/Niche]?`;
-      setComposerText(personalizeForThread(raw));
-      setComposerStageTag('Loop 2 · Day 5 Friction Nudge');
+      setComposerText(
+        personalizeForThread(
+          `Hey [First Name] — curious, was there anything in [Shift Magnet] that didn’t quite fit your current setup?`
+        )
+      );
+      setComposerStageTag('Day 5 Follow-Up');
       setScheduleOption('DAY_5');
       return;
     }
-
     if (presetKey === 'DAY_12') {
-      const raw =
-        student.worksheetAnswers['m17_day12'] ||
-        `Hey [First Name] — is solving [Specific Problem] still a priority for you right now, or did that get pushed to next quarter?`;
-      setComposerText(personalizeForThread(raw));
-      setComposerStageTag('Loop 3 · Day 12 Priority Check');
+      setComposerText(
+        personalizeForThread(
+          `Hey [First Name] — is solving [Specific Problem] still a priority right now, or did that get pushed?`
+        )
+      );
+      setComposerStageTag('Day 12 Follow-Up');
       setScheduleOption('DAY_12');
       return;
     }
-
     if (presetKey === 'DAY_30') {
-      const raw =
-        student.worksheetAnswers['m17_day30'] ||
-        `Hey [First Name] — should I close the loop on [Specific Problem] for now, or is it still on your radar for this quarter?`;
-      setComposerText(personalizeForThread(raw));
-      setComposerStageTag('Loop 4 · Day 30 Loop Close');
+      setComposerText(
+        personalizeForThread(
+          `Hey [First Name] — should I close the loop on [Specific Problem] for now, or is it still on your radar?`
+        )
+      );
+      setComposerStageTag('Day 30 Follow-Up');
       setScheduleOption('DAY_30');
     }
   };
 
-  // 4. Send or Schedule message via Outstand (`POST /v1/conversations/{id}/messages` with optional `scheduled_at`)
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeThread || !composerText.trim()) return;
@@ -810,32 +853,6 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
       ? new Date(now + delayMsMap[scheduleOption]).toISOString()
       : null;
 
-    let outstandMessageId: string | null = null;
-
-    // Attempt live Outstand API call if conversation ID & API key are configured
-    if (activeThread.outstandConversationId && outstandConfig.apiKey) {
-      try {
-        const res = await fetch('/api/outstand/action', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'SEND_MESSAGE',
-            apiKey: outstandConfig.apiKey,
-            conversationId: activeThread.outstandConversationId,
-            text: composerText.trim(),
-            scheduledAt: scheduledIso
-          })
-        });
-        const data = await res.json();
-        if (data?.ok && data?.data?.id) {
-          outstandMessageId = data.data.id;
-        }
-      } catch {
-        // Continue with local CRM state update
-      }
-    }
-
-    // Auto-infer stage advancement when sending S.H.I.F.T. messages
     let nextStage: ShiftCrmStage = activeThread.stage;
     if (composerStageTag.includes('Stage I')) nextStage = 'STAGE_I';
     else if (composerStageTag.includes('Stage F')) nextStage = 'STAGE_F';
@@ -847,12 +864,8 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
 
     const newMsg: DmCrmMessage = {
       id: `msg-out-${Date.now()}`,
-      outstandMessageId: outstandMessageId || `out_${Date.now()}`,
       direction: 'outbound_dm',
       text: composerText.trim(),
-      stageTag: isScheduled
-        ? `${composerStageTag} (Scheduled via Outstand)`
-        : composerStageTag,
       createdAt: new Date(now).toISOString(),
       scheduledFor: scheduledIso,
       deliveryStatus: isScheduled ? 'scheduled' : 'sent'
@@ -867,7 +880,6 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
         updatedAt: new Date(now).toISOString(),
         scheduledFollowup: isScheduled
           ? {
-              outstandMessageId: newMsg.outstandMessageId,
               level: scheduleOption as 'DAY_2' | 'DAY_5' | 'DAY_12' | 'DAY_30',
               scheduledAt: scheduledIso!,
               text: composerText.trim()
@@ -880,63 +892,9 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     saveThreads(updatedThreads);
     setComposerText('');
     setIsSending(false);
-    setStatusBanner({
-      type: 'success',
-      text: isScheduled
-        ? `Scheduled ${scheduleOption.replace('_', ' ')} Re-Engagement nudge via Outstand (scheduled_at: ${new Date(
-            scheduledIso!
-          ).toLocaleDateString()}). Auto-cancels if @${activeThread.prospectHandle} replies first!`
-        : `Sent ${composerStageTag} to @${activeThread.prospectHandle} and updated pipeline stage to ${STAGE_METADATA[nextStage].short}.`
-    });
-
-    if (isScheduled) {
-      onTriggerCrmNotification?.({
-        senderLabel: 'Live DM CRM · Re-Engagement Loop',
-        text: `⏰ Scheduled ${scheduleOption.replace('_', ' ')} Re-Engagement Nudge for @${
-          activeThread.prospectHandle
-        } (${new Date(scheduledIso!).toLocaleDateString()}). Auto-cancels if they reply first.`,
-        bannerTitle: `⏰ ${scheduleOption.replace('_', ' ')} Nudge Scheduled`,
-        bannerBody: `Queued via Outstand scheduled_at for @${activeThread.prospectHandle}.`,
-        threadId: activeThread.id,
-        actionLabel: 'View Scheduled Loop in CRM'
-      });
-    } else if (nextStage === 'STAGE_T') {
-      onTriggerCrmNotification?.({
-        senderLabel: 'Live DM CRM · Stage T Offer Doc',
-        text: `🚀 Sent Stage T (2-Page Offer Doc Invite) to @${activeThread.prospectHandle} in DMs!`,
-        bannerTitle: `🚀 Stage T Offer Doc Invite Sent`,
-        bannerBody: `@${activeThread.prospectHandle} advanced to Stage T in your S.H.I.F.T. DM pipeline.`,
-        threadId: activeThread.id,
-        actionLabel: 'Open Thread in Live CRM'
-      });
-    }
   };
 
-  // Cancel a scheduled Re-Engagement message (`DELETE /v1/conversations/{id}/messages/{messageId}`)
-  const handleCancelScheduled = async (thread: DmCrmThread) => {
-    if (!thread.scheduledFollowup) return;
-
-    if (
-      thread.outstandConversationId &&
-      thread.scheduledFollowup.outstandMessageId &&
-      outstandConfig.apiKey
-    ) {
-      try {
-        await fetch('/api/outstand/action', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'CANCEL_SCHEDULED_MESSAGE',
-            apiKey: outstandConfig.apiKey,
-            conversationId: thread.outstandConversationId,
-            messageId: thread.scheduledFollowup.outstandMessageId
-          })
-        });
-      } catch {
-        // Ignore network error
-      }
-    }
-
+  const handleCancelScheduled = (thread: DmCrmThread) => {
     const updatedThreads = threads.map(t => {
       if (t.id !== thread.id) return t;
       return {
@@ -945,19 +903,15 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
         messages: t.messages.filter(m => m.deliveryStatus !== 'scheduled')
       };
     });
-
     saveThreads(updatedThreads);
-    setStatusBanner({
-      type: 'info',
-      text: `Cancelled scheduled Re-Engagement message for @${thread.prospectHandle}.`
-    });
   };
 
   const handleStageChange = (threadId: string, newStage: ShiftCrmStage) => {
-    const updated = threads.map(t =>
-      t.id === threadId ? { ...t, stage: newStage, updatedAt: new Date().toISOString() } : t
+    saveThreads(
+      threads.map(t =>
+        t.id === threadId ? { ...t, stage: newStage, updatedAt: new Date().toISOString() } : t
+      )
     );
-    saveThreads(updated);
   };
 
   const handleDeleteThread = (threadId: string) => {
@@ -968,275 +922,24 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     }
   };
 
-  const openConfigModalWithCurrentValues = () => {
-    setCfgApiKey(outstandConfig.apiKey);
-    setCfgSocialAccountId(outstandConfig.socialAccountId);
-    setCfgIgAccountId(
-      outstandConfig.instagramAccountId || outstandConfig.socialAccountId || ''
-    );
-    setCfgIgHandle(outstandConfig.instagramHandle || '');
-    setCfgFbAccountId(outstandConfig.facebookAccountId || '');
-    setCfgFbPageName(outstandConfig.facebookPageName || '');
-    setCfgAutoTrigger(outstandConfig.autoCommentToDm);
-    setCfgCombineSH(outstandConfig.combineStageSandH);
-    setShowConfigModal(true);
+  const handleCopy = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
-
-  // Fetch connected social accounts from Outstand (`GET /v1/social-accounts`)
-  const handleFetchOutstandAccounts = async (overrideApiKey?: string) => {
-    setIsCheckingAccounts(true);
-    try {
-      const keyToUse = (overrideApiKey ?? cfgApiKey ?? outstandConfig.apiKey).trim();
-      const res = await fetch('/api/outstand/action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'LIST_ACCOUNTS',
-          apiKey: keyToUse || undefined,
-          tenantId: student.id
-        })
-      });
-      const json = await res.json();
-      if (json?.ok && Array.isArray(json?.data?.data || json?.data)) {
-        const list: { id: string; username?: string; name?: string; network?: string }[] =
-          Array.isArray(json.data.data) ? json.data.data : json.data;
-        setFetchedAccounts(list);
-
-        const igAcc = list.find(a => (a.network || '').toLowerCase() === 'instagram');
-        const fbAcc = list.find(a => (a.network || '').toLowerCase() === 'facebook');
-
-        if (igAcc?.id) {
-          setCfgIgAccountId(igAcc.id);
-          if (!cfgSocialAccountId) setCfgSocialAccountId(igAcc.id);
-          if (igAcc.username) setCfgIgHandle(igAcc.username.replace(/^@/, ''));
-        }
-        if (fbAcc?.id) {
-          setCfgFbAccountId(fbAcc.id);
-          if (!cfgSocialAccountId && !igAcc?.id) setCfgSocialAccountId(fbAcc.id);
-          if (fbAcc.name || fbAcc.username) {
-            setCfgFbPageName(fbAcc.name || fbAcc.username || '');
-          }
-        }
-        if (list[0]?.id && !cfgSocialAccountId) {
-          setCfgSocialAccountId(list[0].id);
-        }
-      } else if (json?.error) {
-        setStatusBanner({
-          type: 'warning',
-          text: `Outstand API response: ${json.error}`
-        });
-      }
-    } catch {
-      // Ignore error
-    } finally {
-      setIsCheckingAccounts(false);
-    }
-  };
-
-  // Start Outstand OAuth connection flow for Instagram or Facebook (`POST /v1/social-networks/{network}/auth-url`)
-  const handleConnectSocialNetwork = async (network: 'instagram' | 'facebook') => {
-    const activeKey = (cfgApiKey || outstandConfig.apiKey).trim();
-    setConnectingNetwork(network);
-    try {
-      const redirectUri =
-        typeof window !== 'undefined'
-          ? `${window.location.origin}${window.location.pathname}`
-          : 'https://mc-coaching-swart.vercel.app';
-
-      const res = await fetch('/api/outstand/action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'GET_AUTH_URL',
-          network,
-          apiKey: activeKey || undefined,
-          tenantId: student.id,
-          redirectUri
-        })
-      });
-      const json = await res.json();
-      if (json?.ok && json?.authUrl) {
-        window.open(json.authUrl, '_blank', 'noopener,noreferrer');
-        setStatusBanner({
-          type: 'info',
-          text: `Opened Outstand ${
-            network === 'facebook' ? 'Facebook Page' : 'Instagram'
-          } OAuth window! After authorizing on Meta, click "Sync Connected Accounts" in the Configure modal.`
-        });
-      } else {
-        openConfigModalWithCurrentValues();
-        setStatusBanner({
-          type: 'info',
-          text: activeKey
-            ? `Could not auto-launch ${network} OAuth (${
-                json?.error || 'verify Outstand social network settings'
-              }). You can also paste your connected ${
-                network === 'facebook' ? 'Facebook' : 'Instagram'
-              } Account ID or click Sync Connected Accounts below.`
-            : `Enter your Outstand API Key (out_live_...) in the modal below to launch 1-click ${
-                network === 'facebook' ? 'Facebook Page' : 'Instagram'
-              } OAuth or link your account.`
-        });
-      }
-    } catch {
-      openConfigModalWithCurrentValues();
-    } finally {
-      setConnectingNetwork(null);
-    }
-  };
-
-  // Handle Outstand OAuth redirect `?session=SESSION_TOKEN` for multi-page selection (Facebook Pages / Instagram Business)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const sessionToken = params.get('session') || params.get('outstand_session');
-    if (!sessionToken) return;
-
-    setPendingSessionToken(sessionToken);
-    openConfigModalWithCurrentValues();
-
-    // Clean query param from address bar without reloading
-    const cleanUrl = `${window.location.origin}${window.location.pathname}${window.location.hash}`;
-    window.history.replaceState({}, document.title, cleanUrl);
-
-    (async () => {
-      try {
-        const res = await fetch('/api/outstand/action', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'GET_PENDING_CONNECTION',
-            sessionToken,
-            apiKey: outstandConfig.apiKey || undefined
-          })
-        });
-        const json = await res.json();
-        const pages =
-          json?.data?.available_pages ||
-          json?.data?.pages ||
-          json?.data?.accounts ||
-          json?.data?.data ||
-          [];
-        if (Array.isArray(pages) && pages.length > 0) {
-          setPendingPages(pages);
-          setSelectedPendingPageIds(pages.map((p: { id: string }) => p.id));
-        }
-      } catch {
-        // Ignore error
-      }
-    })();
-  }, []);
-
-  const handleFinalizePendingSession = async () => {
-    if (!pendingSessionToken) return;
-    setIsFinalizingSession(true);
-    try {
-      const res = await fetch('/api/outstand/action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'FINALIZE_PENDING_CONNECTION',
-          sessionToken: pendingSessionToken,
-          selectedPageIds: selectedPendingPageIds,
-          apiKey: (cfgApiKey || outstandConfig.apiKey).trim() || undefined
-        })
-      });
-      const json = await res.json();
-      if (json?.ok) {
-        setPendingSessionToken(null);
-        setPendingPages([]);
-        await handleFetchOutstandAccounts();
-        setStatusBanner({
-          type: 'success',
-          text: 'Social account connection finalized via Outstand! Your Instagram / Facebook accounts are now linked.'
-        });
-      }
-    } catch {
-      // Ignore error
-    } finally {
-      setIsFinalizingSession(false);
-    }
-  };
-
-  const handleSaveConfigModal = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanIgId = cfgIgAccountId.trim() || cfgSocialAccountId.trim();
-    const cleanIgHandle = cfgIgHandle.trim().replace(/^@/, '');
-    const cleanFbId = cfgFbAccountId.trim();
-    const cleanFbName = cfgFbPageName.trim();
-    const primaryAccountId = cfgSocialAccountId.trim() || cleanIgId || cleanFbId;
-
-    const connectedAccountsList: OutstandConnectedAccount[] = [];
-    if (cleanIgId || cleanIgHandle) {
-      connectedAccountsList.push({
-        id: cleanIgId || 'acc_ig_connected',
-        network: 'instagram',
-        username: cleanIgHandle || 'instagram_account'
-      });
-    }
-    if (cleanFbId || cleanFbName) {
-      connectedAccountsList.push({
-        id: cleanFbId || 'acc_fb_connected',
-        network: 'facebook',
-        username: cleanFbName || 'facebook_page',
-        name: cleanFbName || 'Facebook Page'
-      });
-    }
-
-    const next: OutstandConfig = {
-      apiKey: cfgApiKey.trim(),
-      socialAccountId: primaryAccountId,
-      instagramAccountId: cleanIgId,
-      instagramHandle: cleanIgHandle,
-      facebookAccountId: cleanFbId,
-      facebookPageName: cleanFbName,
-      connectedAccounts: connectedAccountsList,
-      tenantId: student.id,
-      autoCommentToDm: cfgAutoTrigger,
-      combineStageSandH: cfgCombineSH,
-      lastSyncedAt: new Date().toISOString()
-    };
-    saveOutstandConfig(next);
-    setShowConfigModal(false);
-    setStatusBanner({
-      type: 'success',
-      text: 'Outstand.so Instagram & Facebook CRM configuration saved!'
-    });
-  };
-
-  const isIgConnected = Boolean(
-    outstandConfig.instagramAccountId ||
-      outstandConfig.instagramHandle ||
-      outstandConfig.socialAccountId
-  );
-  const isFbConnected = Boolean(
-    outstandConfig.facebookAccountId || outstandConfig.facebookPageName
-  );
-  const isOutstandLive = Boolean(
-    isIgConnected || isFbConnected || outstandConfig.apiKey
-  );
 
   return (
-    <div className="space-y-3">
-      {/* Compact Single-Row Top Bar */}
-      <div className="glass-panel rounded-xl px-4 py-3 border border-white/10 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+    <div className="space-y-4">
+      {/* Top Bar: Clean Mode Switcher + Connection Summary */}
+      <div className="glass-panel rounded-xl px-4 py-3 border border-white/10 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2.5">
-          <h1 className="font-display text-xl sm:text-2xl text-white tracking-wide uppercase mr-1">
-            DM CRM
-          </h1>
+          <h1 className="font-display text-xl text-white tracking-wide uppercase">DM CRM</h1>
 
-          {/* Clickable Instagram Status Pill */}
-          <button
-            type="button"
-            onClick={() =>
+          <span
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${
               isIgConnected
-                ? openConfigModalWithCurrentValues()
-                : handleConnectSocialNetwork('instagram')
-            }
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border cursor-pointer transition ${
-              isIgConnected
-                ? 'bg-pink-500/15 text-pink-200 border-pink-400/35 hover:bg-pink-500/25'
-                : 'bg-white/[0.04] text-neutral-300 border-white/10 hover:text-white hover:border-pink-400/40'
+                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                : 'bg-white/[0.04] text-neutral-400 border-white/10'
             }`}
           >
             <span
@@ -1244,25 +947,14 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                 isIgConnected ? 'bg-emerald-400' : 'bg-neutral-500'
               }`}
             />
-            <span>
-              {isIgConnected
-                ? `IG · @${outstandConfig.instagramHandle || 'Connected'}`
-                : '+ Connect IG'}
-            </span>
-          </button>
+            {isIgConnected ? `IG: @${outstandConfig.instagramHandle}` : 'IG Not Connected'}
+          </span>
 
-          {/* Clickable Facebook Status Pill */}
-          <button
-            type="button"
-            onClick={() =>
+          <span
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${
               isFbConnected
-                ? openConfigModalWithCurrentValues()
-                : handleConnectSocialNetwork('facebook')
-            }
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border cursor-pointer transition ${
-              isFbConnected
-                ? 'bg-blue-500/15 text-blue-200 border-blue-400/35 hover:bg-blue-500/25'
-                : 'bg-white/[0.04] text-neutral-300 border-white/10 hover:text-white hover:border-blue-400/40'
+                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                : 'bg-white/[0.04] text-neutral-400 border-white/10'
             }`}
           >
             <span
@@ -1270,174 +962,45 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                 isFbConnected ? 'bg-emerald-400' : 'bg-neutral-500'
               }`}
             />
-            <span>
-              {isFbConnected
-                ? `FB · ${outstandConfig.facebookPageName || 'Connected'}`
-                : '+ Connect FB'}
-            </span>
-          </button>
+            {isFbConnected ? `FB: ${outstandConfig.facebookPageName}` : 'FB Not Connected'}
+          </span>
+
+          <span className="text-xs text-neutral-400">
+            · {student.shiftMagnets.length} Keyword{' '}
+            {student.shiftMagnets.length === 1 ? 'Trigger' : 'Triggers'}
+          </span>
         </div>
 
-        {/* Right Controls: Search + Test Toggle + Accounts Modal */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-44 sm:w-52">
-            <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search @handle..."
-              className="w-full rounded-lg bg-[#07090D] border border-white/10 pl-8 pr-2.5 py-1.5 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
-            />
-          </div>
-
+        <div className="inline-flex rounded-lg bg-[#07090D] p-1 border border-white/10">
           <button
             type="button"
-            onClick={() => setShowSimDrawer(v => !v)}
-            className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border inline-flex items-center gap-1.5 cursor-pointer transition ${
-              showSimDrawer
-                ? 'bg-[#09ADEF]/20 text-[#09ADEF] border-[#09ADEF]/40'
-                : 'bg-white/[0.04] text-neutral-300 border-white/10 hover:text-white'
+            onClick={() => setActiveView('SETUP')}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition ${
+              activeView === 'SETUP'
+                ? 'bg-[#09ADEF] text-white'
+                : 'text-neutral-400 hover:text-white'
             }`}
-            title="Simulate a comment or reply trigger"
           >
-            <Zap className="w-3.5 h-3.5 text-[#09ADEF]" />
-            <span>Test Trigger</span>
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>1. Setup &amp; Triggers</span>
           </button>
-
           <button
             type="button"
-            onClick={openConfigModalWithCurrentValues}
-            className="px-3 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/12 text-[11px] font-semibold text-white inline-flex items-center gap-1.5 cursor-pointer transition"
+            onClick={() => setActiveView('INBOX')}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition ${
+              activeView === 'INBOX'
+                ? 'bg-[#09ADEF] text-white'
+                : 'text-neutral-400 hover:text-white'
+            }`}
           >
-            <Settings className="w-3.5 h-3.5 text-[#09ADEF]" />
-            <span>Accounts &amp; API</span>
+            <span>2. Conversations ({threads.length})</span>
           </button>
         </div>
       </div>
 
-      {/* Collapsible Test Trigger Drawer (Hidden by Default) */}
-      {showSimDrawer && (
-        <form
-          onSubmit={handleSimulateCommentTrigger}
-          className="glass-panel p-3 rounded-xl border border-[#09ADEF]/30 bg-[#050811] flex flex-wrap items-end gap-2.5"
-        >
-          <div>
-            <label className="block text-[10px] font-bold uppercase text-neutral-400 mb-1">
-              Channel
-            </label>
-            <div className="inline-flex rounded-lg bg-[#090C12] p-0.5 border border-white/10">
-              <button
-                type="button"
-                onClick={() => setSimPlatform('instagram')}
-                className={`px-2 py-1 rounded text-[10px] font-bold uppercase cursor-pointer ${
-                  simPlatform === 'instagram'
-                    ? 'bg-pink-500/25 text-pink-200'
-                    : 'text-neutral-400'
-                }`}
-              >
-                IG
-              </button>
-              <button
-                type="button"
-                onClick={() => setSimPlatform('facebook')}
-                className={`px-2 py-1 rounded text-[10px] font-bold uppercase cursor-pointer ${
-                  simPlatform === 'facebook'
-                    ? 'bg-blue-500/25 text-blue-200'
-                    : 'text-neutral-400'
-                }`}
-              >
-                FB
-              </button>
-            </div>
-          </div>
-
-          <div className="w-36">
-            <label className="block text-[10px] font-bold uppercase text-neutral-400 mb-1">
-              @Handle
-            </label>
-            <input
-              type="text"
-              value={simHandle}
-              onChange={e => setSimHandle(e.target.value)}
-              className="w-full rounded-lg bg-[#090C12] border border-white/12 px-2.5 py-1.5 text-xs text-white"
-            />
-          </div>
-
-          <div className="w-36">
-            <label className="block text-[10px] font-bold uppercase text-neutral-400 mb-1">
-              Name
-            </label>
-            <input
-              type="text"
-              value={simName}
-              onChange={e => setSimName(e.target.value)}
-              className="w-full rounded-lg bg-[#090C12] border border-white/12 px-2.5 py-1.5 text-xs text-white"
-            />
-          </div>
-
-          <div className="w-36">
-            <label className="block text-[10px] font-bold uppercase text-neutral-400 mb-1">
-              Keyword
-            </label>
-            <select
-              value={simKeyword}
-              onChange={e => {
-                setSimKeyword(e.target.value);
-                setSimCommentText(`${e.target.value} — send it over!`);
-              }}
-              className="w-full rounded-lg bg-[#090C12] border border-white/12 px-2.5 py-1.5 text-xs text-white"
-            >
-              {student.shiftMagnets.map(m => (
-                <option key={m.id} value={m.keywordTrigger}>
-                  {m.keywordTrigger}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex-1 min-w-[160px]">
-            <label className="block text-[10px] font-bold uppercase text-neutral-400 mb-1">
-              Comment
-            </label>
-            <input
-              type="text"
-              value={simCommentText}
-              onChange={e => setSimCommentText(e.target.value)}
-              className="w-full rounded-lg bg-[#090C12] border border-white/12 px-2.5 py-1.5 text-xs text-white"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={isTriggeringSim}
-            className="btn-2mm py-1.5 px-3 rounded-lg text-[11px] font-bold uppercase tracking-wider inline-flex items-center gap-1 cursor-pointer"
-          >
-            <Zap className="w-3 h-3" />
-            <span>{isTriggeringSim ? 'Firing...' : 'Simulate Comment'}</span>
-          </button>
-
-          {activeThread && (
-            <div className="flex items-center gap-1 pl-2 border-l border-white/10">
-              <span className="text-[10px] text-neutral-400 mr-1">Sim Reply:</span>
-              {(['A', 'B', 'C'] as const).map(letter => (
-                <button
-                  key={letter}
-                  type="button"
-                  onClick={() => handleSimulateProspectReply(letter)}
-                  className="px-2 py-1 rounded bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/35 text-[10px] font-bold text-emerald-200 cursor-pointer"
-                >
-                  {letter}
-                </button>
-              ))}
-            </div>
-          )}
-        </form>
-      )}
-
       {statusBanner && (
-        <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-[#09ADEF]/12 border border-[#09ADEF]/30 text-xs text-neutral-100">
-          <span>{statusBanner.text}</span>
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-200">
+          <span>{statusBanner}</span>
           <button
             type="button"
             onClick={() => setStatusBanner(null)}
@@ -1448,664 +1011,751 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
         </div>
       )}
 
-      {/* Compact Stage Filter Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
-        {[
-          { id: 'ALL' as const, label: `All (${threads.length})` },
-          {
-            id: 'STAGE_S' as const,
-            label: `S · Signal (${threads.filter(t => t.stage === 'STAGE_S').length})`
-          },
-          {
-            id: 'STAGE_H' as const,
-            label: `H · Diagnose (${threads.filter(t => t.stage === 'STAGE_H').length})`
-          },
-          {
-            id: 'STAGE_I' as const,
-            label: `I · Gap (${threads.filter(t => t.stage === 'STAGE_I').length})`
-          },
-          {
-            id: 'STAGE_F' as const,
-            label: `F · Micro-Win (${threads.filter(t => t.stage === 'STAGE_F').length})`
-          },
-          {
-            id: 'STAGE_T' as const,
-            label: `T · Offer Doc (${threads.filter(t => t.stage === 'STAGE_T').length})`
-          },
-          {
-            id: 'LOOPS' as const,
-            label: `Follow-Up (${
-              threads.filter(t => t.stage.startsWith('LOOP_') || t.scheduledFollowup).length
-            })`
-          },
-          {
-            id: 'CLOSED_WON' as const,
-            label: `Won (${threads.filter(t => t.stage === 'CLOSED_WON').length})`
-          }
-        ].map(pill => (
-          <button
-            key={pill.id}
-            type="button"
-            onClick={() => setStageFilter(pill.id)}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap border cursor-pointer transition ${
-              stageFilter === pill.id
-                ? 'bg-[#09ADEF] text-white border-[#09ADEF]'
-                : 'bg-[#07090D] text-neutral-400 border-white/10 hover:text-white'
-            }`}
-          >
-            {pill.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Main Split-Pane DM CRM (Conversations Left, Chat Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
-        {/* Left Column: Clean Conversations List (4 cols) */}
-        <div className="lg:col-span-4 glass-panel rounded-xl border border-white/10 overflow-hidden divide-y divide-white/[0.06]">
-          <div className="px-3.5 py-2.5 bg-[#05070B] flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-300">
-              Conversations ({filteredThreads.length})
-            </span>
-            <span className="text-[10px] text-emerald-400">
-              {threads.filter(t => t.windowOpen).length} active
-            </span>
-          </div>
-
-          <div className="max-h-[640px] overflow-y-auto divide-y divide-white/[0.06]">
-            {filteredThreads.length === 0 ? (
-              <div className="p-6 text-center text-xs text-neutral-400">
-                No conversations in this stage.
+      {/* VIEW 1: GUIDED 3-STEP ONBOARDING & TRIGGER SETUP */}
+      {activeView === 'SETUP' && (
+        <div className="space-y-4 max-w-3xl mx-auto">
+          {/* STEP 1: CONNECT INSTAGRAM & FACEBOOK */}
+          <div className="glass-panel rounded-xl p-5 border border-white/10 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span
+                  className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
+                    hasAnyConnectedAccount
+                      ? 'bg-emerald-500 text-slate-950'
+                      : 'bg-[#09ADEF] text-white'
+                  }`}
+                >
+                  {hasAnyConnectedAccount ? '✓' : '1'}
+                </span>
+                <div>
+                  <h2 className="text-sm font-bold text-white">
+                    Connect Your Instagram &amp; Facebook Accounts
+                  </h2>
+                  <p className="text-xs text-neutral-400">
+                    Link the accounts where viewers will comment your keyword triggers.
+                  </p>
+                </div>
               </div>
-            ) : (
-              filteredThreads.map(thread => {
-                const isSelected = activeThread?.id === thread.id;
-                const stageMeta = STAGE_METADATA[thread.stage] || STAGE_METADATA.STAGE_S;
-                const lastMsg = thread.messages[thread.messages.length - 1];
-
-                return (
-                  <div
-                    key={thread.id}
-                    onClick={() => setSelectedThreadId(thread.id)}
-                    className={`p-3 cursor-pointer transition ${
-                      isSelected
-                        ? 'bg-[#09ADEF]/[0.12] border-l-2 border-l-[#09ADEF]'
-                        : 'hover:bg-white/[0.03]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span
-                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase shrink-0 ${
-                            thread.platform === 'facebook'
-                              ? 'bg-blue-500/20 text-blue-300'
-                              : 'bg-pink-500/20 text-pink-300'
-                          }`}
-                        >
-                          {thread.platform === 'facebook' ? 'FB' : 'IG'}
-                        </span>
-                        <span className="text-xs font-bold text-white truncate">
-                          {thread.prospectName}
-                        </span>
-                        <span className="text-[11px] text-neutral-400 font-mono truncate">
-                          @{thread.prospectHandle}
-                        </span>
-                      </div>
-
-                      <span
-                        className={`px-1.5 py-0.5 rounded border text-[9px] font-bold uppercase shrink-0 ${stageMeta.badgeClass}`}
-                      >
-                        {stageMeta.short.replace('Stage ', '')}
-                      </span>
-                    </div>
-
-                    {lastMsg && (
-                      <p className="text-[11px] text-neutral-400 truncate mt-1.5">
-                        {lastMsg.direction === 'inbound_comment'
-                          ? `Comment: "${lastMsg.text}"`
-                          : lastMsg.direction === 'inbound_dm'
-                          ? lastMsg.text
-                          : `You: ${lastMsg.text}`}
-                      </p>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: Active Conversation & Reply Box (8 cols) */}
-        <div className="lg:col-span-8 glass-panel rounded-xl border border-white/10 overflow-hidden flex flex-col">
-          {!activeThread ? (
-            <div className="p-10 text-center text-sm text-neutral-400">
-              Select a conversation on the left.
+              {hasAnyConnectedAccount && (
+                <span className="text-xs font-semibold text-emerald-400">✓ Connected</span>
+              )}
             </div>
-          ) : (
-            <>
-              {/* Minimal Active Conversation Header */}
-              <div className="px-4 py-3 bg-[#05070B] border-b border-white/[0.08] flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
-                      activeThread.platform === 'facebook'
-                        ? 'bg-blue-500/20 text-blue-300'
-                        : 'bg-pink-500/20 text-pink-300'
-                    }`}
-                  >
-                    {activeThread.platform === 'facebook' ? 'FB' : 'IG'}
-                  </span>
-                  <h3 className="text-sm font-bold text-white">{activeThread.prospectName}</h3>
-                  <span className="text-xs font-mono text-[#09ADEF]">
-                    @{activeThread.prospectHandle}
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-white/[0.06] text-[10px] font-semibold text-neutral-300">
-                    Keyword: {activeThread.matchedKeyword}
-                  </span>
-                  <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold ${
-                      activeThread.windowOpen
-                        ? 'bg-emerald-500/15 text-emerald-300'
-                        : 'bg-amber-500/15 text-amber-200'
-                    }`}
-                  >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        activeThread.windowOpen ? 'bg-emerald-400' : 'bg-amber-400'
-                      }`}
-                    />
-                    {activeThread.windowOpen ? '24h Open' : 'Awaiting Reply'}
-                  </span>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <select
-                    value={activeThread.stage}
-                    onChange={e =>
-                      handleStageChange(activeThread.id, e.target.value as ShiftCrmStage)
-                    }
-                    className="rounded-lg bg-[#0B0E15] border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-white focus:border-[#09ADEF] focus:outline-none"
-                  >
-                    {Object.entries(STAGE_METADATA).map(([key, meta]) => (
-                      <option key={key} value={key}>
-                        {meta.short}
-                      </option>
-                    ))}
-                  </select>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteThread(activeThread.id)}
-                    className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-rose-500/15 border border-white/10 text-neutral-400 hover:text-rose-300 cursor-pointer"
-                    title="Delete conversation"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Clean Message Stream */}
-              <div className="p-4 space-y-3 h-[420px] overflow-y-auto bg-[#030508]">
-                {activeThread.messages.map(msg => {
-                  const isComment = msg.direction === 'inbound_comment';
-                  const isInbound = msg.direction === 'inbound_dm';
-                  const isScheduled = msg.deliveryStatus === 'scheduled';
-
-                  return (
-                    <div
-                      key={msg.id}
-                      className={`flex flex-col ${
-                        isComment || isInbound ? 'items-start' : 'items-end'
-                      }`}
-                    >
-                      <div
-                        className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed whitespace-pre-wrap ${
-                          isComment
-                            ? 'bg-amber-500/12 border border-amber-400/30 text-amber-100'
-                            : isInbound
-                            ? 'bg-[#0E131D] border border-white/12 text-white'
-                            : isScheduled
-                            ? 'bg-purple-500/15 border border-purple-400/35 text-purple-100'
-                            : 'bg-[#09ADEF]/18 border border-[#09ADEF]/40 text-white'
-                        }`}
-                      >
-                        {isComment && (
-                          <div className="text-[10px] font-bold uppercase text-amber-300 mb-1">
-                            Post Comment ({activeThread.matchedKeyword})
-                          </div>
-                        )}
-                        {msg.text}
-                      </div>
-
-                      <div className="text-[10px] text-neutral-500 mt-1 px-1">
-                        {isScheduled && msg.scheduledFor
-                          ? `Scheduled for ${new Date(msg.scheduledFor).toLocaleDateString()}`
-                          : new Date(msg.createdAt).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {activeThread.scheduledFollowup && (
-                  <div className="px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-400/30 flex items-center justify-between gap-2 text-xs text-purple-200">
-                    <span>
-                      Follow-up scheduled for{' '}
-                      {new Date(activeThread.scheduledFollowup.scheduledAt).toLocaleDateString()}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              {/* Instagram Row */}
+              <div className="p-3.5 rounded-xl bg-[#07090D] border border-white/10 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white">Instagram Account</span>
+                  {isIgConnected && !editingIg && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Connected
                     </span>
+                  )}
+                </div>
+
+                {isIgConnected && !editingIg ? (
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs font-mono text-[#09ADEF]">
+                      @{outstandConfig.instagramHandle}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingIg(true)}
+                        className="text-[11px] text-neutral-400 hover:text-white cursor-pointer"
+                      >
+                        Change
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDisconnectAccount('instagram')}
+                        className="text-[11px] text-rose-400 hover:text-rose-300 cursor-pointer"
+                      >
+                        Disconnect
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={igInput}
+                      onChange={e => setIgInput(e.target.value)}
+                      placeholder="@yourhandle"
+                      className="flex-1 min-w-0 rounded-lg bg-[#0B0E15] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
+                    />
                     <button
                       type="button"
-                      onClick={() => handleCancelScheduled(activeThread)}
-                      className="text-[10px] font-bold uppercase text-rose-300 hover:underline cursor-pointer"
+                      onClick={() => handleConnectAccount('instagram')}
+                      disabled={connectingChannel === 'instagram' || !igInput.trim()}
+                      className="btn-2mm px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap cursor-pointer disabled:opacity-50"
+                    >
+                      {connectingChannel === 'instagram' ? 'Connecting...' : 'Connect IG'}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Facebook Row */}
+              <div className="p-3.5 rounded-xl bg-[#07090D] border border-white/10 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white">Facebook Page</span>
+                  {isFbConnected && !editingFb && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Connected
+                    </span>
+                  )}
+                </div>
+
+                {isFbConnected && !editingFb ? (
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs font-medium text-white">
+                      {outstandConfig.facebookPageName}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingFb(true)}
+                        className="text-[11px] text-neutral-400 hover:text-white cursor-pointer"
+                      >
+                        Change
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDisconnectAccount('facebook')}
+                        className="text-[11px] text-rose-400 hover:text-rose-300 cursor-pointer"
+                      >
+                        Disconnect
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={fbInput}
+                      onChange={e => setFbInput(e.target.value)}
+                      placeholder="Your Facebook Page Name"
+                      className="flex-1 min-w-0 rounded-lg bg-[#0B0E15] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleConnectAccount('facebook')}
+                      disabled={connectingChannel === 'facebook' || !fbInput.trim()}
+                      className="btn-2mm px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap cursor-pointer disabled:opacity-50"
+                    >
+                      {connectingChannel === 'facebook' ? 'Connecting...' : 'Connect FB'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* STEP 2: ADD LEAD MAGNET URLS & KEYWORD TRIGGERS */}
+          <div className="glass-panel rounded-xl p-5 border border-white/10 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span
+                  className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
+                    hasMagnetsWithLinks
+                      ? 'bg-emerald-500 text-slate-950'
+                      : 'bg-[#09ADEF] text-white'
+                  }`}
+                >
+                  {hasMagnetsWithLinks ? '✓' : '2'}
+                </span>
+                <div>
+                  <h2 className="text-sm font-bold text-white">
+                    Add Lead Magnet URLs &amp; Comment Keywords
+                  </h2>
+                  <p className="text-xs text-neutral-400">
+                    When someone comments a keyword on your post, we automatically DM them the
+                    matching Lead Magnet URL.
+                  </p>
+                </div>
+              </div>
+              {hasMagnetsWithLinks && (
+                <span className="text-xs font-semibold text-emerald-400">
+                  ✓ {student.shiftMagnets.length} Active
+                </span>
+              )}
+            </div>
+
+            {/* Existing Keyword Triggers List */}
+            {student.shiftMagnets.length > 0 && (
+              <div className="divide-y divide-white/[0.06] rounded-xl bg-[#07090D] border border-white/10 overflow-hidden">
+                {student.shiftMagnets.map(mag => (
+                  <div
+                    key={mag.id}
+                    className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded bg-[#09ADEF]/15 text-[#09ADEF] font-mono text-xs font-bold">
+                          {mag.keywordTrigger}
+                        </span>
+                        <span className="text-xs font-semibold text-white truncate">
+                          {mag.workingTitle}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-neutral-400 truncate pl-0.5">
+                        {mag.trackingLink || 'No Lead Magnet URL set — click Edit to add URL'}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditMagnet(mag)}
+                        className="px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-xs text-neutral-200 inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span>Edit</span>
+                      </button>
+                      {onDeleteShiftMagnet && student.shiftMagnets.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => onDeleteShiftMagnet(mag.id)}
+                          className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-rose-500/15 text-neutral-400 hover:text-rose-300 cursor-pointer"
+                          title="Delete keyword trigger"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Simple 3-Field Form to Add / Edit Keyword + Lead Magnet URL */}
+            <form onSubmit={handleSaveKeywordTrigger} className="space-y-3 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                <div className="sm:col-span-3">
+                  <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                    Comment Keyword
+                  </label>
+                  <input
+                    type="text"
+                    value={kwInput}
+                    onChange={e => setKwInput(e.target.value.toUpperCase())}
+                    placeholder="e.g. AUDIT"
+                    required
+                    className="w-full rounded-lg bg-[#0B0E15] border border-white/12 px-3 py-2 text-xs font-mono text-white focus:border-[#09ADEF] focus:outline-none"
+                  />
+                </div>
+
+                <div className="sm:col-span-4">
+                  <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                    Lead Magnet Name
+                  </label>
+                  <input
+                    type="text"
+                    value={titleInput}
+                    onChange={e => setTitleInput(e.target.value)}
+                    placeholder="7-Hour Pipeline Audit"
+                    required
+                    className="w-full rounded-lg bg-[#0B0E15] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
+                  />
+                </div>
+
+                <div className="sm:col-span-5">
+                  <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                    Lead Magnet URL
+                  </label>
+                  <input
+                    type="url"
+                    value={urlInput}
+                    onChange={e => setUrlInput(e.target.value)}
+                    placeholder="https://yourdomain.com/audit"
+                    required
+                    className="w-full rounded-lg bg-[#0B0E15] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {showCustomDmBox && (
+                <div>
+                  <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                    Auto-Reply DM Message
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={customDmInput}
+                    onChange={e => setCustomDmInput(e.target.value)}
+                    placeholder="Hey [First Name]! Here is your link: [Link]..."
+                    className="w-full rounded-lg bg-[#0B0E15] border border-white/12 p-2.5 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
+                  />
+                </div>
+              )}
+
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCustomDmBox(v => !v)}
+                  className="text-xs text-neutral-400 hover:text-white cursor-pointer"
+                >
+                  {showCustomDmBox ? 'Hide custom DM message' : '+ Customize auto-reply DM text'}
+                </button>
+
+                <div className="flex items-center gap-2">
+                  {editingMagnetId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingMagnetId(null);
+                        setKwInput('');
+                        setTitleInput('');
+                        setUrlInput('');
+                        setCustomDmInput('');
+                        setShowCustomDmBox(false);
+                      }}
+                      className="px-3 py-2 rounded-lg border border-white/10 text-xs text-neutral-300 cursor-pointer"
                     >
                       Cancel
                     </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Minimal Script Chips + Reply Composer */}
-              <div className="p-3 bg-[#06090F] border-t border-white/[0.08] space-y-2">
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
-                  <span className="text-[10px] font-bold uppercase text-neutral-500 shrink-0 mr-1">
-                    Quick Scripts:
-                  </span>
-                  {[
-                    { key: 'STAGE_S_H' as const, label: 'S+H · Link + Ask' },
-                    { key: 'STAGE_I' as const, label: 'I · Gap' },
-                    { key: 'STAGE_F' as const, label: 'F · Micro-Win' },
-                    { key: 'STAGE_T' as const, label: 'T · Offer Doc' },
-                    { key: 'DAY_2' as const, label: 'Day 2' },
-                    { key: 'DAY_5' as const, label: 'Day 5' },
-                    { key: 'DAY_12' as const, label: 'Day 12' },
-                    { key: 'DAY_30' as const, label: 'Day 30' }
-                  ].map(chip => (
-                    <button
-                      key={chip.key}
-                      type="button"
-                      onClick={() => handleInsertPlaybookScript(chip.key)}
-                      className="px-2 py-1 rounded-md bg-white/[0.05] hover:bg-[#09ADEF]/20 border border-white/10 hover:border-[#09ADEF]/40 text-[10px] font-semibold text-neutral-200 whitespace-nowrap cursor-pointer transition"
-                    >
-                      {chip.label}
-                    </button>
-                  ))}
+                  )}
+                  <button
+                    type="submit"
+                    className="btn-2mm px-4 py-2 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{editingMagnetId ? 'Update Trigger' : 'Save Keyword Trigger'}</span>
+                  </button>
                 </div>
-
-                <form onSubmit={handleSendMessage} className="space-y-2">
-                  <textarea
-                    rows={2}
-                    value={composerText}
-                    onChange={e => setComposerText(e.target.value)}
-                    placeholder={`Message @${activeThread.prospectHandle}...`}
-                    className="w-full rounded-xl bg-[#0B0E17] border border-white/15 p-2.5 text-xs text-white focus:border-[#09ADEF] focus:outline-none leading-relaxed"
-                  />
-
-                  <div className="flex items-center justify-between gap-2">
-                    <select
-                      value={scheduleOption}
-                      onChange={e =>
-                        setScheduleOption(
-                          e.target.value as 'NOW' | 'DAY_2' | 'DAY_5' | 'DAY_12' | 'DAY_30'
-                        )
-                      }
-                      className="rounded-lg bg-[#0B0E17] border border-white/15 px-2.5 py-1.5 text-xs text-neutral-200 focus:border-[#09ADEF] focus:outline-none"
-                    >
-                      <option value="NOW">Send Now</option>
-                      <option value="DAY_2">Schedule · Day 2 (+48h)</option>
-                      <option value="DAY_5">Schedule · Day 5 (+5d)</option>
-                      <option value="DAY_12">Schedule · Day 12 (+12d)</option>
-                      <option value="DAY_30">Schedule · Day 30 (+30d)</option>
-                    </select>
-
-                    <div className="flex items-center gap-2">
-                      {composerText && (
-                        <button
-                          type="button"
-                          onClick={() => handleCopy('composer-copy', composerText)}
-                          className="px-2.5 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-xs text-neutral-300 inline-flex items-center gap-1 cursor-pointer"
-                        >
-                          {copiedId === 'composer-copy' ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-400" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                          <span>{copiedId === 'composer-copy' ? 'Copied' : 'Copy'}</span>
-                        </button>
-                      )}
-
-                      <button
-                        type="submit"
-                        disabled={isSending || !composerText.trim()}
-                        className="btn-2mm px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        <span>{scheduleOption === 'NOW' ? 'Send' : 'Schedule'}</span>
-                      </button>
-                    </div>
-                  </div>
-                </form>
               </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Outstand.so API, Instagram & Facebook Connection Modal */}
-      <ModalDialog
-        isOpen={showConfigModal}
-        onClose={() => setShowConfigModal(false)}
-        title="Outstand.so API · Connect Instagram & Facebook Accounts"
-        maxWidthClass="max-w-3xl"
-      >
-        <form onSubmit={handleSaveConfigModal} className="space-y-4 text-xs">
-          {/* Step 1: Webhook URL */}
-          <div className="p-3.5 rounded-xl bg-[#09ADEF]/10 border border-[#09ADEF]/30 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#09ADEF]">
-                1. YOUR LIVE OUTSTAND WEBHOOK RECEIVER URL
-              </span>
-              <button
-                type="button"
-                onClick={() => handleCopy('webhook-url', webhookEndpointUrl)}
-                className="px-2.5 py-1 rounded-lg bg-[#09ADEF]/20 hover:bg-[#09ADEF]/30 text-[10px] font-bold text-white inline-flex items-center gap-1 cursor-pointer"
-              >
-                {copiedId === 'webhook-url' ? (
-                  <>
-                    <Check className="w-3 h-3 text-emerald-300" />
-                    <span>Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3 h-3" />
-                    <span>Copy Webhook URL</span>
-                  </>
-                )}
-              </button>
-            </div>
-            <div className="p-2.5 rounded-lg bg-[#04060A] border border-white/10 font-mono text-[11px] text-emerald-300 break-all">
-              {webhookEndpointUrl}
-            </div>
-            <p className="text-[11px] text-neutral-300 leading-relaxed">
-              Paste this URL in your Outstand.so dashboard under <strong>Webhooks</strong> and
-              subscribe to <code className="text-white">comment.received</code> and{' '}
-              <code className="text-white">message.received</code>.
-            </p>
+            </form>
           </div>
 
-          {/* Pending OAuth Session Finalizer (when redirected back with ?session=TOKEN) */}
-          {pendingSessionToken && (
-            <div className="p-3.5 rounded-xl bg-emerald-500/12 border border-emerald-400/40 space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="font-bold text-emerald-200 uppercase tracking-wider text-[11px]">
-                  Pending Meta OAuth Connection Detected — Select Pages to Finalize
+          {/* STEP 3: TEST YOUR KEYWORD TRIGGER */}
+          <div className="glass-panel rounded-xl p-5 border border-white/10 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span
+                  className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
+                    outstandConfig.triggerTestedAt
+                      ? 'bg-emerald-500 text-slate-950'
+                      : 'bg-[#09ADEF] text-white'
+                  }`}
+                >
+                  {outstandConfig.triggerTestedAt ? '✓' : '3'}
+                </span>
+                <div>
+                  <h2 className="text-sm font-bold text-white">Test Your Keyword Trigger</h2>
+                  <p className="text-xs text-neutral-400">
+                    Fire a test comment to confirm your Lead Magnet URL is sent and appears in your
+                    DM Inbox.
+                  </p>
+                </div>
+              </div>
+              {outstandConfig.triggerTestedAt && (
+                <span className="text-xs font-semibold text-emerald-400">✓ Verified</span>
+              )}
+            </div>
+
+            <form
+              onSubmit={handleTestKeywordTrigger}
+              className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2.5 pt-1"
+            >
+              <div className="sm:w-36">
+                <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                  Account
+                </label>
+                <select
+                  value={testPlatform}
+                  onChange={e => setTestPlatform(e.target.value as 'instagram' | 'facebook')}
+                  className="w-full rounded-lg bg-[#0B0E15] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
+                >
+                  <option value="instagram">Instagram</option>
+                  <option value="facebook">Facebook</option>
+                </select>
+              </div>
+
+              <div className="sm:w-44">
+                <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                  Keyword to Test
+                </label>
+                <select
+                  value={testKeyword}
+                  onChange={e => setTestKeyword(e.target.value)}
+                  className="w-full rounded-lg bg-[#0B0E15] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
+                >
+                  {student.shiftMagnets.map(m => (
+                    <option key={m.id} value={m.keywordTrigger}>
+                      {m.keywordTrigger} ({m.workingTitle.slice(0, 18)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex-1">
+                <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                  Test Prospect @Handle
+                </label>
+                <input
+                  type="text"
+                  value={testHandle}
+                  onChange={e => setTestHandle(e.target.value)}
+                  placeholder="alex_founder"
+                  className="w-full rounded-lg bg-[#0B0E15] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isTestingTrigger}
+                className="btn-2mm px-4 py-2 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>{isTestingTrigger ? 'Testing...' : 'Test Keyword Trigger'}</span>
+              </button>
+            </form>
+
+            {lastTestedResult && (
+              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-xs text-emerald-200">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{lastTestedResult}</span>
                 </div>
                 <button
                   type="button"
-                  onClick={handleFinalizePendingSession}
-                  disabled={isFinalizingSession}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-500 text-slate-950 font-bold text-[11px] uppercase tracking-wider cursor-pointer"
+                  onClick={() => setActiveView('INBOX')}
+                  className="px-3.5 py-1.5 rounded-lg bg-emerald-500 text-slate-950 font-bold text-xs inline-flex items-center gap-1.5 shrink-0 cursor-pointer"
                 >
-                  {isFinalizingSession ? 'Finalizing...' : 'Finalize Connection'}
+                  <span>Open Conversations</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
-              </div>
-              {pendingPages.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {pendingPages.map(page => {
-                    const checked = selectedPendingPageIds.includes(page.id);
-                    return (
-                      <label
-                        key={page.id}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#05080F] border border-white/15 text-white cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={e => {
-                            if (e.target.checked) {
-                              setSelectedPendingPageIds(prev => [...prev, page.id]);
-                            } else {
-                              setSelectedPendingPageIds(prev => prev.filter(id => id !== page.id));
-                            }
-                          }}
-                          className="accent-emerald-400"
-                        />
-                        <span>
-                          {page.name || page.username || page.id} ({page.network || 'Page'})
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Step 2: Outstand API Key + Sync Button */}
-          <div className="p-3.5 rounded-xl bg-[#05080F] border border-white/10 space-y-2.5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <label className="font-bold uppercase tracking-wider text-[10px] text-neutral-300">
-                2. OUTSTAND API KEY (OPTIONAL IF SET IN VERCEL ENVIRONMENT)
-              </label>
-              <button
-                type="button"
-                onClick={() => handleFetchOutstandAccounts()}
-                disabled={isCheckingAccounts}
-                className="px-2.5 py-1 rounded-lg bg-[#09ADEF]/15 hover:bg-[#09ADEF]/25 border border-[#09ADEF]/35 text-[10px] font-bold uppercase tracking-wider text-[#09ADEF] inline-flex items-center gap-1.5 cursor-pointer"
-              >
-                <RefreshCw className={`w-3 h-3 ${isCheckingAccounts ? 'animate-spin' : ''}`} />
-                <span>Sync Connected Accounts from Outstand API</span>
-              </button>
-            </div>
-
-            <input
-              type="password"
-              value={cfgApiKey}
-              onChange={e => setCfgApiKey(e.target.value)}
-              placeholder="out_live_..."
-              className="w-full rounded-xl bg-[#0B0D14] border border-white/12 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none font-mono"
-            />
-
-            {fetchedAccounts.length > 0 && (
-              <div className="pt-1 space-y-1.5">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">
-                  Connected Accounts Found in Outstand ({fetchedAccounts.length}) — Click to Assign:
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {fetchedAccounts.map(acc => {
-                    const isFb = (acc.network || '').toLowerCase() === 'facebook';
-                    return (
-                      <button
-                        key={acc.id}
-                        type="button"
-                        onClick={() => {
-                          if (isFb) {
-                            setCfgFbAccountId(acc.id);
-                            if (acc.name || acc.username) {
-                              setCfgFbPageName(acc.name || acc.username || '');
-                            }
-                          } else {
-                            setCfgIgAccountId(acc.id);
-                            setCfgSocialAccountId(acc.id);
-                            if (acc.username) setCfgIgHandle(acc.username.replace(/^@/, ''));
-                          }
-                        }}
-                        className={`px-2.5 py-1 rounded-lg border text-[10px] font-semibold cursor-pointer ${
-                          isFb
-                            ? 'bg-blue-500/15 hover:bg-blue-500/25 border-blue-400/35 text-blue-200'
-                            : 'bg-pink-500/15 hover:bg-pink-500/25 border-pink-400/35 text-pink-200'
-                        }`}
-                      >
-                        [{isFb ? 'FB' : 'IG'}] {acc.name || (acc.username ? `@${acc.username}` : acc.id)}
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
             )}
           </div>
+        </div>
+      )}
 
-          {/* Step 3: Connect Instagram & Connect Facebook Page Side-by-Side */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Instagram Connection Box */}
-            <div className="p-3.5 rounded-xl bg-[#070A12] border border-pink-500/30 space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-pink-500/20 border border-pink-400/40 text-[10px] font-bold text-pink-300">
-                    INSTAGRAM
-                  </span>
-                  <span className="font-bold text-white">Instagram Business / Creator</span>
-                </div>
+      {/* VIEW 2: MINIMAL CONVERSATIONS INBOX */}
+      {activeView === 'INBOX' && (
+        <div className="space-y-3">
+          {/* Compact Stage Filter + Search Row */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+              {[
+                { id: 'ALL' as const, label: `All (${threads.length})` },
+                {
+                  id: 'STAGE_S' as const,
+                  label: `Sent Link (${threads.filter(t => t.stage === 'STAGE_S').length})`
+                },
+                {
+                  id: 'STAGE_H' as const,
+                  label: `Replied (${threads.filter(t => t.stage === 'STAGE_H').length})`
+                },
+                {
+                  id: 'STAGE_I' as const,
+                  label: `Diagnosing (${
+                    threads.filter(t => t.stage === 'STAGE_I' || t.stage === 'STAGE_F').length
+                  })`
+                },
+                {
+                  id: 'STAGE_T' as const,
+                  label: `Offer Sent (${threads.filter(t => t.stage === 'STAGE_T').length})`
+                },
+                {
+                  id: 'LOOPS' as const,
+                  label: `Follow-Up (${
+                    threads.filter(t => t.stage.startsWith('LOOP_') || t.scheduledFollowup).length
+                  })`
+                },
+                {
+                  id: 'CLOSED_WON' as const,
+                  label: `Won (${threads.filter(t => t.stage === 'CLOSED_WON').length})`
+                }
+              ].map(pill => (
                 <button
+                  key={pill.id}
                   type="button"
-                  onClick={() => handleConnectSocialNetwork('instagram')}
-                  disabled={connectingNetwork === 'instagram'}
-                  className="px-2.5 py-1 rounded-lg bg-pink-500/20 hover:bg-pink-500/30 border border-pink-400/40 text-[10px] font-bold text-pink-200 inline-flex items-center gap-1 cursor-pointer"
+                  onClick={() => setStageFilter(pill.id)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap border cursor-pointer transition ${
+                    stageFilter === pill.id
+                      ? 'bg-[#09ADEF] text-white border-[#09ADEF]'
+                      : 'bg-[#07090D] text-neutral-400 border-white/10 hover:text-white'
+                  }`}
                 >
-                  <ExternalLink className="w-3 h-3" />
-                  <span>
-                    {connectingNetwork === 'instagram' ? 'Opening...' : '1-Click OAuth'}
-                  </span>
+                  {pill.label}
                 </button>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-neutral-300 mb-1">
-                  Instagram Handle (@username)
-                </label>
-                <input
-                  type="text"
-                  value={cfgIgHandle}
-                  onChange={e => setCfgIgHandle(e.target.value)}
-                  placeholder="yourhandle"
-                  className="w-full rounded-xl bg-[#0B0D14] border border-white/12 p-2 text-white focus:border-pink-400 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-neutral-300 mb-1">
-                  Instagram Outstand Account ID (<code className="text-pink-300">acc_...</code>)
-                </label>
-                <input
-                  type="text"
-                  value={cfgIgAccountId}
-                  onChange={e => {
-                    setCfgIgAccountId(e.target.value);
-                    setCfgSocialAccountId(e.target.value);
-                  }}
-                  placeholder="acc_ig_..."
-                  className="w-full rounded-xl bg-[#0B0D14] border border-white/12 p-2 text-white font-mono focus:border-pink-400 focus:outline-none"
-                />
-              </div>
+              ))}
             </div>
 
-            {/* Facebook Page Connection Box */}
-            <div className="p-3.5 rounded-xl bg-[#070A12] border border-blue-500/30 space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-blue-500/20 border border-blue-400/40 text-[10px] font-bold text-blue-300">
-                    FACEBOOK
-                  </span>
-                  <span className="font-bold text-white">Facebook Page &amp; Messenger</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleConnectSocialNetwork('facebook')}
-                  disabled={connectingNetwork === 'facebook'}
-                  className="px-2.5 py-1 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/40 text-[10px] font-bold text-blue-200 inline-flex items-center gap-1 cursor-pointer"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  <span>
-                    {connectingNetwork === 'facebook' ? 'Opening...' : '1-Click OAuth'}
-                  </span>
-                </button>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-neutral-300 mb-1">
-                  Facebook Page Name
-                </label>
-                <input
-                  type="text"
-                  value={cfgFbPageName}
-                  onChange={e => setCfgFbPageName(e.target.value)}
-                  placeholder="Your Coaching Page"
-                  className="w-full rounded-xl bg-[#0B0D14] border border-white/12 p-2 text-white focus:border-blue-400 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-neutral-300 mb-1">
-                  Facebook Outstand Account ID (<code className="text-blue-300">acc_...</code>)
-                </label>
-                <input
-                  type="text"
-                  value={cfgFbAccountId}
-                  onChange={e => setCfgFbAccountId(e.target.value)}
-                  placeholder="acc_fb_..."
-                  className="w-full rounded-xl bg-[#0B0D14] border border-white/12 p-2 text-white font-mono focus:border-blue-400 focus:outline-none"
-                />
-              </div>
+            <div className="relative w-full sm:w-52">
+              <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search @handle..."
+                className="w-full rounded-lg bg-[#07090D] border border-white/10 pl-8 pr-2.5 py-1.5 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
+              />
             </div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-[#05080F] border border-white/10 space-y-2.5">
-            <label className="flex items-start gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={cfgAutoTrigger}
-                onChange={e => setCfgAutoTrigger(e.target.checked)}
-                className="mt-0.5 accent-[#09ADEF]"
-              />
-              <div>
-                <div className="font-bold text-white">
-                  Auto-Fire Comment-to-DM Private Reply on Keyword Match (Instagram &amp; Facebook)
-                </div>
-                <div className="text-[11px] text-neutral-400">
-                  Automatically calls Outstand <code className="text-neutral-200">POST /v1/conversations</code>{' '}
-                  with <code className="text-neutral-200">comment_id</code> whenever an Instagram or
-                  Facebook comment contains any of your Shift Magnet keywords.
-                </div>
-              </div>
-            </label>
+          {/* Split-Pane Inbox */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+            {/* Left: Conversations List */}
+            <div className="lg:col-span-4 glass-panel rounded-xl border border-white/10 overflow-hidden divide-y divide-white/[0.06]">
+              <div className="max-h-[600px] overflow-y-auto divide-y divide-white/[0.06]">
+                {filteredThreads.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-neutral-400">
+                    No conversations match this filter.
+                  </div>
+                ) : (
+                  filteredThreads.map(thread => {
+                    const isSelected = activeThread?.id === thread.id;
+                    const stageMeta = STAGE_METADATA[thread.stage] || STAGE_METADATA.STAGE_S;
+                    const lastMsg = thread.messages[thread.messages.length - 1];
 
-            <label className="flex items-start gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={cfgCombineSH}
-                onChange={e => setCfgCombineSH(e.target.checked)}
-                className="mt-0.5 accent-[#09ADEF]"
-              />
-              <div>
-                <div className="font-bold text-white">
-                  Combine Stage S (Link) + Stage H (A/B/C Question) in First Private Reply (Recommended)
-                </div>
-                <div className="text-[11px] text-neutral-400">
-                  Meta allows only <strong>1 Private Reply per comment</strong> on Instagram &amp;
-                  Facebook until the prospect responds. Combining Stage S + Stage H ensures they get
-                  the link AND the easy A/B/C reply trigger in one message.
-                </div>
-              </div>
-            </label>
-          </div>
+                    return (
+                      <div
+                        key={thread.id}
+                        onClick={() => setSelectedThreadId(thread.id)}
+                        className={`p-3 cursor-pointer transition ${
+                          isSelected
+                            ? 'bg-[#09ADEF]/[0.12] border-l-2 border-l-[#09ADEF]'
+                            : 'hover:bg-white/[0.03]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="px-1.5 py-0.5 rounded bg-white/[0.07] text-[9px] font-bold uppercase text-neutral-300 shrink-0">
+                              {thread.platform === 'facebook' ? 'FB' : 'IG'}
+                            </span>
+                            <span className="text-xs font-bold text-white truncate">
+                              {thread.prospectName}
+                            </span>
+                          </div>
 
-          <div className="pt-2 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setShowConfigModal(false)}
-              className="rounded-xl border border-white/12 px-4 py-2.5 font-medium text-neutral-300 cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn-2mm rounded-xl font-bold uppercase tracking-wider px-5 py-2.5 cursor-pointer"
-            >
-              Save Instagram &amp; Facebook Configuration
-            </button>
+                          <span
+                            className={`px-1.5 py-0.5 rounded border text-[9px] font-semibold shrink-0 ${stageMeta.badgeClass}`}
+                          >
+                            {stageMeta.short}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 mt-1">
+                          <span className="text-[11px] text-neutral-400 font-mono truncate">
+                            @{thread.prospectHandle} · {thread.matchedKeyword}
+                          </span>
+                        </div>
+
+                        {lastMsg && (
+                          <p className="text-[11px] text-neutral-400 truncate mt-1">
+                            {lastMsg.direction === 'inbound_comment'
+                              ? `Commented: "${lastMsg.text}"`
+                              : lastMsg.direction === 'inbound_dm'
+                              ? lastMsg.text
+                              : `You: ${lastMsg.text}`}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Right: Active Chat & Stage Tracker */}
+            <div className="lg:col-span-8 glass-panel rounded-xl border border-white/10 overflow-hidden flex flex-col">
+              {!activeThread ? (
+                <div className="p-10 text-center text-sm text-neutral-400">
+                  Select a conversation on the left.
+                </div>
+              ) : (
+                <>
+                  {/* Slim Conversation Header */}
+                  <div className="px-4 py-3 bg-[#05070B] border-b border-white/[0.08] flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-white">
+                        {activeThread.prospectName}
+                      </span>
+                      <span className="text-xs font-mono text-[#09ADEF]">
+                        @{activeThread.prospectHandle}
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-white/[0.06] text-[10px] font-mono text-neutral-300">
+                        {activeThread.matchedKeyword}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={activeThread.stage}
+                        onChange={e =>
+                          handleStageChange(activeThread.id, e.target.value as ShiftCrmStage)
+                        }
+                        className="rounded-lg bg-[#0B0E15] border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-white focus:border-[#09ADEF] focus:outline-none"
+                      >
+                        {Object.entries(STAGE_METADATA).map(([key, meta]) => (
+                          <option key={key} value={key}>
+                            {meta.label}
+                          </option>
+                        ))}
+                      </select>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteThread(activeThread.id)}
+                        className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-rose-500/15 border border-white/10 text-neutral-400 hover:text-rose-300 cursor-pointer"
+                        title="Delete conversation"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Messages */}
+                  <div className="p-4 space-y-3 h-[400px] overflow-y-auto bg-[#030508]">
+                    {activeThread.messages.map(msg => {
+                      const isComment = msg.direction === 'inbound_comment';
+                      const isInbound = msg.direction === 'inbound_dm';
+                      const isScheduled = msg.deliveryStatus === 'scheduled';
+
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`flex flex-col ${
+                            isComment || isInbound ? 'items-start' : 'items-end'
+                          }`}
+                        >
+                          <div
+                            className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed whitespace-pre-wrap ${
+                              isComment
+                                ? 'bg-white/[0.06] border border-white/15 text-neutral-200'
+                                : isInbound
+                                ? 'bg-[#0E131D] border border-white/12 text-white'
+                                : isScheduled
+                                ? 'bg-[#09ADEF]/10 border border-[#09ADEF]/30 text-neutral-200'
+                                : 'bg-[#09ADEF]/20 border border-[#09ADEF]/40 text-white'
+                            }`}
+                          >
+                            {isComment && (
+                              <div className="text-[10px] font-semibold text-[#09ADEF] mb-1">
+                                Commented Keyword: {activeThread.matchedKeyword}
+                              </div>
+                            )}
+                            {msg.text}
+                          </div>
+
+                          <div className="text-[10px] text-neutral-500 mt-1 px-1">
+                            {isScheduled && msg.scheduledFor
+                              ? `Scheduled for ${new Date(msg.scheduledFor).toLocaleDateString()}`
+                              : new Date(msg.createdAt).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {activeThread.scheduledFollowup && (
+                      <div className="px-3 py-2 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-between gap-2 text-xs text-neutral-300">
+                        <span>
+                          Follow-up scheduled for{' '}
+                          {new Date(
+                            activeThread.scheduledFollowup.scheduledAt
+                          ).toLocaleDateString()}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCancelScheduled(activeThread)}
+                          className="text-[10px] font-bold uppercase text-rose-300 hover:underline cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quick Script Chips + Reply Input */}
+                  <div className="p-3 bg-[#06090F] border-t border-white/[0.08] space-y-2">
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+                      {[
+                        { key: 'STAGE_S_H' as const, label: 'Send Link + A/B/C' },
+                        { key: 'STAGE_I' as const, label: 'Diagnose Gap' },
+                        { key: 'STAGE_F' as const, label: 'Check Micro-Win' },
+                        { key: 'STAGE_T' as const, label: 'Offer Doc Invite' },
+                        { key: 'DAY_2' as const, label: 'Day 2 Follow-Up' },
+                        { key: 'DAY_5' as const, label: 'Day 5' },
+                        { key: 'DAY_12' as const, label: 'Day 12' },
+                        { key: 'DAY_30' as const, label: 'Day 30' }
+                      ].map(chip => (
+                        <button
+                          key={chip.key}
+                          type="button"
+                          onClick={() => handleInsertPlaybookScript(chip.key)}
+                          className="px-2.5 py-1 rounded-md bg-white/[0.05] hover:bg-[#09ADEF]/20 border border-white/10 hover:border-[#09ADEF]/40 text-[11px] font-medium text-neutral-200 whitespace-nowrap cursor-pointer transition"
+                        >
+                          {chip.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <form onSubmit={handleSendMessage} className="space-y-2">
+                      <textarea
+                        rows={2}
+                        value={composerText}
+                        onChange={e => setComposerText(e.target.value)}
+                        placeholder={`Reply to @${activeThread.prospectHandle}...`}
+                        className="w-full rounded-xl bg-[#0B0E17] border border-white/15 p-2.5 text-xs text-white focus:border-[#09ADEF] focus:outline-none leading-relaxed"
+                      />
+
+                      <div className="flex items-center justify-between gap-2">
+                        <select
+                          value={scheduleOption}
+                          onChange={e =>
+                            setScheduleOption(
+                              e.target.value as 'NOW' | 'DAY_2' | 'DAY_5' | 'DAY_12' | 'DAY_30'
+                            )
+                          }
+                          className="rounded-lg bg-[#0B0E17] border border-white/15 px-2.5 py-1.5 text-xs text-neutral-200 focus:border-[#09ADEF] focus:outline-none"
+                        >
+                          <option value="NOW">Send Now</option>
+                          <option value="DAY_2">Schedule · Day 2</option>
+                          <option value="DAY_5">Schedule · Day 5</option>
+                          <option value="DAY_12">Schedule · Day 12</option>
+                          <option value="DAY_30">Schedule · Day 30</option>
+                        </select>
+
+                        <div className="flex items-center gap-2">
+                          {composerText && (
+                            <button
+                              type="button"
+                              onClick={() => handleCopy('composer-copy', composerText)}
+                              className="px-2.5 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-xs text-neutral-300 inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              {copiedId === 'composer-copy' ? (
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                              <span>{copiedId === 'composer-copy' ? 'Copied' : 'Copy'}</span>
+                            </button>
+                          )}
+
+                          <button
+                            type="submit"
+                            disabled={isSending || !composerText.trim()}
+                            className="btn-2mm px-4 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            <span>{scheduleOption === 'NOW' ? 'Send' : 'Schedule'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-        </form>
-      </ModalDialog>
+        </div>
+      )}
     </div>
   );
 };
