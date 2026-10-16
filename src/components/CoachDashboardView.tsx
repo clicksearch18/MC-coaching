@@ -1772,7 +1772,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                                 className="rounded accent-[#09ADEF] w-4 h-4"
                               />
                               <span className="text-xs text-white font-medium">
-                                Append Coach Feedback to Cohort Group Thread & notify students so the group can study & discuss
+                                Append Coach Feedback to Discussion Thread & notify students so everyone can study & discuss
                               </span>
                             </label>
 
@@ -1798,7 +1798,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                                   );
                                   setSaveBanner(
                                     `Sent "${draftStatus}" review & notes for ${item.badge} to ${item.studentName}${
-                                      shouldAppend ? ' and appended to Cohort Group Thread!' : '!'
+                                      shouldAppend ? ' and appended to Discussion Thread!' : '!'
                                     }`
                                   );
                                   setTimeout(() => setSaveBanner(null), 4000);

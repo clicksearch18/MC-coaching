@@ -587,7 +587,7 @@ export function App() {
     [scheduleSingleStudentSync]
   );
 
-  // Broadcast a Cohort Group notification into all students' inboxes so every operator gets notified
+  // Broadcast a Discussion notification into all students' inboxes so every student gets notified
   const broadcastCohortGroupNotification = useCallback(
     (params: {
       excludeStudentId?: string;
@@ -608,14 +608,14 @@ export function App() {
           const notifMsg: ChatMessage = {
             id: `msg-group-${Date.now()}-${st.id}`,
             senderRole: 'SYSTEM',
-            senderName: `Cohort Group · ${params.senderName}`,
+            senderName: `Discussion · ${params.senderName}`,
             text: params.text,
             timestamp: formattedTime,
             relatedVideoTitle: params.relatedVideoTitle,
             readByStudent: isActor,
             readByCoach: authSession.role === 'ADMIN',
             actionTarget: {
-              label: params.actionLabel || 'Open Group Thread',
+              label: params.actionLabel || 'Open Discussion Thread',
               tab: 'GROUP',
               groupPostId: params.groupPostId
             }
@@ -844,7 +844,7 @@ export function App() {
           title,
           body:
             params.note ||
-            `${st.name} shared a verified video output (${badge}) with the cohort for peer learning and Coach feedback breakdown.`,
+            `${st.name} shared a verified video output (${badge}) for peer learning and Coach feedback breakdown.`,
           timestamp: formattedStamp,
           createdAtISO: new Date().toISOString(),
           studentId: st.id,
@@ -872,12 +872,12 @@ export function App() {
         broadcastCohortGroupNotification({
           excludeStudentId: st.id,
           senderName: st.name,
-          text: `🎬 ${st.name} posted a new video to the Cohort Group: "${title}"${
+          text: `🎬 ${st.name} posted a new video to Discussion: "${title}"${
             params.note ? ` — "${params.note}"` : ''
           }. Watch & learn from their output!`,
           relatedVideoTitle: title,
           groupPostId: deterministicPostId,
-          actionLabel: 'Watch & Discuss in Group'
+          actionLabel: 'Watch & Discuss'
         });
       }
 
@@ -921,10 +921,10 @@ export function App() {
       }));
 
       triggerWebPushAndBanner(
-        'Video Shared to Cohort Group!',
+        'Video Shared to Discussion!',
         params.notifyCohort
-          ? `Your video is live in the Group Feed and all ${students.length} cohort operators have been notified.`
-          : 'Your video has been posted to the Cohort Group Feed.',
+          ? `Your video is live in Discussion and all ${students.length} students have been notified.`
+          : 'Your video has been posted to Discussion.',
         'DAILY_LESSON'
       );
     },
@@ -966,7 +966,7 @@ export function App() {
         text: wasAlreadyDone
           ? `↻ Resubmitted updated link for ${videoLabel} — ${videoUrl}`
           : `🎬 Submitted verified link for ${videoLabel}${
-              shouldShareToGroup ? ' (Shared to Cohort Group)' : ''
+              shouldShareToGroup ? ' (Shared to Discussion)' : ''
             } — ${videoUrl}`,
         timestamp: formattedTime,
         relatedVideoTitle: videoLabel,
@@ -1022,12 +1022,12 @@ export function App() {
       wasResubmission
         ? 'Revised Video Link Sent to Coach!'
         : shouldShareToGroup
-        ? 'Video Verified & Shared to Cohort Group!'
+        ? 'Video Verified & Shared to Discussion!'
         : 'Daily Video Link Verified!',
       wasResubmission
         ? `Your updated link (${videoUrl}) is back in Coach Josh's Review Queue.`
         : shouldShareToGroup
-        ? `Posted to the Cohort Group Feed (notified all students) + queued for Coach Josh's review! Streak: ${nextStreak}d.`
+        ? `Posted to Discussion (notified all students) + queued for Coach Josh's review! Streak: ${nextStreak}d.`
         : `Your social link (${videoUrl}) has been queued for Coach Review and your streak is now ${nextStreak} days.`,
       'DAILY_LESSON'
     );
@@ -1158,10 +1158,10 @@ export function App() {
     if (status === 'Completed' && url) {
       triggerWebPushAndBanner(
         shouldShareCore
-          ? 'Core Video Submitted & Shared to Cohort Group!'
+          ? 'Core Video Submitted & Shared to Discussion!'
           : 'Core Brand Video Submitted!',
         shouldShareCore
-          ? `Your Core Brand Video (${url}) is live in the Cohort Group Feed and queued for Coach Review.`
+          ? `Your Core Brand Video (${url}) is live in Discussion and queued for Coach Review.`
           : `Your Core Brand Video link (${url}) has been queued for Coach Review.`,
         'DAILY_LESSON'
       );
@@ -1231,7 +1231,7 @@ export function App() {
         senderRole: 'COACH',
         senderName: 'Coach Josh Beechraft',
         text: `[${statusPrefix}] ${videoLabel}${feedback ? ` — "${feedback}"` : ''}${
-          appendToGroupThread ? ' (Also appended to Cohort Group Thread for discussion)' : ''
+          appendToGroupThread ? ' (Also appended to Discussion Thread)' : ''
         }`,
         timestamp: reviewedTime,
         relatedVideoTitle: videoLabel,
@@ -1240,7 +1240,7 @@ export function App() {
         readByStudent: false,
         actionTarget: appendToGroupThread
           ? {
-              label: 'View Breakdown in Group Thread',
+              label: 'View Breakdown in Discussion',
               tab: 'GROUP',
               groupPostId: deterministicPostId
             }
@@ -1269,7 +1269,7 @@ export function App() {
 
     const recipient = latestStudentsRef.current.find(s => s.id === studentId);
 
-    // Append Coach Josh's feedback to the Cohort Group thread (and create the thread if appendToGroupThread is enabled)
+    // Append Coach Josh's feedback to the Discussion thread (and create the thread if appendToGroupThread is enabled)
     if (recipient) {
       const existingThread = groupPosts.find(
         p =>
@@ -1326,7 +1326,7 @@ export function App() {
           senderName: 'Coach Josh Beechraft',
           text: `💬 Coach Josh appended feedback on ${recipient.name}’s video (${resolvedVideoLabel}): "${
             feedback || reviewStatus
-          }" — Jump into the thread to discuss!`,
+          }" — Jump into Discussion to read & reply!`,
           relatedVideoTitle: resolvedVideoLabel,
           groupPostId: existingThread?.id || deterministicPostId,
           actionLabel: 'Read Feedback & Discuss'
@@ -1335,13 +1335,13 @@ export function App() {
     }
 
     triggerWebPushAndBanner(
-      `Review Sent & Appended to Group (${reviewStatus})`,
-      feedback || `Marked video as ${reviewStatus} and updated Cohort Group Thread.`,
+      `Review Sent & Appended to Discussion (${reviewStatus})`,
+      feedback || `Marked video as ${reviewStatus} and updated Discussion Thread.`,
       reviewStatus === 'Needs Revision' ? 'MISSED_ALERT' : 'COACH_NUDGE'
     );
   };
 
-  // Cohort Group Discussion Handlers
+  // Discussion Handlers
   const handleCreateGeneralGroupPost = (params: {
     title: string;
     body: string;
@@ -1388,7 +1388,7 @@ export function App() {
       broadcastCohortGroupNotification({
         excludeStudentId: isCoach ? undefined : currentStudent.id,
         senderName: authorName,
-        text: `💬 ${authorName} started a new Cohort Discussion: "${params.title}"`,
+        text: `💬 ${authorName} started a new Discussion: "${params.title}"`,
         groupPostId: newPostId,
         actionLabel: 'Join Discussion'
       });
@@ -1397,8 +1397,8 @@ export function App() {
     triggerWebPushAndBanner(
       'Discussion Thread Posted!',
       params.notifyCohort
-        ? `"${params.title}" is live in the Cohort Group Room and all students have been notified.`
-        : `"${params.title}" is now live in the Cohort Group Room.`,
+        ? `"${params.title}" is live in Discussion and all students have been notified.`
+        : `"${params.title}" is now live in Discussion.`,
       'DAILY_LESSON'
     );
   };
@@ -2097,7 +2097,7 @@ export function App() {
 
   const allNavItems = [
     { id: 'CADENCE' as const, label: 'Studio', shortLabel: 'Studio', icon: Video, role: 'STUDENT' as const },
-    { id: 'GROUP' as const, label: `Cohort Group (${groupPosts.length})`, shortLabel: 'Group', icon: Users, role: 'STUDENT' as const },
+    { id: 'GROUP' as const, label: `Discussion (${groupPosts.length})`, shortLabel: 'Discussion', icon: Users, role: 'STUDENT' as const },
     { id: 'WORKBOOK' as const, label: 'Lessons 1–26', shortLabel: 'Lessons', icon: BookOpen, role: 'STUDENT' as const },
     { id: 'MAGNETS' as const, label: 'Shift Magnets', shortLabel: 'Magnets', icon: Magnet, role: 'STUDENT' as const },
     { id: 'COACH' as const, label: 'Admin', shortLabel: 'Admin', icon: UserCheck, role: 'COACH' as const }

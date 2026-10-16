@@ -72,7 +72,7 @@ const CATEGORY_LABELS: Record<GroupDiscussionCategory, { label: string; color: s
     color: 'bg-purple-500/15 text-purple-300 border-purple-500/35'
   },
   WINS: {
-    label: '🏆 Cohort Win',
+    label: '🏆 Student Win',
     color: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/35'
   },
   GENERAL: {
@@ -82,7 +82,7 @@ const CATEGORY_LABELS: Record<GroupDiscussionCategory, { label: string; color: s
 };
 
 const QUICK_COACH_FEEDBACK_PRESETS = [
-  'Strong hook & delivery — approved! Great example for the cohort of punching in on Take 1.',
+  'Strong hook & delivery — approved! Great example of punching in on Take 1.',
   'Great energy! Notice how clean the transition into Take 2 is. Tighten the first 3 seconds slightly next time.',
   'Solid belief shift in Take 3 & 4 — make sure to verbally call out the Shift Magnet keyword at the end.',
   'Pacing and camera framing are spot on — ready for your $5/day Andromeda boost.'
@@ -321,13 +321,13 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
           <div>
             <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#09ADEF]/12 border border-[#09ADEF]/30 text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
               <Users className="w-3.5 h-3.5" />
-              <span>COHORT COMMUNITY · PEER VIDEO BREAKDOWNS & DISCUSSION</span>
+              <span>DISCUSSION · VIDEO OUTPUTS, COACH FEEDBACK & THREADS</span>
             </div>
             <h1 className="font-display text-2xl sm:text-4xl text-white tracking-wide uppercase mt-2">
-              THE 2MMSHIFT COHORT ROOM
+              DISCUSSION
             </h1>
             <p className="text-xs sm:text-sm text-neutral-300 mt-1 max-w-2xl leading-relaxed">
-              Share your verified videos so every operator gets notified to watch and learn, see Coach Josh’s official feedback automatically appended to each video thread, and jump into open group discussions.
+              Share your verified videos so all students get notified to watch and learn, see Coach Josh’s official feedback automatically appended to each video thread, and jump into open discussions.
             </p>
           </div>
 
@@ -341,7 +341,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
               className="px-3.5 py-2.5 rounded-xl bg-[#09ADEF]/15 hover:bg-[#09ADEF]/25 border border-[#09ADEF]/40 text-xs font-bold uppercase tracking-wider text-[#09ADEF] inline-flex items-center gap-1.5 cursor-pointer transition"
             >
               <Share2 className="w-3.5 h-3.5" />
-              <span>Share Video to Group</span>
+              <span>Share Video to Discussion</span>
             </button>
 
             <button
@@ -358,14 +358,14 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
           </div>
         </div>
 
-        {/* 4-Metric Cohort Activity Row */}
+        {/* 4-Metric Discussion Activity Row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3 border-t border-white/[0.07]">
           <div className="p-3 rounded-xl bg-[#040507] border border-white/[0.06]">
             <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400">
-              COHORT OPERATORS
+              ACTIVE STUDENTS
             </div>
             <div className="font-display text-xl sm:text-2xl text-white mt-0.5">
-              {students.length} ACTIVE
+              {students.length} MEMBERS
             </div>
           </div>
           <div className="p-3 rounded-xl bg-[#040507] border border-white/[0.06]">
@@ -386,7 +386,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
           </div>
           <div className="p-3 rounded-xl bg-[#040507] border border-white/[0.06]">
             <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400">
-              GROUP REPLIES
+              DISCUSSION REPLIES
             </div>
             <div className="font-display text-xl sm:text-2xl text-white mt-0.5">
               {totalCommentsCount} COMMENTS
@@ -395,7 +395,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
         </div>
       </div>
 
-      {/* Drawer 1: Share an Already-Completed Video to Group */}
+      {/* Drawer 1: Share an Already-Completed Video to Discussion */}
       {showShareVideoDrawer && (
         <form
           onSubmit={handleShareSelectedVideoSubmit}
@@ -404,10 +404,10 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
-                POST COMPLETED VIDEO OUTPUT TO COHORT GROUP
+                POST COMPLETED VIDEO OUTPUT TO DISCUSSION
               </div>
               <h2 className="font-display text-xl sm:text-2xl text-white mt-0.5">
-                Share Video Link & Notify Cohort
+                Share Video Link & Notify Students
               </h2>
             </div>
             <button
@@ -421,13 +421,13 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
 
           {shareableVideos.length === 0 ? (
             <div className="p-4 rounded-xl bg-[#040507] border border-white/10 text-xs text-neutral-300">
-              You don’t have any verified video links yet. Head to <strong>Studio → Step 4 (Verify Link)</strong> and check <em>"Post Link to Cohort Group"</em> when verifying your next video!
+              You don’t have any verified video links yet. Head to <strong>Studio → Step 4 (Verify Link)</strong> and check <em>"Post Link to Discussion"</em> when verifying your next video!
             </div>
           ) : (
             <>
               <div className="space-y-1.5">
                 <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
-                  SELECT VERIFIED VIDEO TO SHARE WITH THE GROUP
+                  SELECT VERIFIED VIDEO TO SHARE IN DISCUSSION
                 </label>
                 <select
                   value={selectedShareVideoKey || shareableVideos[0]?.key || ''}
@@ -436,7 +436,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                 >
                   {shareableVideos.map(v => (
                     <option key={v.key} value={v.key}>
-                      {v.label} {v.alreadyShared ? '(Already in Group — Update Thread)' : ''}
+                      {v.label} {v.alreadyShared ? '(Already Shared — Update Thread)' : ''}
                     </option>
                   ))}
                 </select>
@@ -444,7 +444,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
 
               <div className="space-y-1.5">
                 <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
-                  TAKEAWAY OR QUESTION FOR THE COHORT (OPTIONAL)
+                  TAKEAWAY OR QUESTION FOR DISCUSSION (OPTIONAL)
                 </label>
                 <textarea
                   rows={2}
@@ -463,7 +463,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                   className="rounded accent-[#09ADEF] w-4 h-4"
                 />
                 <span className="text-xs text-white font-medium">
-                  Notify all students in the cohort that a new video output was posted so they can watch & discuss
+                  Notify all students that a new video output was posted so they can watch & discuss
                 </span>
               </label>
 
@@ -480,7 +480,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                   className="btn-2mm px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <Share2 className="w-3.5 h-3.5" />
-                  <span>Post Video to Group & Notify</span>
+                  <span>Post Video to Discussion & Notify</span>
                 </button>
               </div>
             </>
@@ -497,10 +497,10 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
-                START A COHORT DISCUSSION THREAD
+                START A DISCUSSION THREAD
               </div>
               <h2 className="font-display text-xl sm:text-2xl text-white mt-0.5">
-                General Group Discussion, Hook Workshop, or Win
+                General Discussion, Hook Workshop, or Win
               </h2>
             </div>
             <button
@@ -539,7 +539,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                 <option value="GENERAL">💬 General Discussion</option>
                 <option value="HOOK_FEEDBACK">⚡ Hook Brainstorm</option>
                 <option value="SHIFT_MAGNET">🧲 Shift Magnet & CTA</option>
-                <option value="WINS">🏆 Cohort Win</option>
+                <option value="WINS">🏆 Student Win</option>
                 <option value="VIDEO_BREAKDOWN">🎬 Video Breakdown</option>
               </select>
             </div>
@@ -547,14 +547,14 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
 
           <div className="space-y-1.5">
             <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
-              DETAILS / QUESTION FOR THE GROUP
+              DETAILS / QUESTION
             </label>
             <textarea
               rows={3}
               required
               value={newThreadBody}
               onChange={e => setNewThreadBody(e.target.value)}
-              placeholder="Share your question, hook draft, or takeaway so Coach Josh and the cohort can jump in..."
+              placeholder="Share your question, hook draft, or takeaway so Coach Josh and other students can jump in..."
               className="w-full rounded-xl bg-[#040507] border border-white/15 p-3 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#09ADEF]"
             />
           </div>
@@ -580,7 +580,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
               className="rounded accent-[#09ADEF] w-4 h-4"
             />
             <span className="text-xs text-white font-medium">
-              Send notification to all students in the cohort about this new discussion thread
+              Send notification to all students about this new discussion thread
             </span>
           </label>
 
@@ -652,7 +652,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
           </div>
           <div className="text-base font-semibold text-white">No Discussion Threads Match This Filter</div>
           <p className="text-xs text-neutral-400 max-w-md mx-auto leading-relaxed">
-            Share a completed video from your Studio or start a new cohort discussion thread above so everyone can collaborate and review outputs together.
+            Share a completed video from your Studio or start a new discussion thread above so everyone can collaborate and review outputs together.
           </p>
         </div>
       ) : (
@@ -904,7 +904,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                       onReviewStudentVideo && (
                         <div className="p-4 border-t border-[#09ADEF]/30 bg-[#070B12] space-y-3">
                           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
-                            COACH REVIEW & GROUP BREAKDOWN (UPDATES STUDIO & GROUP THREAD)
+                            COACH REVIEW & BREAKDOWN (UPDATES STUDIO & DISCUSSION THREAD)
                           </div>
                           <div className="flex flex-wrap gap-2">
                             {(['Approved', 'Needs Revision'] as const).map(st => {
@@ -962,7 +962,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                                 [post.id]: e.target.value
                               }))
                             }
-                            placeholder="Write your Coach Breakdown — this appends directly to this thread and notifies the student & cohort..."
+                            placeholder="Write your Coach Breakdown — this appends directly to this thread and notifies all students..."
                             className="w-full rounded-xl bg-black border border-white/15 p-3 text-xs text-white focus:outline-none focus:border-[#09ADEF]"
                           />
 

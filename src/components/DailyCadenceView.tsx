@@ -1153,7 +1153,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     </div>
                   )}
 
-                  {/* Option to Post Video Link to Cohort Group & Notify All Students */}
+                  {/* Option to Post Video Link to Discussion & Notify All Students */}
                   <div className="p-3.5 sm:p-4 rounded-xl bg-[#040507] border border-[#09ADEF]/30 space-y-3">
                     <label className="flex items-start gap-3 cursor-pointer">
                       <input
@@ -1165,10 +1165,10 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 text-xs font-bold text-white">
                           <Users className="w-3.5 h-3.5 text-[#09ADEF]" />
-                          <span>Post Link to Cohort Group & Notify All Students</span>
+                          <span>Post Link to Discussion & Notify All Students</span>
                         </div>
                         <p className="text-[11px] text-neutral-400 mt-0.5 leading-relaxed">
-                          Notifies all cohort operators that you posted a new video so they can learn from your output. When Coach Josh reviews this video, his feedback will automatically append to the group thread for open discussion.
+                          Notifies all students that you posted a new video so they can learn from your output. When Coach Josh reviews this video, his feedback will automatically append to the discussion thread.
                         </p>
                       </div>
                     </label>
@@ -1178,7 +1178,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         type="text"
                         value={groupShareNote}
                         onChange={e => setGroupShareNote(e.target.value)}
-                        placeholder="Add a takeaway or question for the cohort discussion thread (optional)..."
+                        placeholder="Add a takeaway or question for the discussion thread (optional)..."
                         className="w-full rounded-lg bg-black border border-white/12 px-3 py-2 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#09ADEF]"
                       />
                     )}
@@ -1225,7 +1225,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                             className="px-3.5 py-2.5 rounded-lg bg-[#09ADEF]/15 hover:bg-[#09ADEF]/25 border border-[#09ADEF]/40 text-[#09ADEF] text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
                           >
                             <Users className="w-3.5 h-3.5" />
-                            <span>Open Group Thread →</span>
+                            <span>Open Discussion Thread →</span>
                           </button>
                         ) : (
                           onShareVideoToGroup && (
@@ -1244,7 +1244,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                               className="px-3.5 py-2.5 rounded-lg bg-[#09ADEF]/15 hover:bg-[#09ADEF]/25 border border-[#09ADEF]/40 text-[#09ADEF] text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
                             >
                               <Share2 className="w-3.5 h-3.5" />
-                              <span>Post to Group & Notify</span>
+                              <span>Post to Discussion & Notify</span>
                             </button>
                           )
                         )}
@@ -1290,7 +1290,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         {currentVideo.coachReviewStatus === 'Needs Revision'
                           ? `Resubmit Revised Link for Day #${currentVideo.dayNumber}`
                           : shareToGroupOnVerify
-                          ? `Verify Day #${currentVideo.dayNumber} & Share to Group`
+                          ? `Verify Day #${currentVideo.dayNumber} & Share to Discussion`
                           : `Verify & Complete Day #${currentVideo.dayNumber}`}
                       </span>
                     </button>
@@ -1592,7 +1592,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   </div>
                 </div>
 
-                {/* Core Video Group Share Bar */}
+                {/* Core Video Discussion Share Bar */}
                 <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-[#040507] border border-[#09ADEF]/25">
                   <label className="flex items-center gap-2 text-xs text-neutral-200 cursor-pointer">
                     <input
@@ -1601,7 +1601,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                       onChange={e => setShareCoreToGroup(e.target.checked)}
                       className="rounded accent-[#09ADEF] w-3.5 h-3.5"
                     />
-                    <span>Post Core Video link to Cohort Group & notify all students when verified</span>
+                    <span>Post Core Video link to Discussion & notify all students when verified</span>
                   </label>
 
                   {core.status === 'Completed' && core.videoUrl && (
@@ -1612,7 +1612,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         className="px-3 py-1 rounded-lg bg-[#09ADEF]/15 hover:bg-[#09ADEF]/25 border border-[#09ADEF]/40 text-[10px] font-bold uppercase tracking-wider text-[#09ADEF] inline-flex items-center gap-1 cursor-pointer"
                       >
                         <Users className="w-3 h-3" />
-                        <span>Open Group Thread →</span>
+                        <span>Open Discussion Thread →</span>
                       </button>
                     ) : (
                       onShareVideoToGroup && (
@@ -1629,7 +1629,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                           className="px-3 py-1 rounded-lg bg-[#09ADEF]/15 hover:bg-[#09ADEF]/25 border border-[#09ADEF]/40 text-[10px] font-bold uppercase tracking-wider text-[#09ADEF] inline-flex items-center gap-1 cursor-pointer"
                         >
                           <Share2 className="w-3 h-3" />
-                          <span>Post to Group Now</span>
+                          <span>Post to Discussion Now</span>
                         </button>
                       )
                     )
