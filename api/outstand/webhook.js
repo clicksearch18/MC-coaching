@@ -69,6 +69,7 @@ export default async function handler(req, res) {
     // Load students & settings from Supabase if available
     let students = [];
     let globalApiKey = process.env.OUTSTAND_API_KEY || '';
+    let settingsData = {};
 
     if (supabase) {
       const [{ data: studentRows }, { data: settingsRow }] = await Promise.all([
@@ -79,10 +80,47 @@ export default async function handler(req, res) {
       if (Array.isArray(studentRows)) {
         students = studentRows.map(r => r.profile).filter(Boolean);
       }
-      if (!globalApiKey && settingsRow?.data?.outstandApiKey) {
-        globalApiKey = settingsRow.data.outstandApiKey;
+      settingsData = settingsRow?.data || {};
+      if (!globalApiKey && settingsData.outstandApiKey) {
+        globalApiKey = settingsData.outstandApiKey;
       }
     }
+
+    const recordWebhookLog = async (outcome) => {
+      if (!supabase) return;
+      try {
+        const { data: freshSettingsRow } = await supabase
+          .from('mc_lessons')
+          .select('data')
+          .eq('week_number', 0)
+          .maybeSingle();
+        const currentData = freshSettingsRow?.data || settingsData || {};
+        const prevLogs = Array.isArray(currentData.webhookLogs) ? currentData.webhookLogs : [];
+        const logEntry = {
+          id: `wh-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          receivedAt: new Date().toISOString(),
+          event: eventType || 'unknown',
+          network: data.network || null,
+          accountId: data.accountId || data.account_id || data.socialAccountId || null,
+          authorUsername: data.authorUsername || data.senderUsername || data.participantDisplayName || null,
+          text: data.text || data.content || data.message || null,
+          ...outcome
+        };
+        await supabase.from('mc_lessons').upsert(
+          {
+            week_number: 0,
+            data: {
+              ...currentData,
+              webhookLogs: [logEntry, ...prevLogs].slice(0, 50)
+            },
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: 'week_number' }
+        );
+      } catch (e) {
+        console.warn('Webhook log write error:', e);
+      }
+    };
 
     const escapeRegExp = str => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -139,6 +177,7 @@ export default async function handler(req, res) {
 
       // Ignore outbound/echo comments or comments authored by the connected account itself
       if (data.isEcho || data.fromMe || data.direction === 'outbound' || (accountId && authorId && accountId === authorId)) {
+        await recordWebhookLog({ handled: false, reason: 'Ignored self/echo comment' });
         return res.status(200).json({ ok: true, handled: false, reason: 'Ignored self/echo comment' });
       }
 
@@ -152,6 +191,7 @@ export default async function handler(req, res) {
       );
 
       if (!targetStudent) {
+        await recordWebhookLog({ handled: false, reason: 'No student profile found to match comment.received' });
         return res.status(200).json({
           ok: true,
           handled: false,
@@ -172,6 +212,7 @@ export default async function handler(req, res) {
       const cleanStudentIg = String(studentOutstandCfg.instagramHandle || '').replace(/^@/, '').toLowerCase();
       const cleanStudentFb = String(studentOutstandCfg.facebookPageName || '').replace(/^@/, '').toLowerCase();
       if (cleanAuthor && (cleanAuthor === cleanStudentIg || cleanAuthor === cleanStudentFb)) {
+        await recordWebhookLog({ handled: false, reason: 'Ignored student own comment' });
         return res.status(200).json({ ok: true, handled: false, reason: 'Ignored student own comment' });
       }
 
@@ -189,6 +230,7 @@ export default async function handler(req, res) {
           t => (t.sourceCommentId || t.commentId) && (t.sourceCommentId === commentId || t.commentId === commentId)
         )
       ) {
+        await recordWebhookLog({ handled: true, deduplicated: true, reason: `Comment ${commentId} already processed.` });
         return res.status(200).json({
           ok: true,
           handled: true,
@@ -210,6 +252,11 @@ export default async function handler(req, res) {
       });
 
       if (!matchedMagnet) {
+        await recordWebhookLog({
+          handled: false,
+          studentId: targetStudent.id,
+          reason: `Comment "${text}" did not match any Shift Magnet keyword trigger.`
+        });
         return res.status(200).json({
           ok: true,
           handled: false,
@@ -382,6 +429,15 @@ export default async function handler(req, res) {
         }
       }
 
+      await recordWebhookLog({
+        handled: true,
+        studentId: targetStudent.id,
+        keywordMatched: matchedMagnet.keywordTrigger,
+        magnetSent: matchedMagnet.workingTitle,
+        outstandConversationId: outstandConvoId,
+        outstandError: outstandResult?.error || outstandResult?.message || null
+      });
+
       return res.status(200).json({
         ok: true,
         handled: true,
@@ -420,6 +476,7 @@ export default async function handler(req, res) {
         data.direction === 'outbound' ||
         (accountId && senderId && accountId === senderId)
       ) {
+        await recordWebhookLog({ handled: false, reason: 'Ignored outbound/echo DM' });
         return res.status(200).json({ ok: true, handled: false, reason: 'Ignored outbound/echo DM' });
       }
 
@@ -446,6 +503,7 @@ export default async function handler(req, res) {
           (cleanSenderHandle.toLowerCase() === cleanStudentIg ||
             cleanSenderHandle.toLowerCase() === cleanStudentFb)
         ) {
+          await recordWebhookLog({ handled: false, reason: 'Ignored student own DM echo' });
           return res.status(200).json({ ok: true, handled: false, reason: 'Ignored student own DM echo' });
         }
 
@@ -471,6 +529,7 @@ export default async function handler(req, res) {
             (t.messages || []).some(m => m.id === messageId || m.outstandMessageId === messageId)
           )
         ) {
+          await recordWebhookLog({ handled: true, deduplicated: true, event: 'message.received' });
           return res.status(200).json({
             ok: true,
             handled: true,
@@ -615,9 +674,16 @@ export default async function handler(req, res) {
         );
       }
 
+      await recordWebhookLog({
+        handled: Boolean(targetStudent),
+        studentId: targetStudent?.id || null,
+        reason: targetStudent ? 'Processed inbound DM' : 'No matching student found for inbound DM'
+      });
+
       return res.status(200).json({ ok: true, handled: true, event: 'message.received' });
     }
 
+    await recordWebhookLog({ handled: true, reason: `Received event: ${eventType || 'unknown'}` });
     return res.status(200).json({ ok: true, event: eventType || 'unknown' });
   } catch (err) {
     console.error('Outstand webhook error:', err);
