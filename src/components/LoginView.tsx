@@ -63,18 +63,22 @@ export const LoginView: React.FC<LoginViewProps> = ({
     setErrorMsg(null);
     setMagicLinkSent(null);
     const emailClean = adminEmail.trim().toLowerCase();
-    if (emailClean && !allowedAdmins.has(emailClean)) {
-      setErrorMsg('This email is not registered as an Admin.');
+    if (!emailClean || !allowedAdmins.has(emailClean)) {
+      setErrorMsg('Enter a registered Admin email address.');
       return;
     }
 
     const code = adminPasscode.trim().toLowerCase();
+    const configuredPasscode = String(
+      import.meta.env.VITE_ADMIN_PASSCODE || 'concussionadmin2026!'
+    )
+      .trim()
+      .toLowerCase();
     if (
       !code ||
-      (code !== 'concussion' &&
-        code !== 'admin' &&
-        code !== 'cam005' &&
+      (code !== configuredPasscode &&
         code !== '2mmshift' &&
+        code !== 'cam005' &&
         code !== 'concussionadmin2026!')
     ) {
       setErrorMsg('Invalid admin passcode.');

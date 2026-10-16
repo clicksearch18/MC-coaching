@@ -152,7 +152,7 @@ export const DEFAULT_APP_SETTINGS: AppEmailAndAdminSettings = {
     {
       id: 'WELCOME_INVITE',
       name: '1. Student Onboarding & Studio Invite',
-      supabaseType: 'Supabase Auth · Invite User Template',
+      supabaseType: 'Onboarding · Invite Template',
       subject: 'Welcome to Market Concussion — Your 2mmShift Studio Access',
       heading: 'WELCOME TO THE MACHINE, {{student_name}}.',
       body: 'Your personalized 50-Item Concussion Content plan, 15 Core Playbook Pillars, and Lesson {{lesson_number}} Workbook are live.\n\nUse your Access Code ({{access_code}}) or click below to enter your Studio and film Day #01 in under 10 minutes.',
@@ -162,7 +162,7 @@ export const DEFAULT_APP_SETTINGS: AppEmailAndAdminSettings = {
     {
       id: 'MAGIC_LINK',
       name: '2. Magic Link Sign-In',
-      supabaseType: 'Supabase Auth · Magic Link Template',
+      supabaseType: 'Sign-In · Magic Link Template',
       subject: 'Your 2mmShift Studio Sign-In Link',
       heading: 'UNLOCK YOUR 2MMSHIFT STUDIO.',
       body: 'Click the button below to sign directly into your Market Concussion Studio. No password required.',
@@ -202,6 +202,14 @@ export const DEFAULT_APP_SETTINGS: AppEmailAndAdminSettings = {
   ]
 };
 
+const escapeHtml = (unsafe: string): string =>
+  String(unsafe || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
 export function buildBrandedEmailHtml(
   template: EmailTemplateConfig,
   senderName: string,
@@ -209,7 +217,7 @@ export function buildBrandedEmailHtml(
   variables?: Record<string, string>
 ): string {
   const replaceVars = (str: string) => {
-    let out = str;
+    let out = escapeHtml(str);
     const defaults: Record<string, string> = {
       student_name: 'Operator',
       access_code: 'SHIFT-01',
@@ -221,7 +229,7 @@ export function buildBrandedEmailHtml(
       ...variables
     };
     for (const [k, v] of Object.entries(defaults)) {
-      out = out.replace(new RegExp(`\\{\\{\\s*${k}\\s*\\}\\}`, 'g'), v);
+      out = out.replace(new RegExp(`\\{\\{\\s*${k}\\s*\\}\\}`, 'g'), escapeHtml(v));
     }
     return out;
   };
@@ -230,7 +238,11 @@ export function buildBrandedEmailHtml(
   const resolvedBody = replaceVars(template.body).replace(/\n/g, '<br/>');
   const resolvedCta = replaceVars(template.ctaText);
   const resolvedFooter = replaceVars(template.footerText);
-  const actionUrl = variables?.action_url || '{{ .ConfirmationURL }}';
+  const rawActionUrl = variables?.action_url || '{{ .ConfirmationURL }}';
+  const actionUrl =
+    rawActionUrl === '{{ .ConfirmationURL }}' || /^https?:\/\//i.test(rawActionUrl)
+      ? escapeHtml(rawActionUrl)
+      : '#';
 
   return `<!DOCTYPE html>
 <html>
@@ -246,9 +258,9 @@ export function buildBrandedEmailHtml(
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#040507;border:1px solid rgba(255,255,255,0.09);border-radius:16px;padding:36px 32px;">
           <tr>
             <td style="padding-bottom:24px;border-bottom:1px solid rgba(255,255,255,0.07);">
-              <img src="https://mc-coaching-swart.vercel.app/2mmshift-logo-wide.png" alt="The 2mm Shift" width="150" style="display:block;height:auto;border:0;margin-bottom:8px;" />
+              <img src="/2mmshift-logo-wide.png" alt="The 2mm Shift" width="150" style="display:block;height:auto;border:0;margin-bottom:8px;" />
               <div style="font-size:10px;font-weight:700;letter-spacing:0.22em;color:#8E95A5;text-transform:uppercase;">
-                JOSH BEECHRAFT · 2MMSHIFT ARCHITECT · ${senderEmail}
+                JOSH BEECHRAFT · 2MMSHIFT ARCHITECT · ${escapeHtml(senderEmail)}
               </div>
             </td>
           </tr>
@@ -279,7 +291,7 @@ export function buildBrandedEmailHtml(
           <tr>
             <td style="padding-top:20px;border-top:1px solid rgba(255,255,255,0.07);font-size:11px;color:#71717A;line-height:1.5;">
               ${resolvedFooter}<br/>
-              From: ${senderName} &lt;${senderEmail}&gt;
+              From: ${escapeHtml(senderName)} &lt;${escapeHtml(senderEmail)}&gt;
             </td>
           </tr>
         </table>
@@ -321,7 +333,7 @@ export function createNewStudentProfile(params: {
   return {
     id: `student-${Date.now()}`,
     name: params.name.trim(),
-    email: params.email?.trim() || `${firstWord.toLowerCase()}@client.com`,
+    email: params.email?.trim() || '',
     accessCode: generatedCode,
     company: params.company.trim(),
     avatar: initials,

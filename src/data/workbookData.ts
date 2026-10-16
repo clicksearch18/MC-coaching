@@ -1367,8 +1367,9 @@ export const WORKBOOK_WEEKS: WorkbookWeek[] = [
       }
     ],
     fields: [
-      // Module 16: All 14 fields from pages 61–62
+      // Module 16: All fields from pages 61–62
       { id: 'm16_magnet_title', section: 'Module 16 · Shift Magnet Builder (Pages 61–62)', label: 'WORKING TITLE', placeholder: 'The 7-Hour Pipeline Equity Audit' },
+      { id: 'm16_keyword', section: 'Module 16 · Shift Magnet Builder (Pages 61–62)', label: 'COMMENT KEYWORD TRIGGER', placeholder: 'AUDIT' },
       { id: 'm16_version', section: 'Module 16 · Shift Magnet Builder (Pages 61–62)', label: 'VERSION', placeholder: 'v2.1' },
       { id: 'm16_audience', section: 'Module 16 · Shift Magnet Builder (Pages 61–62)', label: 'SPECIFIC AUDIENCE (NOT EVERYONE)', placeholder: 'B2B Consultants & Agency Operators at $20k–$50k/mo' },
       { id: 'm16_problem', section: 'Module 16 · Shift Magnet Builder (Pages 61–62)', label: 'TRIGGERING PROBLEM (WHAT THEY JUST EXPERIENCED THAT MAKES THEM WANT THIS)', placeholder: 'Posted 5 reels this week and got zero qualified inquiries.' },
@@ -1379,7 +1380,7 @@ export const WORKBOOK_WEEKS: WorkbookWeek[] = [
       { id: 'm16_sections', section: 'Module 16 · Shift Magnet Builder (Pages 61–62)', label: 'SECTIONS OR STEPS', placeholder: '1. Current Minutes Audit · 2. The 25% Ad Gate Check · 3. DM Handoff Score', multiline: true },
       { id: 'm16_win', section: 'Module 16 · Shift Magnet Builder (Pages 61–62)', label: 'THE IMMEDIATE WIN — WHAT THEY GET IN THE FIRST TWO MINUTES', placeholder: 'Exact calculation of their current Time-on-Brand gap.', multiline: true },
       { id: 'm16_bridge', section: 'Module 16 · Shift Magnet Builder (Pages 61–62)', label: 'THE BRIDGE TO THE OFFER', placeholder: 'Now that you see your Time-on-Brand score, here is how we install the 25-video engine in 8 weeks.', multiline: true },
-      { id: 'm16_hosted', section: 'Module 16 · Shift Magnet Builder (Pages 61–62)', label: 'HOSTED WHERE & DELIVERY AUTOMATION', placeholder: 'Notion / HighLevel / ManyChat keyword trigger "AUDIT"' },
+      { id: 'm16_hosted', section: 'Module 16 · Shift Magnet Builder (Pages 61–62)', label: 'HOSTED WHERE & DELIVERY AUTOMATION', placeholder: 'Comment keyword trigger "AUDIT"' },
       { id: 'm16_link', section: 'Module 16 · Shift Magnet Builder (Pages 61–62)', label: 'TRACKING LINK', placeholder: 'https://marketconcussion.com/audit' },
       { id: 'm16_thankyou', section: 'Module 16 · Shift Magnet Builder (Pages 61–62)', label: 'THANK-YOU MESSAGE + DM HANDOFF', placeholder: 'Here is the link! Quick question before you open it...', multiline: true },
 
@@ -1643,6 +1644,7 @@ export const WORKBOOK_WEEKS: WorkbookWeek[] = [
     phaseName: 'PHASE 05 · CONVERSION (TURNING ATTENTION INTO CLIENTS)',
     title: 'REVIEW AND SET THE LOOP',
     subtitle: 'The build is finished. What remains is a rhythm that does not stop, and a quarterly review that keeps it honest.',
+    isPhaseGate: true,
     lessonBullets: [
       'Daily short form, weekly long form, monthly event — permanently.',
       'The matrix refills once a quarter from the questions customers actually asked.',

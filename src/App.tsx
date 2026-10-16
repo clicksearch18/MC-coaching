@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
 import {
   Video,
   BookOpen,
@@ -35,14 +35,25 @@ import {
   GroupDiscussionComment
 } from './types';
 import { DailyCadenceView } from './components/DailyCadenceView';
-import { WorkbookView } from './components/WorkbookView';
-import { ShiftMagnetsView } from './components/ShiftMagnetsView';
-import { OutstandDmCrmPanel } from './components/OutstandDmCrmPanel';
-import { CoachDashboardView } from './components/CoachDashboardView';
-import { GroupDiscussionView } from './components/GroupDiscussionView';
 import { LoginView } from './components/LoginView';
 import { ModalDialog } from './components/ModalDialog';
 import { parseStudentSpreadsheet } from './utils/excelParser';
+
+const WorkbookView = lazy(() =>
+  import('./components/WorkbookView').then(m => ({ default: m.WorkbookView }))
+);
+const ShiftMagnetsView = lazy(() =>
+  import('./components/ShiftMagnetsView').then(m => ({ default: m.ShiftMagnetsView }))
+);
+const OutstandDmCrmPanel = lazy(() =>
+  import('./components/OutstandDmCrmPanel').then(m => ({ default: m.OutstandDmCrmPanel }))
+);
+const CoachDashboardView = lazy(() =>
+  import('./components/CoachDashboardView').then(m => ({ default: m.CoachDashboardView }))
+);
+const GroupDiscussionView = lazy(() =>
+  import('./components/GroupDiscussionView').then(m => ({ default: m.GroupDiscussionView }))
+);
 import {
   fetchStudentsFromSupabase,
   upsertStudentsToSupabase,
@@ -80,7 +91,9 @@ const normalizeStudentDailyStatus = (st: StudentProfile): StudentProfile => {
   }
 
   if (st.lastCompletedDateISO && st.lastCompletedDateISO < yesterdayISO) {
-    return st.todayVideoStatus === 'MISSED' ? st : { ...st, todayVideoStatus: 'MISSED' };
+    return st.todayVideoStatus === 'MISSED' && st.streakDays === 0
+      ? st
+      : { ...st, todayVideoStatus: 'MISSED', streakDays: 0 };
   }
 
   if (
@@ -224,9 +237,6 @@ export function App() {
   const [studentReplyInput, setStudentReplyInput] = useState('');
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [pushBanners, setPushBanners] = useState<PushBanner[]>([]);
-  const [, setNotificationPermission] = useState<string>(
-    typeof Notification !== 'undefined' ? Notification.permission : 'default'
-  );
 
   const inboxBottomRef = useRef<HTMLDivElement>(null);
   const dirtyStudentTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -234,6 +244,8 @@ export function App() {
   const localStorageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestStudentsRef = useRef<StudentProfile[]>(students);
   latestStudentsRef.current = students;
+  const latestGroupPostsRef = useRef<GroupDiscussionPost[]>(groupPosts);
+  latestGroupPostsRef.current = groupPosts;
 
   const triggerWebPushAndBanner = useCallback(
     async (
@@ -251,8 +263,7 @@ export function App() {
 
       if (typeof Notification !== 'undefined') {
         if (Notification.permission === 'default') {
-          const perm = await Notification.requestPermission();
-          setNotificationPermission(perm);
+          await Notification.requestPermission();
         }
         if (Notification.permission === 'granted') {
           try {
@@ -468,11 +479,36 @@ export function App() {
             Date.now() - lastLocalEdit < 1500;
 
           if (isActivelyEditingLocally) {
-            // Preserve local worksheet/video edits while merging any newly arrived messages
-            if (normalizedIncoming.messages.length > existing.messages.length) {
+            // Preserve local worksheet/video edits while merging any newly arrived messages or webhook DM threads
+            const incomingThreadsJson = normalizedIncoming.worksheetAnswers?.['dm_crm_threads_json'];
+            const existingThreadsJson = existing.worksheetAnswers?.['dm_crm_threads_json'];
+            const hasNewMessages = normalizedIncoming.messages.length > existing.messages.length;
+            const hasNewDmThreads = Boolean(incomingThreadsJson && incomingThreadsJson !== existingThreadsJson);
+            if (hasNewMessages || hasNewDmThreads) {
               return prev.map(s =>
                 s.id === normalizedIncoming.id
-                  ? { ...s, messages: normalizedIncoming.messages }
+                  ? {
+                      ...s,
+                      messages: hasNewMessages ? normalizedIncoming.messages : s.messages,
+                      worksheetAnswers: hasNewDmThreads
+                        ? {
+                            ...s.worksheetAnswers,
+                            dm_crm_threads_json: incomingThreadsJson,
+                            ...(normalizedIncoming.worksheetAnswers?.['dm_crm_processed_comments_json']
+                              ? {
+                                  dm_crm_processed_comments_json:
+                                    normalizedIncoming.worksheetAnswers['dm_crm_processed_comments_json']
+                                }
+                              : {}),
+                            ...(normalizedIncoming.worksheetAnswers?.['dm_crm_processed_messages_json']
+                              ? {
+                                  dm_crm_processed_messages_json:
+                                    normalizedIncoming.worksheetAnswers['dm_crm_processed_messages_json']
+                                }
+                              : {})
+                          }
+                        : s.worksheetAnswers
+                    }
                   : s
               );
             }
@@ -556,9 +592,11 @@ export function App() {
     } catch {
       // ignore
     }
-    if (initialDbLoadDone && isSupabaseConfigured) {
+    if (!initialDbLoadDone || !isSupabaseConfigured) return;
+    const timer = setTimeout(() => {
       upsertAppSettingsToSupabase(appSettings);
-    }
+    }, 400);
+    return () => clearTimeout(timer);
   }, [appSettings, initialDbLoadDone]);
 
   useEffect(() => {
@@ -571,16 +609,15 @@ export function App() {
 
   const saveGroupPosts = useCallback(
     (updater: (prev: GroupDiscussionPost[]) => GroupDiscussionPost[]) => {
-      setGroupPosts(prev => {
-        const next = updater(prev);
-        if (isSupabaseConfigured) {
-          setDbSyncStatus('SYNCING');
-          upsertGroupDiscussionsToSupabase(next).then(ok => {
-            if (ok) setDbSyncStatus('SYNCED');
-          });
-        }
-        return next;
-      });
+      const next = updater(latestGroupPostsRef.current);
+      latestGroupPostsRef.current = next;
+      setGroupPosts(next);
+      if (isSupabaseConfigured) {
+        setDbSyncStatus('SYNCING');
+        upsertGroupDiscussionsToSupabase(next).then(ok => {
+          if (ok) setDbSyncStatus('SYNCED');
+        });
+      }
     },
     []
   );
@@ -617,35 +654,34 @@ export function App() {
         minute: '2-digit'
       });
 
-      setStudents(prev => {
-        const updatedList = prev.map(st => {
-          const isActor = st.id === params.excludeStudentId;
-          const notifMsg: ChatMessage = {
-            id: `msg-group-${Date.now()}-${st.id}`,
-            senderRole: 'SYSTEM',
-            senderName: `Discussion · ${params.senderName}`,
-            text: params.text,
-            timestamp: formattedTime,
-            relatedVideoTitle: params.relatedVideoTitle,
-            readByStudent: isActor,
-            readByCoach: authSession.role === 'ADMIN',
-            actionTarget: {
-              label: params.actionLabel || 'Open Discussion Thread',
-              tab: 'GROUP',
-              groupPostId: params.groupPostId
-            }
-          };
-          return {
-            ...st,
-            messages: [...st.messages, notifMsg]
-          };
-        });
-
-        if (isSupabaseConfigured) {
-          upsertStudentsToSupabase(updatedList);
-        }
-        return updatedList;
+      const updatedList = latestStudentsRef.current.map(st => {
+        const isActor = st.id === params.excludeStudentId;
+        const notifMsg: ChatMessage = {
+          id: `msg-group-${Date.now()}-${st.id}`,
+          senderRole: 'SYSTEM',
+          senderName: `Discussion · ${params.senderName}`,
+          text: params.text,
+          timestamp: formattedTime,
+          relatedVideoTitle: params.relatedVideoTitle,
+          readByStudent: isActor,
+          readByCoach: authSession.role === 'ADMIN',
+          actionTarget: {
+            label: params.actionLabel || 'Open Discussion Thread',
+            tab: 'GROUP',
+            groupPostId: params.groupPostId
+          }
+        };
+        return {
+          ...st,
+          messages: [...st.messages, notifMsg]
+        };
       });
+
+      latestStudentsRef.current = updatedList;
+      setStudents(updatedList);
+      if (isSupabaseConfigured) {
+        upsertStudentsToSupabase(updatedList);
+      }
     },
     [authSession.role]
   );
@@ -692,24 +728,19 @@ export function App() {
     setShowStudentInboxModal(false);
 
     if (target.tab === 'CADENCE') {
-      setRoleMode('STUDENT');
       setActiveTab('CADENCE');
       if (target.subTab) setRequestedCadenceSubTab(target.subTab);
       if (target.videoId) setRequestedVideoId(target.videoId);
       if (target.coreVideoId) setRequestedCoreVideoId(target.coreVideoId);
     } else if (target.tab === 'WORKBOOK') {
-      setRoleMode('STUDENT');
       setActiveTab('WORKBOOK');
       if (target.lessonNumber) setRequestedLessonNumber(target.lessonNumber);
     } else if (target.tab === 'MAGNETS') {
-      setRoleMode('STUDENT');
       setActiveTab('MAGNETS');
     } else if (target.tab === 'CRM') {
-      setRoleMode('STUDENT');
       setActiveTab('CRM');
       if (target.crmThreadId) setRequestedCrmThreadId(target.crmThreadId);
     } else if (target.tab === 'GROUP') {
-      setRoleMode('STUDENT');
       setActiveTab('GROUP');
       if (target.groupPostId) setRequestedGroupPostId(target.groupPostId);
     }
@@ -1123,14 +1154,18 @@ export function App() {
       hour: 'numeric',
       minute: '2-digit'
     });
-    const shouldShareCore = Boolean(status === 'Completed' && url && (options?.shareToGroup ?? true));
+    const isScriptDraftOnlyEdit = scriptDraft !== undefined;
+    const shouldShareCore = Boolean(
+      !isScriptDraftOnlyEdit && status === 'Completed' && url && (options?.shareToGroup ?? true)
+    );
     const deterministicPostId = `group-video-${currentStudent.id}-CORE-${coreId}`;
 
     updateStudent(currentStudent.id, st => {
       const existingCore = st.coreVideos.find(c => c.id === coreId);
       const wasCompleted = existingCore?.status === 'Completed';
-      const isNewlyCompleted = status === 'Completed' && !wasCompleted;
+      const isNewlyCompleted = !isScriptDraftOnlyEdit && status === 'Completed' && !wasCompleted;
       const isResubmittingCompleted =
+        !isScriptDraftOnlyEdit &&
         status === 'Completed' &&
         wasCompleted &&
         url !== undefined &&
@@ -1199,7 +1234,9 @@ export function App() {
                 videoUrl: url !== undefined ? url : c.videoUrl,
                 scriptDraft: scriptDraft !== undefined ? scriptDraft : c.scriptDraft,
                 coachReviewStatus:
-                  status === 'Completed' ? 'Pending Review' : c.coachReviewStatus,
+                  !isScriptDraftOnlyEdit && status === 'Completed'
+                    ? 'Pending Review'
+                    : c.coachReviewStatus,
                 sharedToGroup: shouldShareCore || c.sharedToGroup,
                 groupPostId: shouldShareCore ? deterministicPostId : c.groupPostId
               }
@@ -1220,7 +1257,7 @@ export function App() {
       });
     }
 
-    if (status === 'Completed' && url) {
+    if (!isScriptDraftOnlyEdit && status === 'Completed' && url) {
       triggerWebPushAndBanner(
         shouldShareCore
           ? 'Core Video Submitted & Shared to Discussion!'
@@ -1336,7 +1373,7 @@ export function App() {
 
     // Append Coach Josh's feedback to the Discussion thread (and create the thread if appendToGroupThread is enabled)
     if (recipient) {
-      const existingThread = groupPosts.find(
+      const existingThread = latestGroupPostsRef.current.find(
         p =>
           p.id === deterministicPostId ||
           (p.type === 'VIDEO_SHARE' &&
@@ -1355,37 +1392,6 @@ export function App() {
           coachReviewedAt: reviewedTime,
           notifyCohort: false
         });
-
-        // Also append an official Coach Review comment inside the thread's discussion stream
-        const coachComment: GroupDiscussionComment = {
-          id: `comment-coach-review-${Date.now()}`,
-          authorId: 'coach-josh',
-          authorName: 'Coach Josh Beechraft',
-          authorAvatar: 'JB',
-          authorCompany: '2mmShift Architect',
-          authorRole: 'COACH',
-          text: `${
-            reviewStatus === 'Approved' ? '✓ [APPROVED]' : '↻ [REVISION REQUESTED]'
-          } ${feedback || `Reviewed and marked as ${reviewStatus}.`}`,
-          timestamp: reviewedTime,
-          createdAtISO: new Date().toISOString(),
-          isOfficialCoachReview: true,
-          reviewStatus
-        };
-
-        saveGroupPosts(prev =>
-          prev.map(p =>
-            p.id === (existingThread?.id || deterministicPostId)
-              ? {
-                  ...p,
-                  coachReviewStatus: reviewStatus,
-                  coachFeedback: feedback,
-                  coachReviewedAt: reviewedTime,
-                  comments: [...p.comments, coachComment]
-                }
-              : p
-          )
-        );
 
         broadcastCohortGroupNotification({
           senderName: 'Coach Josh Beechraft',

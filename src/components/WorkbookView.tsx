@@ -66,10 +66,16 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
   const [showLessonDrawer, setShowLessonDrawer] = useState<boolean>(false);
   const [worksheetSlideIdx, setWorksheetSlideIdx] = useState<number>(0);
   const [figureSlideIdx, setFigureSlideIdx] = useState<number>(0);
-  const [showAllFieldsOnOnePage, setShowAllFieldsOnOnePage] = useState<boolean>(false);
   const [confirmResetCurriculum, setConfirmResetCurriculum] = useState<boolean>(false);
   const [confirmIncompleteAdvance, setConfirmIncompleteAdvance] = useState<boolean>(false);
   const [magnetSyncSaved, setMagnetSyncSaved] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    setSelectedLessonNum(student.currentWeek || 1);
+    setWorksheetSlideIdx(0);
+    setFigureSlideIdx(0);
+    setConfirmIncompleteAdvance(false);
+  }, [student.id]);
 
   React.useEffect(() => {
     if (requestedLessonNumber && requestedLessonNumber >= 1 && requestedLessonNumber <= 26) {
@@ -85,12 +91,21 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
   const activeLesson = lessons.find(w => w.weekNumber === selectedLessonNum) || lessons[0];
   const lessonsInCurrentPhase = lessons.filter(w => w.phase === activeLesson.phase);
 
-  // Build Worksheet Slides (each section is 1 panel; chunk threshold raised to 10 so 9-field S.H.I.F.T. Script Sheets stay together; or 1-page mode)
-  const worksheetSlides = React.useMemo(() => {
-    if (showAllFieldsOnOnePage) {
-      return [{ title: `${activeLesson.moduleTitle} · All Fields`, fields: activeLesson.fields }];
-    }
+  const isLessonFullyCompleted = React.useCallback(
+    (lesson: WorkbookWeek) => {
+      const tasksDone = lesson.tasks.every(
+        (_, idx) => student.tasksCompleted[`${lesson.weekNumber}-${idx}`]
+      );
+      const fieldsDone = lesson.fields.every(
+        f => (student.worksheetAnswers[f.id] || '').trim().length > 0
+      );
+      return tasksDone && fieldsDone;
+    },
+    [student.tasksCompleted, student.worksheetAnswers]
+  );
 
+  // Build Worksheet Slides (strictly max 4 inputs visible at once per AGENTS.md Rule 4)
+  const worksheetSlides = React.useMemo(() => {
     const rawSections = Array.from(
       new Set(activeLesson.fields.map(f => f.section || 'Worksheet Prompts'))
     );
@@ -100,7 +115,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
       const secFields = activeLesson.fields.filter(
         f => (f.section || 'Worksheet Prompts') === secName
       );
-      const chunkSize = 10;
+      const chunkSize = 4;
       if (secFields.length <= chunkSize) {
         slides.push({ title: secName, fields: secFields });
       } else {
@@ -117,8 +132,8 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
 
     return slides.length > 0
       ? slides
-      : [{ title: 'Worksheet Prompts', fields: activeLesson.fields }];
-  }, [activeLesson.fields, activeLesson.moduleTitle, showAllFieldsOnOnePage]);
+      : [{ title: 'Worksheet Prompts', fields: activeLesson.fields.slice(0, 4) }];
+  }, [activeLesson.fields]);
 
   const safeSlideIdx = Math.min(worksheetSlideIdx, Math.max(0, worksheetSlides.length - 1));
   const currentWorksheetSlide = worksheetSlides[safeSlideIdx] || worksheetSlides[0];
@@ -212,9 +227,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
           <div className="space-y-1">
             {lessonsInCurrentPhase.map(lesson => {
               const isSelected = lesson.weekNumber === selectedLessonNum;
-              const allTasksDone = lesson.tasks.every(
-                (_, idx) => student.tasksCompleted[`${lesson.weekNumber}-${idx}`]
-              );
+              const allDone = isLessonFullyCompleted(lesson);
               return (
                 <button
                   key={lesson.weekNumber}
@@ -241,7 +254,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                       {lesson.title}
                     </div>
                   </div>
-                  {allTasksDone && (
+                  {allDone && (
                     <span className="w-4 h-4 rounded-full bg-[#09ADEF]/20 text-[#09ADEF] flex items-center justify-center shrink-0 mt-0.5">
                       <Check className="w-2.5 h-2.5 stroke-[3]" />
                     </span>
@@ -600,24 +613,6 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {activeLesson.fields.length > 5 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowAllFieldsOnOnePage(v => !v);
-                        setWorksheetSlideIdx(0);
-                      }}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wider cursor-pointer transition ${
-                        showAllFieldsOnOnePage
-                          ? 'bg-[#09ADEF]/20 border-[#09ADEF] text-white'
-                          : 'bg-[#040507] border-white/15 text-neutral-300 hover:text-white'
-                      }`}
-                    >
-                      <Layers className="w-3 h-3 text-[#09ADEF]" />
-                      <span>{showAllFieldsOnOnePage ? 'Slider View' : 'All on 1 Page'}</span>
-                    </button>
-                  )}
-
                   {activeLesson.weekNumber === 21 && onSyncShiftMagnetFromLesson21 && (
                     <button
                       type="button"
@@ -879,10 +874,19 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                                   const headerLine = linkedMatrixTitle
                                     ? `WORKING TITLE: ${linkedMatrixTitle}${linkedTopicName ? ` (${linkedTopicName})` : ''}`
                                     : `DEMO VIDEO #${matrixCellNum}`;
-                                  const template = `${headerLine}\n• S (Signal Hook): \n• H (Humanize + Keyword): \n• I (Illuminate Old Belief): \n• F (Formulate 2mm Shift): \n• T (Transfer CTA): \n• Published URL: `;
+                                  const bulletTemplate = `• S (Signal Hook): \n• H (Humanize + Keyword): \n• I (Illuminate Old Belief): \n• F (Formulate 2mm Shift): \n• T (Transfer CTA): \n• Published URL: `;
+                                  const trimmedVal = val.trim();
+                                  if (!trimmedVal) {
+                                    onUpdateField(field.id, `${headerLine}\n${bulletTemplate}`);
+                                    return;
+                                  }
+                                  const withoutOldHeader = trimmedVal.replace(/^(WORKING TITLE:.*|DEMO VIDEO #\d+)\n?/i, '').trim();
+                                  const hasBullets = withoutOldHeader.includes('• S (Signal Hook):');
                                   onUpdateField(
                                     field.id,
-                                    val.trim() ? `${headerLine}\n${val}` : template
+                                    hasBullets
+                                      ? `${headerLine}\n${withoutOldHeader}`
+                                      : `${headerLine}\n${withoutOldHeader}\n${bulletTemplate}`
                                   );
                                 }}
                                 className="px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-[#09ADEF]/20 border border-white/15 hover:border-[#09ADEF]/40 text-[10px] font-bold uppercase tracking-wider text-white cursor-pointer transition"
@@ -1535,9 +1539,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
         <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
           {PHASES.map(p => {
             const phaseLessons = lessons.filter(l => l.phase === p.num);
-            const phaseDone = phaseLessons.filter(l =>
-              l.tasks.every((_, idx) => student.tasksCompleted[`${l.weekNumber}-${idx}`])
-            ).length;
+            const phaseDone = phaseLessons.filter(l => isLessonFullyCompleted(l)).length;
             const gateState = student.gateStatus?.[p.num] || (p.num === 1 ? 'OPEN' : 'LOCKED');
 
             return (
@@ -1570,9 +1572,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {phaseLessons.map(lesson => {
                     const isSelected = lesson.weekNumber === selectedLessonNum;
-                    const isCompleted = lesson.tasks.every(
-                      (_, idx) => student.tasksCompleted[`${lesson.weekNumber}-${idx}`]
-                    );
+                    const isCompleted = isLessonFullyCompleted(lesson);
                     const isAssigned = lesson.weekNumber === student.currentWeek;
 
                     return (

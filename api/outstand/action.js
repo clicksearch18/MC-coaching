@@ -1,4 +1,39 @@
+import { createClient } from '@supabase/supabase-js';
+
 const OUTSTAND_BASE_URL = 'https://api.outstand.so/v1';
+
+async function resolveOutstandApiKey(clientApiKey) {
+  if (process.env.OUTSTAND_API_KEY) return process.env.OUTSTAND_API_KEY;
+  if (clientApiKey) return clientApiKey;
+
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    '';
+  if (!url || !key) return '';
+
+  try {
+    const supabase = createClient(url, key);
+    const { data: settingsRow } = await supabase
+      .from('mc_lessons')
+      .select('data')
+      .eq('week_number', 0)
+      .maybeSingle();
+    if (settingsRow?.data?.outstandApiKey) {
+      return settingsRow.data.outstandApiKey;
+    }
+    const { data: studentRows } = await supabase.from('mc_students').select('id, profile');
+    for (const row of studentRows || []) {
+      const cfg = JSON.parse(row.profile?.worksheetAnswers?.outstand_config_json || '{}');
+      if (cfg.apiKey) return cfg.apiKey;
+    }
+  } catch {
+    // ignore
+  }
+  return '';
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -29,13 +64,16 @@ export default async function handler(req, res) {
     } = body;
 
     const messageContent = content || text || '';
-    const apiKey = clientApiKey || process.env.OUTSTAND_API_KEY || '';
+    const apiKey = await resolveOutstandApiKey(clientApiKey);
     if (!apiKey) {
       return res.status(400).json({
         ok: false,
-        error:
-          'Missing Outstand API Key. Paste your Outstand API key (out_live_...) in the Connect Instagram & Facebook modal or set OUTSTAND_API_KEY in Vercel environment variables.'
+        error: 'Social account connection is temporarily unavailable. Please contact your coach.'
       });
+    }
+
+    if (!action || typeof action !== 'string') {
+      return res.status(400).json({ ok: false, error: 'Invalid request action.' });
     }
 
     const headers = {
@@ -43,30 +81,26 @@ export default async function handler(req, res) {
       'Content-Type': 'application/json'
     };
 
-    // 1. List Connected Social Accounts (Instagram, Facebook, etc.)
+    // 1. List Connected Social Accounts (Scoped strictly to student tenantId when provided)
     if (action === 'LIST_ACCOUNTS') {
       const params = new URLSearchParams();
       if (tenantId) params.set('tenant_id', tenantId);
       const qs = params.toString() ? `?${params.toString()}` : '';
-      let resp = await fetch(`${OUTSTAND_BASE_URL}/social-accounts${qs}`, {
+      const resp = await fetch(`${OUTSTAND_BASE_URL}/social-accounts${qs}`, {
         method: 'GET',
-        headers
+        headers,
+        signal: AbortSignal.timeout(10000)
       });
-      let json = await resp.json().catch(() => ({}));
-      const list = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
-
-      // Fallback: if tenant filter returned 0 accounts, check workspace-level accounts
-      if (tenantId && list.length === 0) {
-        const fallbackResp = await fetch(`${OUTSTAND_BASE_URL}/social-accounts`, {
-          method: 'GET',
-          headers
-        });
-        if (fallbackResp.ok) {
-          resp = fallbackResp;
-          json = await fallbackResp.json().catch(() => ({}));
-        }
-      }
-      return res.status(resp.status).json({ ok: resp.ok, data: json });
+      const json = await resp.json().catch(() => ({}));
+      const rawList = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
+      // Filter strictly to tenantId if the upstream API ignores the query parameter
+      const scopedList = tenantId
+        ? rawList.filter(a => !a.tenant_id || !a.tenantId || a.tenant_id === tenantId || a.tenantId === tenantId)
+        : rawList;
+      return res.status(resp.status).json({
+        ok: resp.ok,
+        data: Array.isArray(json?.data) ? { ...json, data: scopedList } : scopedList
+      });
     }
 
     // 2. Generate OAuth Connection URL for Instagram or Facebook

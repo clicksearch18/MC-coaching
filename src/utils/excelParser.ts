@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import { PlaybookPillar, SupportingVideoItem, VideoStatus } from '../types';
 
 export interface ParsedContentPlan {
@@ -21,12 +20,15 @@ export function inferPillarIdForVideo(
     if (playbook[pIndex]) return playbook[pIndex].id;
   }
 
-  // 2. Check exact match against `${p.stage} — ${p.pillar}` or `p.pillar`
-  const directPillarMatch = playbook.find(
-    p =>
-      stageLower.includes(p.pillar.toLowerCase()) ||
+  // 2. Check exact match against `${p.stage} — ${p.pillar}` or non-empty `p.pillar`
+  const directPillarMatch = playbook.find(p => {
+    const cleanPillar = (p.pillar || '').trim().toLowerCase();
+    if (!cleanPillar) return false;
+    return (
+      stageLower.includes(cleanPillar) ||
       `${p.stage} — ${p.pillar}`.toLowerCase() === stageLower
-  );
+    );
+  });
   if (directPillarMatch) return directPillarMatch.id;
 
   // 3. Extract parenthetical sub-topic hint, e.g. "1. Unaware Stage (Referrals)" -> "referrals"
@@ -40,6 +42,8 @@ export function inferPillarIdForVideo(
       leaks: 'pillar-4',
       'beige content': 'pillar-5',
       'broky magnets': 'pillar-6',
+      'broken magnets': 'pillar-6',
+      'broke magnets': 'pillar-6',
       'outsourced voice': 'pillar-7',
       '$5 ads': 'pillar-8',
       'conversation sales': 'pillar-9',
@@ -61,7 +65,7 @@ export function inferPillarIdForVideo(
     if (hintWords.length > 0) {
       const stageNum = stageLower.match(/^(\d+)\./)?.[1];
       const candidates = stageNum
-        ? playbook.filter(p => p.stage.trim().startsWith(`${stageNum}.`))
+        ? playbook.filter(p => (p.stage || '').trim().startsWith(`${stageNum}.`))
         : playbook;
       const scored = candidates.find(p => {
         const hay = `${p.pillar} ${p.breaksBelief} ${p.installsBelief} ${p.mustHitBeats}`.toLowerCase();
@@ -75,7 +79,7 @@ export function inferPillarIdForVideo(
   const stageNumMatch = stageLower.match(/^(\d+)\./);
   if (stageNumMatch) {
     const stagePrefix = `${stageNumMatch[1]}.`;
-    const stagePillars = playbook.filter(p => p.stage.trim().startsWith(stagePrefix));
+    const stagePillars = playbook.filter(p => (p.stage || '').trim().startsWith(stagePrefix));
     if (stagePillars.length > 0) {
       const subIdx = Math.floor(((dayNumber - 1) % 10) / 3) % stagePillars.length;
       return stagePillars[subIdx].id;
@@ -99,37 +103,60 @@ export function resolveMatchingPillar(
     if (exact) return exact;
   }
 
-  const inferredId = inferPillarIdForVideo(video.pillarStage, video.dayNumber || 1, playbook);
+  const inferredId = inferPillarIdForVideo(video.pillarStage || '', video.dayNumber || 1, playbook);
   if (inferredId) {
     const found = playbook.find(p => p.id === inferredId);
     if (found) return found;
   }
 
+  const targetPrefix = (video.pillarStage || '').slice(0, 10).toLowerCase();
   return (
-    playbook.find(
-      p => p.stage.slice(0, 10).toLowerCase() === video.pillarStage.slice(0, 10).toLowerCase()
-    ) || playbook[0]
+    (targetPrefix &&
+      playbook.find(p => (p.stage || '').slice(0, 10).toLowerCase() === targetPrefix)) ||
+    playbook[0]
   );
 }
 
 export async function parseStudentSpreadsheet(file: File): Promise<ParsedContentPlan> {
+  const XLSX = await import('xlsx');
   const arrayBuffer = await file.arrayBuffer();
   const workbook = XLSX.read(arrayBuffer, { type: 'array' });
 
   const playbook: PlaybookPillar[] = [];
   const supporting: SupportingVideoItem[] = [];
 
-  // 1. Parse Content Playbook sheet (if present)
-  const playbookSheetName = workbook.SheetNames.find(
-    n => n.toLowerCase().includes('playbook') || n.toLowerCase().includes('pillar')
-  ) || workbook.SheetNames[0];
+  const supportingSheetName =
+    workbook.SheetNames.find(
+      n =>
+        n.toLowerCase().includes('supporting') ||
+        n.toLowerCase().includes('concussion') ||
+        n.toLowerCase().includes('daily')
+    ) || (workbook.SheetNames.length > 1 ? workbook.SheetNames[1] : undefined);
 
+  const playbookSheetName =
+    workbook.SheetNames.find(
+      n => n.toLowerCase().includes('playbook') || n.toLowerCase().includes('pillar')
+    ) ||
+    (workbook.SheetNames[0] !== supportingSheetName ? workbook.SheetNames[0] : undefined);
+
+  // 1. Parse Content Playbook sheet (if present)
   if (playbookSheetName) {
     const sheet = workbook.Sheets[playbookSheetName];
-    const rows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, defval: null });
+    const rows = XLSX.utils.sheet_to_json<(string | number | null)[]>(sheet, {
+      header: 1,
+      defval: null
+    });
     let currentStage = '1. UNAWARE STAGE';
 
-    for (let r = 4; r < rows.length; r++) {
+    const headerIdx = rows.findIndex(r =>
+      r?.some(cell => {
+        const s = String(cell || '').toLowerCase();
+        return s.includes('pillar (core theme)') || s.includes('breaks belief');
+      })
+    );
+    const startRow = headerIdx >= 0 ? headerIdx + 1 : Math.min(4, Math.max(0, rows.length - 1));
+
+    for (let r = startRow; r < rows.length; r++) {
       const row = rows[r];
       if (!row || row.length === 0) continue;
       const col0 = row[0] ? String(row[0]).trim() : '';
@@ -140,11 +167,17 @@ export async function parseStudentSpreadsheet(file: File): Promise<ParsedContent
       if (col0 && !col1 && !row[2] && !row[3]) {
         currentStage = col0;
       } else if (col0 && col1 && col0 !== 'Pillar (Core Theme)' && col0 !== 'Pillar / Stage') {
+        const rawStatus = col1 || 'Not Started';
+        const status: VideoStatus =
+          rawStatus === 'Completed' || rawStatus === 'In Progress' || rawStatus === 'Missed'
+            ? rawStatus
+            : 'Not Started';
+
         playbook.push({
           id: `pillar-${playbook.length + 1}`,
           stage: currentStage,
           pillar: col0,
-          status: col1 || 'Not Started',
+          status,
           breaksBelief: row[2] ? String(row[2]) : '',
           installsBelief: row[3] ? String(row[3]) : '',
           mustHitBeats: row[4] ? String(row[4]) : '',
@@ -160,15 +193,25 @@ export async function parseStudentSpreadsheet(file: File): Promise<ParsedContent
   }
 
   // 2. Parse Concussion Content sheet (50-item daily supporting videos)
-  const supportingSheetName = workbook.SheetNames.find(
-    n => n.toLowerCase().includes('supporting') || n.toLowerCase().includes('concussion') || n.toLowerCase().includes('daily')
-  ) || workbook.SheetNames[1];
+  const effectiveSupportingSheet =
+    supportingSheetName || (playbook.length === 0 ? workbook.SheetNames[0] : undefined);
 
-  if (supportingSheetName) {
-    const sheet = workbook.Sheets[supportingSheetName];
-    const rows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, defval: null });
+  if (effectiveSupportingSheet) {
+    const sheet = workbook.Sheets[effectiveSupportingSheet];
+    const rows = XLSX.utils.sheet_to_json<(string | number | null)[]>(sheet, {
+      header: 1,
+      defval: null
+    });
 
-    for (let r = 4; r < rows.length; r++) {
+    const headerIdx = rows.findIndex(r =>
+      r?.some(cell => {
+        const s = String(cell || '').toLowerCase();
+        return s.includes('pillar / stage') || s.includes('hook 1') || s.includes('video topic');
+      })
+    );
+    const startRow = headerIdx >= 0 ? headerIdx + 1 : Math.min(4, Math.max(0, rows.length - 1));
+
+    for (let r = startRow; r < rows.length; r++) {
       const row = rows[r];
       if (!row || row.length < 2) continue;
       const col0 = row[0] ? String(row[0]).trim() : '';

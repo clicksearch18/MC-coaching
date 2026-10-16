@@ -110,6 +110,18 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
   const [teleprompterLargeText, setTeleprompterLargeText] = useState(false);
   const [fullscreenPrompter, setFullscreenPrompter] = useState(false);
 
+  // Reset local studio & slider state when switching active student
+  useEffect(() => {
+    const revIdx = student.supportingVideos.findIndex(v => v.coachReviewStatus === 'Needs Revision');
+    const incIdx = student.supportingVideos.findIndex(v => v.status !== 'Completed');
+    setSelectedIndex(revIdx >= 0 ? revIdx : incIdx >= 0 ? incIdx : 0);
+    setActiveStep(1);
+    setCoreSlideIdx(0);
+    setPillarSlideIdx(0);
+    setCoreUrlDrafts({});
+    setCoreUrlError(null);
+  }, [student.id]);
+
   // Handle deep-link navigation from chat messages or review links
   useEffect(() => {
     if (!requestedSubTab && !requestedVideoId && !requestedCoreVideoId) return;
@@ -148,6 +160,14 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
   }, [timerRunning]);
 
   const currentVideo = student.supportingVideos[selectedIndex] || student.supportingVideos[0];
+
+  const updateStudioVideo = (videoId: string, patch: Partial<SupportingVideoItem>) => {
+    const nextPatch: Partial<SupportingVideoItem> = {
+      ...patch,
+      ...(currentVideo?.status === 'Not Started' && !patch.status ? { status: 'In Progress' } : {})
+    };
+    onUpdateVideo(videoId, nextPatch);
+  };
 
   // Sync link input when video or its saved URL changes
   useEffect(() => {
@@ -196,6 +216,22 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
     student.shiftMagnets.find(m => m.id === currentVideo?.attachedMagnetId) || student.shiftMagnets[0];
 
   const shiftDay = SHIFT_CYCLE_DAYS[selectedIndex % 5];
+
+  const buildTake2Pitch = (conversationalSetup = false) => {
+    const rawTransform = (student.worksheetAnswers['m02_q1_transformation'] || 'install the 2mm Shift').trim();
+    const cleanedTransform = rawTransform.replace(/\.+$/, '');
+    const startsWithHelpClause = /^(we|i)\s+help\b/i.test(cleanedTransform);
+    const baseClause = startsWithHelpClause
+      ? cleanedTransform.replace(/^(we|i)\s+help\b/i, 'I help')
+      : `I help ${student.niche.toLowerCase()} ${cleanedTransform.charAt(0).toLowerCase()}${cleanedTransform.slice(1)}`;
+    if (!attachedMagnet) {
+      return `“If we haven't met, ${baseClause}.”`;
+    }
+    if (conversationalSetup) {
+      return `“If we haven't met, ${baseClause}. By the way — if you want my ${attachedMagnet.workingTitle}, comment ‘${attachedMagnet.keywordTrigger}’ below and I’ll send it right over.”`;
+    }
+    return `“If we haven't met, ${baseClause}. Comment ‘${attachedMagnet.keywordTrigger}’ below and I’ll send you my ${attachedMagnet.workingTitle}.”`;
+  };
 
   const formatTimer = (sec: number) => {
     const m = Math.floor(sec / 60);
@@ -491,7 +527,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                       <button
                         key={h.num}
                         type="button"
-                        onClick={() => onUpdateVideo(currentVideo.id, { selectedHook: h.num, customHook: undefined })}
+                        onClick={() => updateStudioVideo(currentVideo.id, { selectedHook: h.num, customHook: undefined })}
                         className={`w-full text-left p-3.5 sm:p-5 rounded-xl border transition-all cursor-pointer ${
                           isSelected
                             ? 'bg-[#09ADEF]/10 border-[#09ADEF] shadow-[0_8px_30px_rgba(9,173,239,0.12)]'
@@ -546,7 +582,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                           {currentVideo.customHook?.trim() && (
                             <button
                               type="button"
-                              onClick={() => onUpdateVideo(currentVideo.id, { customHook: undefined })}
+                              onClick={() => updateStudioVideo(currentVideo.id, { customHook: undefined })}
                               className="text-[10px] text-neutral-400 hover:text-white cursor-pointer"
                             >
                               Reset to Preset
@@ -556,7 +592,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         <input
                           type="text"
                           value={currentVideo.customHook || ''}
-                          onChange={e => onUpdateVideo(currentVideo.id, { customHook: e.target.value })}
+                          onChange={e => updateStudioVideo(currentVideo.id, { customHook: e.target.value })}
                           placeholder="Or write your own opening hook..."
                           className="w-full rounded-lg bg-black border border-white/12 px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-[#09ADEF]"
                         />
@@ -569,7 +605,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         <input
                           type="text"
                           value={currentVideo.notes || ''}
-                          onChange={e => onUpdateVideo(currentVideo.id, { notes: e.target.value })}
+                          onChange={e => updateStudioVideo(currentVideo.id, { notes: e.target.value })}
                           placeholder="Jot down a client story or stat for Take 3..."
                           className="w-full rounded-lg bg-black border border-white/12 px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-[#09ADEF]"
                         />
@@ -603,7 +639,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                               disabled={!hasContent}
                               onClick={() => {
                                 if (notePayload) {
-                                  onUpdateVideo(currentVideo.id, { notes: notePayload });
+                                  updateStudioVideo(currentVideo.id, { notes: notePayload });
                                 }
                               }}
                               className={`text-left p-2.5 rounded-lg border transition ${
@@ -697,7 +733,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     </label>
                     <select
                       value={currentVideo.attachedMagnetId || attachedMagnet?.id || ''}
-                      onChange={e => onUpdateVideo(currentVideo.id, { attachedMagnetId: e.target.value })}
+                      onChange={e => updateStudioVideo(currentVideo.id, { attachedMagnetId: e.target.value })}
                       className="rounded-lg bg-black border border-white/15 text-xs text-white px-3 py-2 focus:outline-none focus:border-[#09ADEF]"
                     >
                       {student.shiftMagnets.map(m => (
@@ -860,15 +896,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                             teleprompterLargeText ? 'text-xl sm:text-2xl' : 'text-base sm:text-xl'
                           } text-neutral-100 leading-relaxed font-medium`}
                         >
-                          {attachedMagnet
-                            ? `“If we haven't met, I help ${student.niche.toLowerCase()} ${
-                                (student.worksheetAnswers['m02_q1_transformation'] || 'install the 2mm Shift').toLowerCase()
-                              }. Comment ‘${attachedMagnet.keywordTrigger}’ below and I’ll send you my ${
-                                attachedMagnet.workingTitle
-                              }.”`
-                            : `“If we haven't met, I help ${student.niche.toLowerCase()} ${
-                                (student.worksheetAnswers['m02_q1_transformation'] || 'install the 2mm Shift').toLowerCase()
-                              }.”`}
+                          {buildTake2Pitch(false)}
                         </p>
                       </div>
 
@@ -983,15 +1011,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         teleprompterLargeText ? 'text-base sm:text-xl' : 'text-xs sm:text-sm'
                       } text-neutral-200 leading-relaxed`}
                     >
-                      {attachedMagnet
-                        ? `“If we haven't met, I help ${student.niche.toLowerCase()} ${
-                            (student.worksheetAnswers['m02_q1_transformation'] || 'install the 2mm Shift').toLowerCase()
-                          }. By the way — if you want my ${attachedMagnet.workingTitle}, comment ‘${
-                            attachedMagnet.keywordTrigger
-                          }’ below and I’ll send it right over.”`
-                        : `“If we haven't met, I help ${student.niche.toLowerCase()} ${
-                            (student.worksheetAnswers['m02_q1_transformation'] || 'install the 2mm Shift').toLowerCase()
-                          }.”`}
+                      {buildTake2Pitch(true)}
                     </p>
                   </div>
 
@@ -1668,30 +1688,47 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-2.5">
-                  {(['S', 'H', 'I', 'F', 'T'] as const).map(letter => {
-                    const draftObj = core.scriptDraft || { S: '', H: '', I: '', F: '', T: '' };
-                    return (
-                      <div key={letter} className="p-3.5 rounded-xl bg-[#040507] border border-white/[0.07] flex flex-col justify-between space-y-2.5">
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">{letter} Stage</div>
-                          <p className="text-xs text-zinc-200 mt-1.5 leading-relaxed">{core.shiftStages[letter]}</p>
-                        </div>
-                        <textarea
-                          rows={2}
-                          value={draftObj[letter] || ''}
-                          onChange={e =>
-                            onUpdateCoreVideoStatus(core.id, core.status === 'Completed' ? 'Completed' : 'In Progress', core.videoUrl, {
-                              ...draftObj,
-                              [letter]: e.target.value
-                            })
-                          }
-                          placeholder={`Draft your ${letter} stage script beat...`}
-                          className="w-full rounded-lg bg-black border border-white/10 p-2 text-[11px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#09ADEF]"
-                        />
-                      </div>
-                    );
-                  })}
+                  {(['S', 'H', 'I', 'F', 'T'] as const).map(letter => (
+                    <div key={letter} className="p-3.5 rounded-xl bg-[#040507] border border-white/[0.07] space-y-1.5">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">{letter} Stage</div>
+                      <p className="text-xs text-zinc-200 leading-relaxed">{core.shiftStages[letter]}</p>
+                    </div>
+                  ))}
                 </div>
+
+                <details className="group rounded-xl bg-[#040507] border border-white/[0.08] p-3.5">
+                  <summary className="text-xs font-semibold text-neutral-300 cursor-pointer flex items-center justify-between list-none">
+                    <span className="flex items-center gap-2">
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-[#09ADEF]" />
+                      <span>Customize S.H.I.F.T. Script Beats (Two-Way Synced with Workbook)</span>
+                    </span>
+                    <span className="text-[#09ADEF] text-[11px] group-open:rotate-90 transition-transform">▸</span>
+                  </summary>
+                  <div className="mt-3 pt-3 border-t border-white/[0.07] grid grid-cols-1 md:grid-cols-5 gap-2.5">
+                    {(['S', 'H', 'I', 'F', 'T'] as const).map(letter => {
+                      const draftObj = core.scriptDraft || { S: '', H: '', I: '', F: '', T: '' };
+                      return (
+                        <div key={letter} className="space-y-1">
+                          <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                            {letter} Beat Draft
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={draftObj[letter] || ''}
+                            onChange={e =>
+                              onUpdateCoreVideoStatus(core.id, core.status === 'Completed' ? 'Completed' : 'In Progress', core.videoUrl, {
+                                ...draftObj,
+                                [letter]: e.target.value
+                              })
+                            }
+                            placeholder={`Draft your ${letter} stage script beat...`}
+                            className="w-full rounded-lg bg-black border border-white/10 p-2 text-[11px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#09ADEF]"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </details>
 
                 {/* B5 Exclusive: 20-Video Expert Demo Matrix Tracker (Lessons 7 & 14–17) */}
                 {core.code === 'B5' && (() => {

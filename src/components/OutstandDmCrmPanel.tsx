@@ -254,15 +254,16 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
   }, [student.worksheetAnswers, student.id]);
 
   const isIgConnected = Boolean(
-    outstandConfig.instagramAccountId || outstandConfig.instagramHandle
+    outstandConfig.instagramAccountId && !outstandConfig.instagramAccountId.startsWith('ig_')
   );
   const isFbConnected = Boolean(
-    outstandConfig.facebookAccountId || outstandConfig.facebookPageName
+    outstandConfig.facebookAccountId && !outstandConfig.facebookAccountId.startsWith('fb_')
   );
   const hasAnyConnectedAccount = isIgConnected || isFbConnected;
-  const hasMagnetsWithLinks = student.shiftMagnets.some(
+  const activeMagnetsWithLinksCount = student.shiftMagnets.filter(
     m => Boolean(m.keywordTrigger?.trim() && m.trackingLink?.trim())
-  );
+  ).length;
+  const hasMagnetsWithLinks = activeMagnetsWithLinksCount > 0;
   const isSetupComplete = Boolean(
     hasAnyConnectedAccount && hasMagnetsWithLinks && outstandConfig.triggerTestedAt
   );
@@ -273,10 +274,6 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
   );
 
   // Step 1: Connect Accounts state
-  const [igInput, setIgInput] = useState(outstandConfig.instagramHandle || '');
-  const [fbInput, setFbInput] = useState(outstandConfig.facebookPageName || '');
-  const [editingIg, setEditingIg] = useState(!isIgConnected);
-  const [editingFb, setEditingFb] = useState(!isFbConnected);
   const [connectingChannel, setConnectingChannel] = useState<'instagram' | 'facebook' | null>(
     null
   );
@@ -352,6 +349,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'LIST_ACCOUNTS',
+          apiKey: outstandConfig.apiKey || undefined,
           tenantId: student.id
         })
       });
@@ -362,8 +360,6 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           : Array.isArray(listJson?.data)
           ? listJson.data
           : [];
-
-      if (list.length === 0) return;
 
       const igAcc =
         (preferredPageId &&
@@ -380,25 +376,19 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
 
       const nextCfg: OutstandConfig = {
         ...outstandConfig,
-        instagramAccountId: igAcc?.id || outstandConfig.instagramAccountId,
+        instagramAccountId: igAcc?.id || '',
         instagramHandle:
           igAcc?.username?.replace(/^@/, '') ||
           igAcc?.name?.replace(/^@/, '') ||
-          outstandConfig.instagramHandle,
-        facebookAccountId: fbAcc?.id || outstandConfig.facebookAccountId,
-        facebookPageName: fbAcc?.name || fbAcc?.username || outstandConfig.facebookPageName,
-        socialAccountId: igAcc?.id || fbAcc?.id || outstandConfig.socialAccountId,
+          '',
+        facebookAccountId: fbAcc?.id || '',
+        facebookPageName: fbAcc?.name || fbAcc?.username || '',
+        socialAccountId: igAcc?.id || fbAcc?.id || '',
         lastSyncedAt: new Date().toISOString()
       };
       saveOutstandConfig(nextCfg);
       if (nextCfg.instagramHandle) {
-        setIgInput(nextCfg.instagramHandle);
         onUpdateField?.('ig_handle', nextCfg.instagramHandle);
-        setEditingIg(false);
-      }
-      if (nextCfg.facebookPageName) {
-        setFbInput(nextCfg.facebookPageName);
-        setEditingFb(false);
       }
     } catch {
       // Ignore background sync errors
@@ -412,6 +402,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'FINALIZE_PENDING_CONNECTION',
+          apiKey: outstandConfig.apiKey || undefined,
           sessionToken,
           selectedPageIds: pageIds
         })
@@ -450,6 +441,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'GET_PENDING_CONNECTION',
+            apiKey: outstandConfig.apiKey || undefined,
             sessionToken
           })
         });
@@ -512,16 +504,9 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     });
   }, [threads, stageFilter, searchQuery]);
 
-  // Step 1 Handler: Connect Instagram or Facebook via real OAuth (with manual handle fallback)
+  // Step 1 Handler: Connect Instagram or Facebook via live Meta/Outstand OAuth
   const handleConnectAccount = async (network: 'instagram' | 'facebook') => {
     setConnectingChannel(network);
-    const cleanIg = igInput.trim().replace(/^@/, '');
-    const cleanFb = fbInput.trim();
-
-    // Pre-save any optional label the student typed, without faking a connected account ID yet
-    if (network === 'instagram' && cleanIg) {
-      onUpdateField?.('ig_handle', cleanIg);
-    }
 
     try {
       const redirectUri =
@@ -538,6 +523,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'GET_AUTH_URL',
+          apiKey: outstandConfig.apiKey || undefined,
           network,
           socialNetworkId: network,
           tenantId: student.id,
@@ -546,40 +532,18 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
       });
       const json = await res.json();
       if (json?.ok && json?.authUrl) {
-        // Redirect in the same window so OAuth returns cleanly to the CRM tab without duplicate tabs
         window.location.assign(json.authUrl);
         return;
       }
-    } catch {
-      // Fallback below if offline / local dev without API key
-    }
-
-    // Fallback when running locally without live OAuth or when manual handle is entered
-    if (network === 'instagram' && cleanIg) {
-      saveOutstandConfig({
-        ...outstandConfig,
-        instagramHandle: cleanIg,
-        instagramAccountId: outstandConfig.instagramAccountId || `ig_${student.id}`,
-        socialAccountId: outstandConfig.socialAccountId || `ig_${student.id}`,
-        lastSyncedAt: new Date().toISOString()
-      });
-      setEditingIg(false);
-    } else if (network === 'facebook' && cleanFb) {
-      saveOutstandConfig({
-        ...outstandConfig,
-        facebookPageName: cleanFb,
-        facebookAccountId: outstandConfig.facebookAccountId || `fb_${student.id}`,
-        socialAccountId: outstandConfig.socialAccountId || `fb_${student.id}`,
-        lastSyncedAt: new Date().toISOString()
-      });
-      setEditingFb(false);
-    } else {
       setStatusBanner(
-        `Could not start ${
+        json?.error ||
+          `Could not start ${network === 'facebook' ? 'Facebook' : 'Instagram'} OAuth connection.`
+      );
+    } catch {
+      setStatusBanner(
+        `Network error starting ${
           network === 'facebook' ? 'Facebook' : 'Instagram'
-        } authorization. Enter your ${
-          network === 'facebook' ? 'Page Name' : '@handle'
-        } and click Connect again.`
+        } OAuth connection.`
       );
     }
     setConnectingChannel(null);
@@ -598,6 +562,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'DISCONNECT_ACCOUNT',
+            apiKey: outstandConfig.apiKey || undefined,
             socialAccountId: accountIdToRemove
           })
         });
@@ -616,8 +581,6 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
             ? outstandConfig.facebookAccountId || ''
             : outstandConfig.socialAccountId
       });
-      setIgInput('');
-      setEditingIg(true);
     } else {
       saveOutstandConfig({
         ...outstandConfig,
@@ -628,8 +591,6 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
             ? outstandConfig.instagramAccountId || ''
             : outstandConfig.socialAccountId
       });
-      setFbInput('');
-      setEditingFb(true);
     }
   };
 
@@ -957,10 +918,11 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     const messageText = composerText.trim();
     let outstandMessageId: string | null = null;
 
-    // Dispatch live message or scheduled follow-up via Outstand API when conversation is linked
+    // Dispatch live message or scheduled follow-up via API when conversation is linked
     if (
       activeThread.outstandConversationId &&
-      !activeThread.outstandConversationId.startsWith('conv_starter_')
+      !activeThread.outstandConversationId.startsWith('conv_starter_') &&
+      !activeThread.outstandConversationId.startsWith('conv_')
     ) {
       try {
         const res = await fetch('/api/outstand/action', {
@@ -974,9 +936,15 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           })
         });
         const json = await res.json();
-        outstandMessageId = json?.data?.id || json?.data?.data?.id || null;
+        if (!res.ok || json?.ok === false) {
+          setStatusBanner(
+            json?.error || 'Message saved locally, but live social delivery could not be confirmed.'
+          );
+        } else {
+          outstandMessageId = json?.data?.id || json?.data?.data?.id || null;
+        }
       } catch {
-        // Continue saving message in thread history
+        setStatusBanner('Message saved locally (offline or connection unavailable).');
       }
     }
 
@@ -1106,8 +1074,8 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           </span>
 
           <span className="text-xs text-neutral-400">
-            · {student.shiftMagnets.length} Keyword{' '}
-            {student.shiftMagnets.length === 1 ? 'Trigger' : 'Triggers'}
+            · {activeMagnetsWithLinksCount} Active{' '}
+            {activeMagnetsWithLinksCount === 1 ? 'Trigger' : 'Triggers'}
           </span>
         </div>
 
@@ -1181,8 +1149,8 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
               )}
             </div>
 
-            {pendingSessionToken && pendingPages.length > 1 && (
-              <div className="p-3.5 rounded-xl bg-[#07090D] border border-[#09ADEF]/40 space-y-2.5">
+            {pendingSessionToken && pendingPages.length > 0 && (
+              <div className="p-3.5 rounded-xl bg-white/[0.03] space-y-2.5">
                 <p className="text-xs font-bold text-white">
                   Select which Page or Account to connect:
                 </p>
@@ -1203,28 +1171,28 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               {/* Instagram Row */}
-              <div className="p-3.5 rounded-xl bg-[#07090D] border border-white/10 space-y-2.5">
+              <div className="p-3.5 rounded-xl bg-white/[0.03] space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-white">Instagram Account</span>
-                  {isIgConnected && !editingIg && (
+                  {isIgConnected && (
                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
                       <CheckCircle2 className="w-3.5 h-3.5" /> Connected
                     </span>
                   )}
                 </div>
 
-                {isIgConnected && !editingIg ? (
+                {isIgConnected ? (
                   <div className="flex items-center justify-between pt-1">
                     <span className="text-xs font-mono text-[#09ADEF]">
-                      @{outstandConfig.instagramHandle}
+                      @{outstandConfig.instagramHandle || 'Connected'}
                     </span>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setEditingIg(true)}
+                        onClick={() => handleConnectAccount('instagram')}
                         className="text-[11px] text-neutral-400 hover:text-white cursor-pointer"
                       >
-                        Change
+                        Reconnect
                       </button>
                       <button
                         type="button"
@@ -1236,49 +1204,42 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={igInput}
-                      onChange={e => setIgInput(e.target.value)}
-                      placeholder="@yourhandle (optional)"
-                      className="flex-1 min-w-0 rounded-lg bg-[#0B0E15] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleConnectAccount('instagram')}
-                      disabled={connectingChannel === 'instagram'}
-                      className="btn-2mm px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap cursor-pointer disabled:opacity-50"
-                    >
-                      {connectingChannel === 'instagram' ? 'Connecting...' : 'Connect Instagram'}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleConnectAccount('instagram')}
+                    disabled={connectingChannel === 'instagram'}
+                    className="btn-2mm w-full px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap cursor-pointer disabled:opacity-50"
+                  >
+                    {connectingChannel === 'instagram'
+                      ? 'Redirecting to Instagram...'
+                      : 'Connect Instagram'}
+                  </button>
                 )}
               </div>
 
               {/* Facebook Row */}
-              <div className="p-3.5 rounded-xl bg-[#07090D] border border-white/10 space-y-2.5">
+              <div className="p-3.5 rounded-xl bg-white/[0.03] space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-white">Facebook Page</span>
-                  {isFbConnected && !editingFb && (
+                  {isFbConnected && (
                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
                       <CheckCircle2 className="w-3.5 h-3.5" /> Connected
                     </span>
                   )}
                 </div>
 
-                {isFbConnected && !editingFb ? (
+                {isFbConnected ? (
                   <div className="flex items-center justify-between pt-1">
                     <span className="text-xs font-medium text-white">
-                      {outstandConfig.facebookPageName}
+                      {outstandConfig.facebookPageName || 'Connected'}
                     </span>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setEditingFb(true)}
+                        onClick={() => handleConnectAccount('facebook')}
                         className="text-[11px] text-neutral-400 hover:text-white cursor-pointer"
                       >
-                        Change
+                        Reconnect
                       </button>
                       <button
                         type="button"
@@ -1290,23 +1251,16 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={fbInput}
-                      onChange={e => setFbInput(e.target.value)}
-                      placeholder="Facebook Page Name (optional)"
-                      className="flex-1 min-w-0 rounded-lg bg-[#0B0E15] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleConnectAccount('facebook')}
-                      disabled={connectingChannel === 'facebook'}
-                      className="btn-2mm px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap cursor-pointer disabled:opacity-50"
-                    >
-                      {connectingChannel === 'facebook' ? 'Connecting...' : 'Connect Facebook'}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleConnectAccount('facebook')}
+                    disabled={connectingChannel === 'facebook'}
+                    className="btn-2mm w-full px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap cursor-pointer disabled:opacity-50"
+                  >
+                    {connectingChannel === 'facebook'
+                      ? 'Redirecting to Facebook...'
+                      : 'Connect Facebook'}
+                  </button>
                 )}
               </div>
             </div>
@@ -1337,14 +1291,14 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
               </div>
               {hasMagnetsWithLinks && (
                 <span className="text-xs font-semibold text-emerald-400">
-                  ✓ {student.shiftMagnets.length} Active
+                  ✓ {activeMagnetsWithLinksCount} Active
                 </span>
               )}
             </div>
 
             {/* Existing Keyword Triggers List */}
             {student.shiftMagnets.length > 0 && (
-              <div className="divide-y divide-white/[0.06] rounded-xl bg-[#07090D] border border-white/10 overflow-hidden">
+              <div className="divide-y divide-white/[0.06] rounded-xl bg-white/[0.03] overflow-hidden">
                 {student.shiftMagnets.map(mag => (
                   <div
                     key={mag.id}
@@ -1568,12 +1522,12 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                 className="btn-2mm px-4 py-2 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
               >
                 <Zap className="w-3.5 h-3.5" />
-                <span>{isTestingTrigger ? 'Testing...' : 'Test Keyword Trigger'}</span>
+                <span>{isTestingTrigger ? 'Testing...' : 'Test Trigger'}</span>
               </button>
             </form>
 
             {lastTestedResult && (
-              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="p-3.5 rounded-xl bg-emerald-500/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-xs text-emerald-200">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                   <span>{lastTestedResult}</span>
@@ -1674,7 +1628,16 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                     return (
                       <div
                         key={thread.id}
-                        onClick={() => setSelectedThreadId(thread.id)}
+                        onClick={() => {
+                          setSelectedThreadId(thread.id);
+                          if (thread.unreadCount > 0) {
+                            saveThreads(
+                              threads.map(t =>
+                                t.id === thread.id ? { ...t, unreadCount: 0 } : t
+                              )
+                            );
+                          }
+                        }}
                         className={`p-3 cursor-pointer transition ${
                           isSelected
                             ? 'bg-[#09ADEF]/[0.12] border-l-2 border-l-[#09ADEF]'

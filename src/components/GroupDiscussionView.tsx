@@ -104,7 +104,6 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
   onReviewStudentVideo
 }) => {
   const [feedMode, setFeedMode] = useState<'ALL' | 'VIDEOS' | 'GENERAL'>('ALL');
-  const [categoryFilter, setCategoryFilter] = useState<'ALL' | GroupDiscussionCategory>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
 
@@ -120,6 +119,11 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
   const [selectedShareVideoKey, setSelectedShareVideoKey] = useState<string>('');
   const [shareVideoNote, setShareVideoNote] = useState('');
   const [notifyOnVideoShare, setNotifyOnVideoShare] = useState(true);
+
+  // Reset selected video when switching students
+  useEffect(() => {
+    setSelectedShareVideoKey('');
+  }, [currentStudent.id]);
 
   // Reply inputs keyed by postId
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
@@ -139,7 +143,6 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
   useEffect(() => {
     if (!requestedPostId) return;
     setFeedMode('ALL');
-    setCategoryFilter('ALL');
     setHighlightedPostId(requestedPostId);
     setTimeout(() => {
       const el = postRefs.current[requestedPostId];
@@ -197,7 +200,6 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
       .filter(p => {
         if (feedMode === 'VIDEOS' && p.type !== 'VIDEO_SHARE') return false;
         if (feedMode === 'GENERAL' && p.type !== 'GENERAL_THREAD') return false;
-        if (categoryFilter !== 'ALL' && p.category !== categoryFilter) return false;
         if (q) {
           const inTitle = p.title.toLowerCase().includes(q);
           const inBody = p.body.toLowerCase().includes(q);
@@ -213,7 +215,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
         if (!a.pinned && b.pinned) return 1;
         return b.createdAtISO.localeCompare(a.createdAtISO);
       });
-  }, [enrichedPosts, feedMode, categoryFilter, searchQuery]);
+  }, [enrichedPosts, feedMode, searchQuery]);
 
   // Gather completed videos for the "Share a Completed Video" quick drawer
   const shareableVideos = useMemo(() => {
@@ -280,11 +282,17 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
   const handleCreateGeneralSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newThreadTitle.trim() || !newThreadBody.trim()) return;
+    const rawUrl = newThreadUrl.trim();
+    const safeUrl = rawUrl
+      ? /^https?:\/\//i.test(rawUrl)
+        ? rawUrl
+        : `https://${rawUrl}`
+      : undefined;
     onCreateGeneralPost({
       title: newThreadTitle.trim(),
       body: newThreadBody.trim(),
       category: newThreadCategory,
-      videoUrl: newThreadUrl.trim() || undefined,
+      videoUrl: safeUrl && /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(safeUrl) ? safeUrl : undefined,
       notifyCohort: notifyOnNewThread
     });
     setNewThreadTitle('');
@@ -559,30 +567,30 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
-              OPTIONAL LINK (VIDEO, DOC, OR SHIFT MAGNET URL)
-            </label>
-            <input
-              type="url"
-              value={newThreadUrl}
-              onChange={e => setNewThreadUrl(e.target.value)}
-              placeholder="https://..."
-              className="w-full rounded-xl bg-[#040507] border border-white/15 px-3.5 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-[#09ADEF]"
-            />
-          </div>
-
-          <label className="flex items-center gap-2.5 p-3 rounded-xl bg-[#09ADEF]/10 border border-[#09ADEF]/30 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={notifyOnNewThread}
-              onChange={e => setNotifyOnNewThread(e.target.checked)}
-              className="rounded accent-[#09ADEF] w-4 h-4"
-            />
-            <span className="text-xs text-white font-medium">
-              Send notification to all students about this new discussion thread
-            </span>
-          </label>
+          <details className="group rounded-xl bg-[#040507] border border-white/10 p-3">
+            <summary className="text-[11px] font-semibold text-[#09ADEF] cursor-pointer list-none flex items-center justify-between">
+              <span>+ Attach Optional Link (Video or Resource)</span>
+              <span className="group-open:rotate-90 transition-transform">▸</span>
+            </summary>
+            <div className="mt-2.5 pt-2.5 border-t border-white/8 space-y-2.5">
+              <input
+                type="url"
+                value={newThreadUrl}
+                onChange={e => setNewThreadUrl(e.target.value)}
+                placeholder="https://..."
+                className="w-full rounded-xl bg-black border border-white/15 px-3.5 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-[#09ADEF]"
+              />
+              <label className="flex items-center gap-2 text-xs text-neutral-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={notifyOnNewThread}
+                  onChange={e => setNotifyOnNewThread(e.target.checked)}
+                  className="rounded accent-[#09ADEF] w-3.5 h-3.5"
+                />
+                <span>Notify all students about this new discussion thread</span>
+              </label>
+            </div>
+          </details>
 
           <div className="flex justify-end gap-2">
             <button
@@ -788,7 +796,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                         )}
                       </div>
 
-                      {post.videoUrl && (
+                      {post.videoUrl && /^https?:\/\//i.test(post.videoUrl) && (
                         <a
                           href={post.videoUrl}
                           target="_blank"
@@ -1000,7 +1008,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                 )}
 
                 {/* Optional External Link on General Thread */}
-                {post.type === 'GENERAL_THREAD' && post.videoUrl && (
+                {post.type === 'GENERAL_THREAD' && post.videoUrl && /^https?:\/\//i.test(post.videoUrl) && (
                   <div>
                     <a
                       href={post.videoUrl}

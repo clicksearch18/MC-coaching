@@ -623,7 +623,11 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
           <div>
             <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-rose-400">MISSED / DUE</div>
             <div className="font-display text-xl sm:text-3xl text-white mt-0.5">
-              {missedCount > 0 ? `${missedCount} MISSED` : `${pendingCount} DUE`}
+              {missedCount > 0 && pendingCount > 0
+                ? `${missedCount} MISSED · ${pendingCount} DUE`
+                : missedCount > 0
+                ? `${missedCount} MISSED`
+                : `${pendingCount} DUE`}
             </div>
           </div>
           <button
@@ -866,6 +870,10 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
+                  if (submittedGatePhases.length === 0) {
+                    setCoachSubTab('TELEMETRY');
+                    return;
+                  }
                   onApproveGate(activeStudent.id, targetPhaseToApprove);
                   setSaveBanner(`Approved Phase 0${targetPhaseToApprove} Gate for ${activeStudent.name}!`);
                   setTimeout(() => setSaveBanner(null), 3500);
@@ -873,14 +881,14 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                 className={`flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer ${
                   submittedGatePhases.length > 0
                     ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/25 hover:bg-emerald-400'
-                    : 'btn-2mm'
+                    : 'bg-[#0A0C10] hover:bg-white/[0.08] border border-white/12 text-neutral-300'
                 }`}
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>
                   {submittedGatePhases.length > 0
                     ? `Approve Gate 0${targetPhaseToApprove}`
-                    : `Gate 0${targetPhaseToApprove}`}
+                    : `Gates (0${activeStudent.currentPhase})`}
                 </span>
               </button>
             </div>
@@ -1851,9 +1859,11 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                 <div className="p-4 rounded-xl bg-white/[0.02] border border-white/8">
                   <div className="text-xs text-slate-400">Shift Magnets</div>
                   <div className="text-2xl font-bold text-amber-400 mt-1">
-                    {activeStudent.shiftMagnets.length} Live
+                    {activeStudent.shiftMagnets.filter(m => m.status === 'Live' || Boolean(m.trackingLink?.trim())).length} Live
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">Wired into CTAs</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    {activeStudent.shiftMagnets.length} total configured
+                  </div>
                 </div>
               </div>
 
@@ -1882,7 +1892,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                     const status =
                       activeStudent.gateStatus?.[pg.phase] ||
                       activeStudent.worksheetAnswers[`phase_gate_status_${pg.phase}`];
-                    const isApproved = status === 'APPROVED' || activeStudent.currentPhase > pg.phase;
+                    const isApproved = status === 'APPROVED';
                     const isSubmitted = status === 'SUBMITTED';
 
                     return (
@@ -2399,7 +2409,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                           2. Branded HTML Email Templates (Hydrated for {activeStudent.name})
                         </div>
                         <p className="text-[11px] text-slate-400 mt-0.5">
-                          Customize your 5 coaching & Supabase Auth templates and copy the production HTML with 1 click.
+                          Customize your 5 coaching & account access templates and copy the HTML with 1 click.
                         </p>
                       </div>
 
@@ -2508,6 +2518,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                       <div className="rounded-xl overflow-hidden border border-white/12 bg-black">
                         <iframe
                           title="Branded Email Preview"
+                          sandbox=""
                           srcDoc={previewHtml}
                           className="w-full h-[380px] border-0"
                         />

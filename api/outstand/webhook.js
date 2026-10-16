@@ -40,15 +40,24 @@ export default async function handler(req, res) {
     const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
     const payload = typeof req.body === 'object' && req.body !== null ? req.body : JSON.parse(rawBody);
 
-    // Optional HMAC-SHA256 webhook signature verification
+    // Mandatory HMAC-SHA256 webhook signature verification when OUTSTAND_WEBHOOK_SECRET is configured
     const webhookSecret = process.env.OUTSTAND_WEBHOOK_SECRET;
-    const signatureHeader = req.headers['x-outstand-signature'];
-    if (webhookSecret && signatureHeader) {
+    const signatureHeader = String(req.headers['x-outstand-signature'] || '').trim();
+    if (webhookSecret) {
+      if (!signatureHeader) {
+        return res.status(401).json({ error: 'Missing X-Outstand-Signature header' });
+      }
       const expectedSig = crypto
         .createHmac('sha256', webhookSecret)
         .update(rawBody)
         .digest('hex');
-      if (signatureHeader !== expectedSig && signatureHeader !== `sha256=${expectedSig}`) {
+      const normalizedHeader = signatureHeader.replace(/^sha256=/i, '');
+      const expectedBuf = Buffer.from(expectedSig, 'utf8');
+      const receivedBuf = Buffer.from(normalizedHeader, 'utf8');
+      if (
+        expectedBuf.length !== receivedBuf.length ||
+        !crypto.timingSafeEqual(expectedBuf, receivedBuf)
+      ) {
         return res.status(401).json({ error: 'Invalid X-Outstand-Signature' });
       }
     }
@@ -64,16 +73,51 @@ export default async function handler(req, res) {
     if (supabase) {
       const [{ data: studentRows }, { data: settingsRow }] = await Promise.all([
         supabase.from('mc_students').select('id, profile'),
-        supabase.from('mc_lessons').select('data').eq('week_number', 0).maybeSingle()
+        supabase.from('mc_lessons').select('lesson').eq('week_number', 0).maybeSingle()
       ]);
 
       if (Array.isArray(studentRows)) {
         students = studentRows.map(r => r.profile).filter(Boolean);
       }
-      if (!globalApiKey && settingsRow?.data?.outstandApiKey) {
-        globalApiKey = settingsRow.data.outstandApiKey;
+      if (!globalApiKey && settingsRow?.lesson?.outstandApiKey) {
+        globalApiKey = settingsRow.lesson.outstandApiKey;
       }
     }
+
+    const escapeRegExp = str => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // Helper to match an incoming webhook event to a student profile
+    const findMatchingStudent = (accountId, accountUsername, tenantId) => {
+      const cleanAcctUser = String(accountUsername || '').replace(/^@/, '').toLowerCase();
+      return (
+        students.find(s => {
+          try {
+            if (tenantId && s.id === tenantId) return true;
+            const cfg = JSON.parse(s.worksheetAnswers?.outstand_config_json || '{}');
+            if (
+              accountId &&
+              (cfg.socialAccountId === accountId ||
+                cfg.instagramAccountId === accountId ||
+                cfg.facebookAccountId === accountId ||
+                (Array.isArray(cfg.connectedAccounts) &&
+                  cfg.connectedAccounts.some(a => a.id === accountId)))
+            ) {
+              return true;
+            }
+            if (cleanAcctUser) {
+              const igHandle = String(cfg.instagramHandle || '').replace(/^@/, '').toLowerCase();
+              const fbName = String(cfg.facebookPageName || '').replace(/^@/, '').toLowerCase();
+              if ((igHandle && igHandle === cleanAcctUser) || (fbName && fbName === cleanAcctUser)) {
+                return true;
+              }
+            }
+            return false;
+          } catch {
+            return false;
+          }
+        }) || null
+      );
+    };
 
     // -------------------------------------------------------------------------
     // EVENT 1: comment.received -> Keyword Match -> POST /v1/conversations
@@ -82,6 +126,7 @@ export default async function handler(req, res) {
       const {
         network = 'instagram',
         accountId,
+        accountUsername,
         postId,
         commentId,
         authorId,
@@ -90,27 +135,19 @@ export default async function handler(req, res) {
         text = ''
       } = data;
 
+      // Ignore outbound/echo comments or comments authored by the connected account itself
+      if (data.isEcho || data.fromMe || data.direction === 'outbound' || (accountId && authorId && accountId === authorId)) {
+        return res.status(200).json({ ok: true, handled: false, reason: 'Ignored self/echo comment' });
+      }
+
       const handle = authorUsername ? `@${authorUsername}` : authorName || 'Prospect';
       const firstName = (authorName || authorUsername || 'there').split(/[ ._@-]/)[0];
 
-      // Find matching student by connected Outstand accountId or tenantId
-      const targetStudent =
-        students.find(s => {
-          try {
-            if (data.tenantId === s.id || data.tenant_id === s.id) return true;
-            const cfg = JSON.parse(s.worksheetAnswers?.outstand_config_json || '{}');
-            if (!accountId) return false;
-            return (
-              cfg.socialAccountId === accountId ||
-              cfg.instagramAccountId === accountId ||
-              cfg.facebookAccountId === accountId ||
-              (Array.isArray(cfg.connectedAccounts) &&
-                cfg.connectedAccounts.some(a => a.id === accountId))
-            );
-          } catch {
-            return false;
-          }
-        }) || (students.length === 1 ? students[0] : null);
+      const targetStudent = findMatchingStudent(
+        accountId,
+        accountUsername || data.recipientUsername,
+        data.tenantId || data.tenant_id
+      );
 
       if (!targetStudent) {
         return res.status(200).json({
@@ -128,13 +165,46 @@ export default async function handler(req, res) {
         }
       })();
 
-      const activeApiKey = studentOutstandCfg.apiKey || globalApiKey;
-      const upperComment = String(text).toUpperCase();
+      // Prevent self-triggering if the student comments from their own handle
+      const cleanAuthor = String(authorUsername || '').replace(/^@/, '').toLowerCase();
+      const cleanStudentIg = String(studentOutstandCfg.instagramHandle || '').replace(/^@/, '').toLowerCase();
+      const cleanStudentFb = String(studentOutstandCfg.facebookPageName || '').replace(/^@/, '').toLowerCase();
+      if (cleanAuthor && (cleanAuthor === cleanStudentIg || cleanAuthor === cleanStudentFb)) {
+        return res.status(200).json({ ok: true, handled: false, reason: 'Ignored student own comment' });
+      }
 
-      // Match comment text against student's Live Shift Magnets
+      // Check idempotency BEFORE calling Outstand API so webhook retries never double-DM
+      const initialThreads = (() => {
+        try {
+          return JSON.parse(targetStudent.worksheetAnswers?.dm_crm_threads_json || '[]');
+        } catch {
+          return [];
+        }
+      })();
+      if (
+        commentId &&
+        initialThreads.some(
+          t => (t.sourceCommentId || t.commentId) && (t.sourceCommentId === commentId || t.commentId === commentId)
+        )
+      ) {
+        return res.status(200).json({
+          ok: true,
+          handled: true,
+          deduplicated: true,
+          reason: `Comment ${commentId} already processed.`
+        });
+      }
+
+      const activeApiKey = globalApiKey || studentOutstandCfg.apiKey;
+      const commentStr = String(text || '');
+
+      // Match comment text against student's Shift Magnets using word boundaries
       const matchedMagnet = (targetStudent.shiftMagnets || []).find(mag => {
-        const kw = String(mag.keywordTrigger || '').trim().toUpperCase();
-        return kw && upperComment.includes(kw);
+        const kw = String(mag.keywordTrigger || '').trim();
+        if (!kw) return false;
+        if (mag.status && mag.status !== 'Live' && !mag.trackingLink?.trim()) return false;
+        const regex = new RegExp(`(?:^|[^a-zA-Z0-9])${escapeRegExp(kw)}(?:$|[^a-zA-Z0-9])`, 'i');
+        return regex.test(commentStr);
       });
 
       if (!matchedMagnet) {
@@ -146,7 +216,6 @@ export default async function handler(req, res) {
       }
 
       // Build combined Stage S (Link Delivery) + Stage H (A/B/C Diagnostic) Private Reply
-      // Meta allows 1 Private Reply per comment until the user responds
       const openerPart = (matchedMagnet.dmHandoffScript || '')
         .replace(/\[First Name\]/gi, firstName)
         .replace(/\[Name\]/gi, firstName)
@@ -184,31 +253,40 @@ export default async function handler(req, res) {
               social_account_id: accountId,
               comment_id: commentId,
               content: combinedPrivateReply
-            })
+            }),
+            signal: AbortSignal.timeout(8000)
           });
           outstandResult = await resp.json().catch(() => ({}));
           if (outstandResult?.data?.id || outstandResult?.id) {
             outstandConvoId = outstandResult.data?.id || outstandResult.id;
           }
         } catch (err) {
-          console.warn('Outstand POST /v1/conversations error:', err);
+          console.warn('POST /v1/conversations error:', err);
         }
       }
 
-      // Save the new DM CRM thread into the student's profile in Supabase
+      // Re-fetch freshest student row right before writing to minimize race window
       if (supabase && targetStudent) {
+        const { data: freshRow } = await supabase
+          .from('mc_students')
+          .select('profile')
+          .eq('id', targetStudent.id)
+          .maybeSingle();
+        const baseStudent = freshRow?.profile || targetStudent;
+
         const existingThreads = (() => {
           try {
-            return JSON.parse(targetStudent.worksheetAnswers?.dm_crm_threads_json || '[]');
+            return JSON.parse(baseStudent.worksheetAnswers?.dm_crm_threads_json || '[]');
           } catch {
             return [];
           }
         })();
 
-        // Deduplicate by sourceCommentId
-        const alreadyExists = existingThreads.some(
-          t => (t.sourceCommentId || t.commentId) && (t.sourceCommentId === commentId || t.commentId === commentId)
-        );
+        const alreadyExists =
+          commentId &&
+          existingThreads.some(
+            t => (t.sourceCommentId || t.commentId) && (t.sourceCommentId === commentId || t.commentId === commentId)
+          );
         if (!alreadyExists) {
           const nowISO = new Date().toISOString();
           const formattedTime = new Date().toLocaleTimeString('en-US', {
@@ -250,7 +328,7 @@ export default async function handler(req, res) {
                 id: `msg-auto-${Date.now()}-2`,
                 direction: 'outbound_dm',
                 text: combinedPrivateReply,
-                stageTag: 'Stage S + H · Outstand Private Reply',
+                stageTag: 'Stage S + H · Automated Private Reply',
                 createdAt: nowISO,
                 deliveryStatus: 'sent'
               }
@@ -262,7 +340,7 @@ export default async function handler(req, res) {
             id: `msg-outstand-cmt-${Date.now()}`,
             senderRole: 'SYSTEM',
             senderName: 'Live DM CRM · Comment Trigger',
-            text: `⚡ @${cleanHandle} commented "${text}" → Outstand auto-sent "${matchedMagnet.workingTitle}" + Stage H (A/B/C Diagnostic) Private Reply!`,
+            text: `⚡ @${cleanHandle} commented "${text}" → Auto-sent "${matchedMagnet.workingTitle}" + Stage H (A/B/C Diagnostic) Private Reply!`,
             timestamp: formattedTime,
             readByStudent: false,
             readByCoach: false,
@@ -274,13 +352,13 @@ export default async function handler(req, res) {
           };
 
           const updatedStudent = {
-            ...targetStudent,
-            dmConversationsWeekly: (targetStudent.dmConversationsWeekly || 0) + 1,
+            ...baseStudent,
+            dmConversationsWeekly: (baseStudent.dmConversationsWeekly || 0) + 1,
             worksheetAnswers: {
-              ...(targetStudent.worksheetAnswers || {}),
+              ...(baseStudent.worksheetAnswers || {}),
               dm_crm_threads_json: JSON.stringify(updatedThreads)
             },
-            messages: [...(targetStudent.messages || []), notifMsg]
+            messages: [...(baseStudent.messages || []), notifMsg]
           };
 
           await supabase.from('mc_students').upsert(
@@ -311,38 +389,79 @@ export default async function handler(req, res) {
       const {
         conversationId,
         accountId,
+        accountUsername,
         messageId,
+        senderId,
         senderUsername,
         senderName,
         text = ''
       } = data;
 
-      const targetStudent =
-        students.find(s => {
-          try {
-            if (data.tenantId === s.id || data.tenant_id === s.id) return true;
-            const cfg = JSON.parse(s.worksheetAnswers?.outstand_config_json || '{}');
-            if (!accountId) return false;
-            return (
-              cfg.socialAccountId === accountId ||
-              cfg.instagramAccountId === accountId ||
-              cfg.facebookAccountId === accountId ||
-              (Array.isArray(cfg.connectedAccounts) &&
-                cfg.connectedAccounts.some(a => a.id === accountId))
-            );
-          } catch {
-            return false;
-          }
-        }) || (students.length === 1 ? students[0] : null);
+      // Ignore outbound echoes or messages sent by the connected business account itself
+      if (
+        data.isEcho ||
+        data.fromMe ||
+        data.direction === 'outbound' ||
+        (accountId && senderId && accountId === senderId)
+      ) {
+        return res.status(200).json({ ok: true, handled: false, reason: 'Ignored outbound/echo DM' });
+      }
+
+      const targetStudent = findMatchingStudent(
+        accountId,
+        accountUsername || data.recipientUsername,
+        data.tenantId || data.tenant_id
+      );
 
       if (supabase && targetStudent) {
+        const studentCfg = (() => {
+          try {
+            return JSON.parse(targetStudent.worksheetAnswers?.outstand_config_json || '{}');
+          } catch {
+            return {};
+          }
+        })();
+
+        const cleanSenderHandle = String(senderUsername || senderName || 'prospect').replace(/^@/, '');
+        const cleanStudentIg = String(studentCfg.instagramHandle || '').replace(/^@/, '').toLowerCase();
+        const cleanStudentFb = String(studentCfg.facebookPageName || '').replace(/^@/, '').toLowerCase();
+        if (
+          cleanSenderHandle &&
+          (cleanSenderHandle.toLowerCase() === cleanStudentIg ||
+            cleanSenderHandle.toLowerCase() === cleanStudentFb)
+        ) {
+          return res.status(200).json({ ok: true, handled: false, reason: 'Ignored student own DM echo' });
+        }
+
+        const { data: freshRow } = await supabase
+          .from('mc_students')
+          .select('profile')
+          .eq('id', targetStudent.id)
+          .maybeSingle();
+        const baseStudent = freshRow?.profile || targetStudent;
+
         const existingThreads = (() => {
           try {
-            return JSON.parse(targetStudent.worksheetAnswers?.dm_crm_threads_json || '[]');
+            return JSON.parse(baseStudent.worksheetAnswers?.dm_crm_threads_json || '[]');
           } catch {
             return [];
           }
         })();
+
+        // Deduplicate by messageId so webhook retries do not append duplicate messages
+        if (
+          messageId &&
+          existingThreads.some(t =>
+            (t.messages || []).some(m => m.id === messageId || m.outstandMessageId === messageId)
+          )
+        ) {
+          return res.status(200).json({
+            ok: true,
+            handled: true,
+            deduplicated: true,
+            event: 'message.received'
+          });
+        }
 
         const nowISO = new Date().toISOString();
         const formattedTime = new Date().toLocaleTimeString('en-US', {
@@ -361,7 +480,6 @@ export default async function handler(req, res) {
             ? 'C'
             : undefined;
 
-        const cleanSenderHandle = String(senderUsername || senderName || 'prospect').replace(/^@/, '');
         let activeThreadId = `crm-${conversationId || Date.now()}`;
         let matchedThread = false;
 
@@ -407,13 +525,6 @@ export default async function handler(req, res) {
 
         if (!matchedThread) {
           const firstName = (senderName || senderUsername || 'Prospect').split(/[ ._@-]/)[0];
-          const studentCfg = (() => {
-            try {
-              return JSON.parse(targetStudent.worksheetAnswers?.outstand_config_json || '{}');
-            } catch {
-              return {};
-            }
-          })();
           const isFb =
             String(data.network || '').toLowerCase() === 'facebook' ||
             (accountId && studentCfg.facebookAccountId === accountId);
@@ -470,12 +581,12 @@ export default async function handler(req, res) {
         };
 
         const updatedStudent = {
-          ...targetStudent,
+          ...baseStudent,
           worksheetAnswers: {
-            ...(targetStudent.worksheetAnswers || {}),
+            ...(baseStudent.worksheetAnswers || {}),
             dm_crm_threads_json: JSON.stringify(updatedThreads)
           },
-          messages: [...(targetStudent.messages || []), replyNotifMsg]
+          messages: [...(baseStudent.messages || []), replyNotifMsg]
         };
 
         await supabase.from('mc_students').upsert(

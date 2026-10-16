@@ -66,6 +66,9 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
   const [workingTitle, setWorkingTitle] = useState('');
   const [trackingLink, setTrackingLink] = useState('');
   const [dmHandoffScript, setDmHandoffScript] = useState('');
+  const [showCustomDm, setShowCustomDm] = useState(false);
+
+  const isSafeHttpUrl = (url: string) => /^https?:\/\//i.test(url.trim());
 
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -81,6 +84,7 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
     setDmHandoffScript(
       'Hey [First Name]! Saw you commented [KEYWORD] — here is direct access to [Shift Magnet]: [Link]\n\nQuick question while you open it: are you currently focused on A) Fixing leaky ad funnels, B) Escaping referral-only spiky months, or C) Closing deals in DMs without sales calls?'
     );
+    setShowCustomDm(false);
     setShowModal(true);
   };
 
@@ -93,6 +97,7 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
       mag.dmHandoffScript ||
         `Hey [First Name]! Saw you commented ${mag.keywordTrigger} — here is direct access to ${mag.workingTitle}: ${mag.trackingLink || '[Link]'}`
     );
+    setShowCustomDm(false);
     setShowModal(true);
   };
 
@@ -100,7 +105,8 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
     e.preventDefault();
     const cleanKw = keywordTrigger.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
     const cleanTitle = workingTitle.trim();
-    const cleanUrl = trackingLink.trim();
+    const rawUrl = trackingLink.trim();
+    const cleanUrl = rawUrl && !/^https?:\/\//i.test(rawUrl) ? `https://${rawUrl}` : rawUrl;
     if (!cleanKw || !cleanTitle) return;
 
     const finalScript =
@@ -165,7 +171,7 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
               onClick={onOpenLiveCrm}
               className="px-3.5 py-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-xs font-semibold text-white inline-flex items-center gap-1.5 cursor-pointer"
             >
-              <span>Connect IG/FB &amp; Test in DM CRM</span>
+              <span>Connect IG/FB &amp; Test</span>
               <ArrowRight className="w-3.5 h-3.5 text-[#09ADEF]" />
             </button>
           )}
@@ -181,17 +187,17 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
         </div>
       </div>
 
-      {/* Clean Lead Magnet Cards */}
+      {/* Clean Lead Magnet Cards (Single Card Border Level) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {student.shiftMagnets.map(mag => (
           <div
             key={mag.id}
             className="glass-panel rounded-xl p-4 border border-white/10 flex flex-col justify-between space-y-3"
           >
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="px-2.5 py-0.5 rounded bg-[#09ADEF]/15 border border-[#09ADEF]/35 font-mono text-xs font-bold text-[#09ADEF] shrink-0">
+                  <span className="px-2.5 py-0.5 rounded bg-[#09ADEF]/15 font-mono text-xs font-bold text-[#09ADEF] shrink-0">
                     {mag.keywordTrigger}
                   </span>
                   <h2 className="text-sm font-bold text-white truncate">{mag.workingTitle}</h2>
@@ -220,8 +226,8 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
               </div>
 
               {/* Lead Magnet URL */}
-              <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-[#07090D] border border-white/10 text-xs">
-                {mag.trackingLink ? (
+              <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-white/[0.03] text-xs">
+                {mag.trackingLink && isSafeHttpUrl(mag.trackingLink) ? (
                   <>
                     <a
                       href={mag.trackingLink}
@@ -253,7 +259,7 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
 
               {/* Auto-Reply DM Script Preview */}
               {mag.dmHandoffScript && (
-                <div className="p-3 rounded-lg bg-[#07090D] border border-white/[0.07] space-y-1.5">
+                <div className="p-3 rounded-lg bg-white/[0.03] space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
                       Auto-Reply DM Message
@@ -281,7 +287,7 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
         ))}
       </div>
 
-      {/* Minimal Add / Edit Lead Magnet Modal */}
+      {/* Minimal Add / Edit Lead Magnet Modal (Max 3 inputs visible by default) */}
       <ModalDialog
         isOpen={showModal}
         onClose={() => setShowModal(false)}
@@ -304,7 +310,7 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
                       setWorkingTitle(p.workingTitle);
                       setDmHandoffScript(p.dmHandoffScript);
                     }}
-                    className="px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-[11px] text-neutral-200 cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-[11px] text-neutral-200 cursor-pointer"
                   >
                     {p.label} ({p.keywordTrigger})
                   </button>
@@ -351,32 +357,44 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
             />
           </div>
 
-          <div>
-            <label className="block font-medium text-neutral-300 mb-1">
-              Auto-Reply DM Message (sent when someone comments your keyword)
-            </label>
-            <textarea
-              rows={4}
-              value={dmHandoffScript}
-              onChange={e => setDmHandoffScript(e.target.value)}
-              className="w-full rounded-lg bg-[#0B0D14] border border-white/12 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none leading-relaxed"
-            />
-          </div>
+          {showCustomDm && (
+            <div>
+              <label className="block font-medium text-neutral-300 mb-1">
+                Auto-Reply DM Message (sent when someone comments your keyword)
+              </label>
+              <textarea
+                rows={4}
+                value={dmHandoffScript}
+                onChange={e => setDmHandoffScript(e.target.value)}
+                className="w-full rounded-lg bg-[#0B0D14] border border-white/12 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none leading-relaxed"
+              />
+            </div>
+          )}
 
-          <div className="pt-2 flex justify-end gap-2">
+          <div className="pt-2 flex items-center justify-between gap-2">
             <button
               type="button"
-              onClick={() => setShowModal(false)}
-              className="px-4 py-2 rounded-lg border border-white/12 text-neutral-300 cursor-pointer"
+              onClick={() => setShowCustomDm(v => !v)}
+              className="text-xs text-neutral-400 hover:text-white cursor-pointer"
             >
-              Cancel
+              {showCustomDm ? 'Hide custom DM message' : '+ Customize message'}
             </button>
-            <button
-              type="submit"
-              className="btn-2mm px-5 py-2 rounded-lg font-bold cursor-pointer"
-            >
-              Save Lead Magnet
-            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 rounded-lg border border-white/12 text-neutral-300 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn-2mm px-5 py-2 rounded-lg font-bold cursor-pointer"
+              >
+                Save
+              </button>
+            </div>
           </div>
         </form>
       </ModalDialog>

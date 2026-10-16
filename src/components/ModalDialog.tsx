@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalDialogProps {
@@ -19,6 +19,7 @@ export const ModalDialog: React.FC<ModalDialogProps> = ({
   maxWidthClass = 'max-w-2xl'
 }) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -66,8 +67,7 @@ export const ModalDialog: React.FC<ModalDialogProps> = ({
   return (
     <dialog
       ref={dialogRef}
-      closedby="any"
-      aria-labelledby="modal-dialog-title"
+      aria-labelledby={titleId}
       className={`m-auto w-[92vw] ${maxWidthClass} rounded-2xl border border-white/10 bg-[#12141D] p-0 text-slate-100 shadow-2xl overflow-hidden`}
     >
       <div className="border-b border-white/8 bg-white/[0.02] px-6 py-4 flex items-center justify-between">
@@ -77,7 +77,7 @@ export const ModalDialog: React.FC<ModalDialogProps> = ({
               {subtitle}
             </div>
           )}
-          <h2 id="modal-dialog-title" className="text-lg font-semibold tracking-tight text-white">
+          <h2 id={titleId} className="text-lg font-semibold tracking-tight text-white">
             {title}
           </h2>
         </div>
@@ -90,7 +90,7 @@ export const ModalDialog: React.FC<ModalDialogProps> = ({
           <X className="w-4 h-4" />
         </button>
       </div>
-      <div className="p-6 max-h-[80vh] overflow-y-auto">{children}</div>
+      {isOpen && <div className="p-6 max-h-[80vh] overflow-y-auto">{children}</div>}
     </dialog>
   );
 };
