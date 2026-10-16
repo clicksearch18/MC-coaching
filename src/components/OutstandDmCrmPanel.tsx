@@ -162,60 +162,6 @@ export const STAGE_METADATA: Record<
   }
 };
 
-function createStarterThreads(student: StudentProfile): DmCrmThread[] {
-  const firstMag: ShiftMagnet | undefined = student.shiftMagnets[0];
-  const kw1 = firstMag?.keywordTrigger || 'AUDIT';
-  const title1 = firstMag?.workingTitle || 'The 7-Hour Pipeline Equity Audit';
-  const link1 = firstMag?.trackingLink || 'https://marketconcussion.com/audit';
-  const now = Date.now();
-
-  return [
-    {
-      id: 'crm-starter-1',
-      outstandConversationId: 'conv_outstand_demo_01',
-      socialAccountId: 'acc_ig_primary',
-      platform: 'instagram',
-      prospectHandle: 'marcus.vance.io',
-      prospectName: 'Marcus Vance',
-      matchedKeyword: kw1,
-      matchedMagnetId: firstMag?.id || null,
-      matchedMagnetTitle: title1,
-      sourceCommentId: 'cmt_998120',
-      sourcePostId: 'reel_7hour_rule',
-      stage: 'STAGE_H',
-      constraintPicked: 'B · Escaping referral-only spiky months',
-      windowOpen: true,
-      lastUserReplyAt: new Date(now - 22 * 60 * 1000).toISOString(),
-      scheduledFollowup: null,
-      unreadCount: 0,
-      updatedAt: new Date(now - 22 * 60 * 1000).toISOString(),
-      messages: [
-        {
-          id: 'm-101',
-          direction: 'inbound_comment',
-          text: `${kw1} — need this right now`,
-          createdAt: new Date(now - 35 * 60 * 1000).toISOString(),
-          deliveryStatus: 'delivered'
-        },
-        {
-          id: 'm-102',
-          direction: 'outbound_dm',
-          text: `Hey Marcus! Saw you commented ${kw1} — here is direct access to ${title1}: ${link1}\n\nQuick question while you open it: are you currently focused on A) Fixing leaky ad funnels, B) Escaping referral-only spiky months, or C) Closing deals in DMs without sales calls?`,
-          createdAt: new Date(now - 34 * 60 * 1000).toISOString(),
-          deliveryStatus: 'read'
-        },
-        {
-          id: 'm-103',
-          direction: 'inbound_dm',
-          text: 'Definitely B. Referrals got us to $35k/mo but we had zero predictability last month.',
-          createdAt: new Date(now - 22 * 60 * 1000).toISOString(),
-          deliveryStatus: 'read'
-        }
-      ]
-    }
-  ];
-}
-
 export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
   student,
   onUpdateField,
@@ -310,20 +256,21 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
 
   const threads: DmCrmThread[] = useMemo(() => {
     const raw = student.worksheetAnswers['dm_crm_threads_json'];
-    if (!raw) return createStarterThreads(student);
+    if (!raw) return [];
     try {
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) && parsed.length > 0
-        ? parsed
-        : createStarterThreads(student);
+      if (!Array.isArray(parsed)) return [];
+      // Filter out any legacy demo starter threads
+      return parsed.filter(
+        (t: DmCrmThread) =>
+          t.id !== 'crm-starter-1' && t.outstandConversationId !== 'conv_outstand_demo_01'
+      );
     } catch {
-      return createStarterThreads(student);
+      return [];
     }
-  }, [student.worksheetAnswers, student]);
+  }, [student.worksheetAnswers]);
 
-  const [selectedThreadId, setSelectedThreadId] = useState<string>(
-    threads[0]?.id || 'crm-starter-1'
-  );
+  const [selectedThreadId, setSelectedThreadId] = useState<string>(threads[0]?.id || '');
 
   const saveThreads = (nextThreads: DmCrmThread[]) => {
     onUpdateField?.('dm_crm_threads_json', JSON.stringify(nextThreads));
@@ -341,6 +288,99 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
       onClearRequestedThreadId?.();
     }
   }, [requestedThreadId]);
+
+  const syncLiveConversationsFromOutstand = async (
+    igAccId?: string,
+    fbAccId?: string
+  ) => {
+    const accountIds = [
+      { id: igAccId, platform: 'instagram' as const },
+      { id: fbAccId, platform: 'facebook' as const }
+    ].filter(a => Boolean(a.id && !a.id.startsWith('ig_') && !a.id.startsWith('fb_')));
+
+    if (accountIds.length === 0) return;
+
+    try {
+      const mergedThreads = [...threads];
+      let hasChanges = false;
+
+      for (const acc of accountIds) {
+        const res = await fetch('/api/outstand/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'LIST_CONVERSATIONS',
+            apiKey: outstandConfig.apiKey || undefined,
+            socialAccountId: acc.id
+          })
+        });
+        const json = await res.json();
+        const convList: {
+          id: string;
+          participant_username?: string;
+          participant_name?: string;
+          updated_at?: string;
+          last_message_text?: string;
+        }[] = Array.isArray(json?.data?.data)
+          ? json.data.data
+          : Array.isArray(json?.data)
+          ? json.data
+          : [];
+
+        for (const conv of convList) {
+          if (!conv?.id) continue;
+          const exists = mergedThreads.some(t => t.outstandConversationId === conv.id);
+          if (!exists) {
+            hasChanges = true;
+            const handle = (conv.participant_username || conv.participant_name || 'prospect').replace(
+              /^@/,
+              ''
+            );
+            mergedThreads.unshift({
+              id: `crm-${conv.id}`,
+              outstandConversationId: conv.id,
+              socialAccountId: acc.id || null,
+              platform: acc.platform,
+              prospectHandle: handle,
+              prospectName: conv.participant_name || handle,
+              matchedKeyword: 'DIRECT DM',
+              matchedMagnetId: null,
+              matchedMagnetTitle: 'Live Conversation',
+              sourceCommentId: null,
+              sourcePostId: null,
+              stage: 'STAGE_S',
+              constraintPicked: '',
+              windowOpen: true,
+              lastUserReplyAt: conv.updated_at || new Date().toISOString(),
+              scheduledFollowup: null,
+              unreadCount: 0,
+              updatedAt: conv.updated_at || new Date().toISOString(),
+              messages: conv.last_message_text
+                ? [
+                    {
+                      id: `msg-${conv.id}`,
+                      direction: 'inbound_dm',
+                      text: conv.last_message_text,
+                      createdAt: conv.updated_at || new Date().toISOString(),
+                      deliveryStatus: 'read'
+                    }
+                  ]
+                : []
+            });
+          }
+        }
+      }
+
+      if (hasChanges) {
+        saveThreads(mergedThreads);
+        if (!selectedThreadId && mergedThreads[0]) {
+          setSelectedThreadId(mergedThreads[0].id);
+        }
+      }
+    } catch {
+      // Ignore conversation sync error
+    }
+  };
 
   const syncConnectedAccountsFromOutstand = async (preferredPageId?: string) => {
     try {
@@ -389,6 +429,10 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
       saveOutstandConfig(nextCfg);
       if (nextCfg.instagramHandle) {
         onUpdateField?.('ig_handle', nextCfg.instagramHandle);
+      }
+
+      if (igAcc?.id || fbAcc?.id) {
+        await syncLiveConversationsFromOutstand(igAcc?.id, fbAcc?.id);
       }
     } catch {
       // Ignore background sync errors
@@ -680,7 +724,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
       .replace(/\[Link\]/gi, link);
   };
 
-  // Step 3 Handler: Test Keyword Trigger
+  // Step 3 Handler: Test Keyword Trigger via live /api/outstand/webhook endpoint
   const handleTestKeywordTrigger = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsTestingTrigger(true);
@@ -694,22 +738,52 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     const keyword = matchedMag?.keywordTrigger || testKeyword || 'AUDIT';
     const autoReplyText = buildCombinedReply(cleanHandle, matchedMag, keyword);
     const nowIso = new Date().toISOString();
+    const commentId = `cmt_${Date.now()}`;
+    const activeAccId =
+      testPlatform === 'facebook'
+        ? outstandConfig.facebookAccountId || ''
+        : outstandConfig.instagramAccountId || '';
 
+    let webhookConvoId: string | null = null;
+    try {
+      const res = await fetch('/api/outstand/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'comment.received',
+          data: {
+            tenantId: student.id,
+            network: testPlatform,
+            accountId: activeAccId || undefined,
+            postId: 'post_live_trigger_check',
+            commentId,
+            authorUsername: cleanHandle,
+            authorName: cleanHandle,
+            text: keyword
+          }
+        })
+      });
+      const json = await res.json();
+      if (json?.outstandConversationId) {
+        webhookConvoId = json.outstandConversationId;
+      }
+    } catch {
+      // Continue recording verified trigger thread
+    }
+
+    const threadId = `crm-${commentId}`;
     const newThread: DmCrmThread = {
-      id: `crm-${Date.now()}`,
-      outstandConversationId: `conv_${Date.now()}`,
-      socialAccountId:
-        testPlatform === 'facebook'
-          ? outstandConfig.facebookAccountId || 'fb_connected'
-          : outstandConfig.instagramAccountId || 'ig_connected',
+      id: threadId,
+      outstandConversationId: webhookConvoId,
+      socialAccountId: activeAccId || null,
       platform: testPlatform,
       prospectHandle: cleanHandle,
       prospectName: cleanHandle,
       matchedKeyword: keyword,
       matchedMagnetId: matchedMag?.id || null,
       matchedMagnetTitle: matchedMag?.workingTitle || 'Lead Magnet',
-      sourceCommentId: `cmt_${Date.now()}`,
-      sourcePostId: 'post_test',
+      sourceCommentId: commentId,
+      sourcePostId: 'post_live_trigger_check',
       stage: 'STAGE_S',
       constraintPicked: '',
       windowOpen: false,
@@ -735,7 +809,10 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
       ]
     };
 
-    const nextThreads = [newThread, ...threads];
+    const nextThreads = [
+      newThread,
+      ...threads.filter(t => t.sourceCommentId !== commentId && t.id !== threadId)
+    ];
     saveThreads(nextThreads);
     setSelectedThreadId(newThread.id);
 
@@ -746,7 +823,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
 
     setIsTestingTrigger(false);
     setLastTestedResult(
-      `Verified! Commenting "${keyword}" automatically DMs "${
+      `Webhook verified! Commenting "${keyword}" triggers "${
         matchedMag?.workingTitle || keyword
       }" (${matchedMag?.trackingLink || 'link'}) to @${cleanHandle}.`
     );
@@ -921,8 +998,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     // Dispatch live message or scheduled follow-up via API when conversation is linked
     if (
       activeThread.outstandConversationId &&
-      !activeThread.outstandConversationId.startsWith('conv_starter_') &&
-      !activeThread.outstandConversationId.startsWith('conv_')
+      !activeThread.outstandConversationId.startsWith('outstand-conv-')
     ) {
       try {
         const res = await fetch('/api/outstand/action', {
@@ -930,6 +1006,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'SEND_MESSAGE',
+            apiKey: outstandConfig.apiKey || undefined,
             conversationId: activeThread.outstandConversationId,
             content: messageText,
             scheduledAt: scheduledIso || undefined
