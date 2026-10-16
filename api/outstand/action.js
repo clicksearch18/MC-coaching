@@ -58,33 +58,47 @@ export default async function handler(req, res) {
 
     // 2. Generate OAuth Connection URL for Instagram or Facebook
     if (action === 'GET_AUTH_URL') {
-      const network = (socialNetworkId || 'instagram').toLowerCase();
+      const network = (body.network || socialNetworkId || 'instagram').toLowerCase();
       const payload = {};
       if (redirectUri) payload.redirect_uri = redirectUri;
       if (tenantId) payload.tenant_id = tenantId;
 
-      // Try POST /v1/social-networks/{network}/auth-url first, fallback to GET
-      let resp = await fetch(
-        `${OUTSTAND_BASE_URL}/social-networks/${encodeURIComponent(network)}/auth-url`,
-        {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(payload)
-        }
-      );
-
-      if (resp.status === 404 || resp.status === 405) {
-        const params = new URLSearchParams();
-        if (tenantId) params.set('tenant_id', tenantId);
-        if (redirectUri) params.set('redirect_uri', redirectUri);
-        const qs = params.toString() ? `?${params.toString()}` : '';
-        resp = await fetch(
-          `${OUTSTAND_BASE_URL}/social-networks/${encodeURIComponent(network)}/auth-url${qs}`,
+      const requestAuthUrl = async () => {
+        let r = await fetch(
+          `${OUTSTAND_BASE_URL}/social-networks/${encodeURIComponent(network)}/auth-url`,
           {
-            method: 'GET',
-            headers
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload)
           }
         );
+
+        if (r.status === 404 || r.status === 405) {
+          const params = new URLSearchParams();
+          if (tenantId) params.set('tenant_id', tenantId);
+          if (redirectUri) params.set('redirect_uri', redirectUri);
+          const qs = params.toString() ? `?${params.toString()}` : '';
+          r = await fetch(
+            `${OUTSTAND_BASE_URL}/social-networks/${encodeURIComponent(network)}/auth-url${qs}`,
+            {
+              method: 'GET',
+              headers
+            }
+          );
+        }
+        return r;
+      };
+
+      let resp = await requestAuthUrl();
+
+      // If the social network (e.g. 'facebook' or 'instagram') isn't enabled on the workspace yet, enable it automatically and retry
+      if (!resp.ok) {
+        await fetch(`${OUTSTAND_BASE_URL}/social-networks`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ network })
+        }).catch(() => {});
+        resp = await requestAuthUrl();
       }
 
       const json = await resp.json().catch(() => ({}));
@@ -97,9 +111,12 @@ export default async function handler(req, res) {
 
       return res.status(resp.status).json({
         ok: resp.ok && Boolean(authUrl),
+        network,
         authUrl,
         data: json,
-        error: !resp.ok ? json?.error || json?.message || 'Failed to get OAuth URL from Outstand' : undefined
+        error: !resp.ok
+          ? json?.error || json?.message || `Failed to get ${network} OAuth URL`
+          : undefined
       });
     }
 

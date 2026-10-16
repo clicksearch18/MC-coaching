@@ -471,12 +471,14 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     // Save handle / page name immediately so connection state is confirmed
     const updatedCfg: OutstandConfig = {
       ...outstandConfig,
-      instagramHandle: network === 'instagram' ? cleanIg || 'connected' : outstandConfig.instagramHandle,
+      instagramHandle:
+        network === 'instagram' ? cleanIg || outstandConfig.instagramHandle || 'instagram_connected' : outstandConfig.instagramHandle,
       instagramAccountId:
         network === 'instagram'
           ? outstandConfig.instagramAccountId || `ig_${student.id}`
           : outstandConfig.instagramAccountId,
-      facebookPageName: network === 'facebook' ? cleanFb || 'Facebook Page' : outstandConfig.facebookPageName,
+      facebookPageName:
+        network === 'facebook' ? cleanFb || outstandConfig.facebookPageName || 'Facebook Page' : outstandConfig.facebookPageName,
       facebookAccountId:
         network === 'facebook'
           ? outstandConfig.facebookAccountId || `fb_${student.id}`
@@ -490,8 +492,8 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     try {
       const redirectUri =
         typeof window !== 'undefined'
-          ? `${window.location.origin}${window.location.pathname}`
-          : 'https://mc-coaching-swart.vercel.app';
+          ? `${window.location.origin}${window.location.pathname}?connected_network=${network}`
+          : `https://mc-coaching-swart.vercel.app?connected_network=${network}`;
 
       const res = await fetch('/api/outstand/action', {
         method: 'POST',
@@ -499,6 +501,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
         body: JSON.stringify({
           action: 'GET_AUTH_URL',
           network,
+          socialNetworkId: network,
           tenantId: student.id,
           redirectUri
         })
@@ -513,7 +516,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
 
     saveOutstandConfig(updatedCfg);
     if (network === 'instagram') {
-      onUpdateField?.('ig_handle', cleanIg);
+      if (cleanIg) onUpdateField?.('ig_handle', cleanIg);
       setEditingIg(false);
     } else {
       setEditingFb(false);
@@ -1081,16 +1084,16 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                       type="text"
                       value={igInput}
                       onChange={e => setIgInput(e.target.value)}
-                      placeholder="@yourhandle"
+                      placeholder="@yourhandle (optional)"
                       className="flex-1 min-w-0 rounded-lg bg-[#0B0E15] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => handleConnectAccount('instagram')}
-                      disabled={connectingChannel === 'instagram' || !igInput.trim()}
+                      disabled={connectingChannel === 'instagram'}
                       className="btn-2mm px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap cursor-pointer disabled:opacity-50"
                     >
-                      {connectingChannel === 'instagram' ? 'Connecting...' : 'Connect IG'}
+                      {connectingChannel === 'instagram' ? 'Connecting...' : 'Connect Instagram'}
                     </button>
                   </div>
                 )}
@@ -1135,16 +1138,16 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                       type="text"
                       value={fbInput}
                       onChange={e => setFbInput(e.target.value)}
-                      placeholder="Your Facebook Page Name"
+                      placeholder="Facebook Page Name (optional)"
                       className="flex-1 min-w-0 rounded-lg bg-[#0B0E15] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => handleConnectAccount('facebook')}
-                      disabled={connectingChannel === 'facebook' || !fbInput.trim()}
+                      disabled={connectingChannel === 'facebook'}
                       className="btn-2mm px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap cursor-pointer disabled:opacity-50"
                     >
-                      {connectingChannel === 'facebook' ? 'Connecting...' : 'Connect FB'}
+                      {connectingChannel === 'facebook' ? 'Connecting...' : 'Connect Facebook'}
                     </button>
                   </div>
                 )}
