@@ -4,4 +4,17 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/xlsx')) return 'xlsx';
+          if (id.includes('node_modules/@supabase')) return 'supabase';
+          if (id.includes('node_modules/lucide-react')) return 'icons';
+          if (id.includes('node_modules/react')) return 'vendor';
+          if (id.includes('/src/data/')) return 'curriculum-data';
+        }
+      }
+    }
+  }
 })

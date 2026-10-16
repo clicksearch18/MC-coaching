@@ -1623,8 +1623,14 @@ export function App() {
     updateStudent(currentStudent.id, st => {
       const ans = st.worksheetAnswers;
       const workingTitle = (ans['m16_magnet_title'] || '').trim() || 'Custom Shift Magnet';
-      const keywordRaw = (ans['m16_version'] || 'SHIFT').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
-      const keywordTrigger = keywordRaw.length >= 2 && keywordRaw.length <= 16 ? keywordRaw : 'SHIFT';
+      const keywordRaw = (ans['m16_keyword'] || ans['m16_version'] || 'SHIFT')
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9_-]/g, '');
+      const keywordTrigger =
+        keywordRaw.length >= 2 && keywordRaw.length <= 16 && !/^V\d+$/i.test(keywordRaw)
+          ? keywordRaw
+          : 'SHIFT';
 
       const formatVal = (ans['m16_format'] || '').toLowerCase();
       const deliveryFormat: ShiftMagnet['deliveryFormat'] = formatVal.includes('check')
@@ -1964,6 +1970,7 @@ export function App() {
 
       return {
         ...st,
+        currentPhase: Math.min(st.currentPhase, phaseNum),
         worksheetAnswers: {
           ...st.worksheetAnswers,
           [`phase_gate_status_${phaseNum}`]: 'OPEN'
@@ -2041,6 +2048,8 @@ export function App() {
       );
     } catch (err) {
       setImportStatus(`Error parsing file: ${err instanceof Error ? err.message : 'Invalid format'}`);
+    } finally {
+      e.target.value = '';
     }
   };
 
@@ -2135,6 +2144,11 @@ export function App() {
         supportingVideos: remaining
       };
     });
+    saveGroupPosts(prev =>
+      prev.filter(
+        p => !((p.studentId === studentId || p.authorId === studentId) && p.videoId === videoId)
+      )
+    );
   };
 
   const handleDeleteStudent = (studentId: string) => {
@@ -2147,13 +2161,15 @@ export function App() {
       }
       return filtered;
     });
+    saveGroupPosts(prev =>
+      prev.filter(p => p.studentId !== studentId && p.authorId !== studentId)
+    );
   };
 
   const handleLoginStudent = (studentId: string) => {
     const session: AuthSession = { role: 'STUDENT', studentId };
     setAuthSession(session);
     setActiveStudentId(studentId);
-    setRoleMode('STUDENT');
     setActiveTab('CADENCE');
     try {
       localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
@@ -2166,7 +2182,6 @@ export function App() {
   const handleLoginAdmin = () => {
     const session: AuthSession = { role: 'ADMIN' };
     setAuthSession(session);
-    setRoleMode('COACH');
     setActiveTab('COACH');
     try {
       localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
@@ -2296,7 +2311,6 @@ export function App() {
                   key={item.id}
                   type="button"
                   onClick={() => {
-                    setRoleMode(item.role);
                     setActiveTab(item.id);
                     try {
                       if (item.id === 'COACH') {
@@ -2366,7 +2380,6 @@ export function App() {
             <button
               type="button"
               onClick={() => {
-                setRoleMode('COACH');
                 setActiveTab('COACH');
                 try {
                   window.history.pushState({}, '', '/admin');
@@ -2532,113 +2545,118 @@ export function App() {
             />
           )}
 
-          {activeTab === 'GROUP' && (
-            <GroupDiscussionView
-              students={students}
-              currentStudent={currentStudent}
-              isAdminSession={isAdminSession}
-              posts={groupPosts}
-              requestedPostId={requestedGroupPostId}
-              onClearRequestedPostId={() => setRequestedGroupPostId(undefined)}
-              onCreateGeneralPost={handleCreateGeneralGroupPost}
-              onShareVideoToGroup={handleShareVideoToGroup}
-              onAddComment={handleAddGroupComment}
-              onToggleReaction={handleToggleGroupReaction}
-              onTogglePinPost={handleTogglePinGroupPost}
-              onDeletePost={handleDeleteGroupPost}
-              onReviewStudentVideo={handleReviewStudentVideo}
-            />
-          )}
+          <Suspense
+            fallback={
+              <div className="py-16 text-center text-xs text-neutral-500">Loading workspace...</div>
+            }
+          >
+            {activeTab === 'GROUP' && (
+              <GroupDiscussionView
+                students={students}
+                currentStudent={currentStudent}
+                isAdminSession={isAdminSession}
+                posts={groupPosts}
+                requestedPostId={requestedGroupPostId}
+                onClearRequestedPostId={() => setRequestedGroupPostId(undefined)}
+                onCreateGeneralPost={handleCreateGeneralGroupPost}
+                onShareVideoToGroup={handleShareVideoToGroup}
+                onAddComment={handleAddGroupComment}
+                onToggleReaction={handleToggleGroupReaction}
+                onTogglePinPost={handleTogglePinGroupPost}
+                onDeletePost={handleDeleteGroupPost}
+                onReviewStudentVideo={handleReviewStudentVideo}
+              />
+            )}
 
-          {activeTab === 'WORKBOOK' && (
-            <WorkbookView
-              student={currentStudent}
-              lessons={lessons}
-              isCoachMode={isAdminSession}
-              onUpdateLesson={handleUpdateLesson}
-              onResetLessonsToDefault={handleResetLessonsToDefault}
-              onToggleTask={handleToggleTask}
-              onUpdateField={handleUpdateField}
-              onUpdateRubric={handleUpdateRubric}
-              onCompleteLesson={handleCompleteLesson}
-              onSubmitPhaseGate={handleSubmitPhaseGate}
-              onSyncShiftMagnetFromLesson21={handleSyncShiftMagnetFromLesson21}
-              requestedLessonNumber={requestedLessonNumber}
-              onClearRequestedLesson={() => setRequestedLessonNumber(undefined)}
-            />
-          )}
+            {activeTab === 'WORKBOOK' && (
+              <WorkbookView
+                student={currentStudent}
+                lessons={lessons}
+                isCoachMode={isAdminSession}
+                onUpdateLesson={handleUpdateLesson}
+                onResetLessonsToDefault={handleResetLessonsToDefault}
+                onToggleTask={handleToggleTask}
+                onUpdateField={handleUpdateField}
+                onUpdateRubric={handleUpdateRubric}
+                onCompleteLesson={handleCompleteLesson}
+                onSubmitPhaseGate={handleSubmitPhaseGate}
+                onSyncShiftMagnetFromLesson21={handleSyncShiftMagnetFromLesson21}
+                requestedLessonNumber={requestedLessonNumber}
+                onClearRequestedLesson={() => setRequestedLessonNumber(undefined)}
+              />
+            )}
 
-          {activeTab === 'MAGNETS' && (
-            <ShiftMagnetsView
-              student={currentStudent}
-              onAddShiftMagnet={handleAddShiftMagnet}
-              onUpdateShiftMagnet={handleUpdateShiftMagnet}
-              onDeleteShiftMagnet={handleDeleteShiftMagnet}
-              onAssignToPendingVideos={handleAssignShiftMagnetToPendingVideos}
-              onUpdateField={handleUpdateField}
-              onSyncFromLesson21={handleSyncShiftMagnetFromLesson21}
-              onOpenLesson={lessonNum => {
-                setActiveTab('WORKBOOK');
-                setRequestedLessonNumber(lessonNum);
-              }}
-              onOpenLiveCrm={() => setActiveTab('CRM')}
-            />
-          )}
+            {activeTab === 'MAGNETS' && (
+              <ShiftMagnetsView
+                student={currentStudent}
+                onAddShiftMagnet={handleAddShiftMagnet}
+                onUpdateShiftMagnet={handleUpdateShiftMagnet}
+                onDeleteShiftMagnet={handleDeleteShiftMagnet}
+                onAssignToPendingVideos={handleAssignShiftMagnetToPendingVideos}
+                onUpdateField={handleUpdateField}
+                onSyncFromLesson21={handleSyncShiftMagnetFromLesson21}
+                onOpenLesson={lessonNum => {
+                  setActiveTab('WORKBOOK');
+                  setRequestedLessonNumber(lessonNum);
+                }}
+                onOpenLiveCrm={() => setActiveTab('CRM')}
+              />
+            )}
 
-          {activeTab === 'CRM' && (
-            <OutstandDmCrmPanel
-              student={currentStudent}
-              onUpdateField={handleUpdateField}
-              onAddShiftMagnet={handleAddShiftMagnet}
-              onUpdateShiftMagnet={handleUpdateShiftMagnet}
-              onDeleteShiftMagnet={handleDeleteShiftMagnet}
-              requestedThreadId={requestedCrmThreadId}
-              onClearRequestedThreadId={() => setRequestedCrmThreadId(undefined)}
-              onOpenMagnetsTab={() => setActiveTab('MAGNETS')}
-              onTriggerCrmNotification={handleTriggerCrmNotification}
-            />
-          )}
+            {activeTab === 'CRM' && (
+              <OutstandDmCrmPanel
+                student={currentStudent}
+                onUpdateField={handleUpdateField}
+                onAddShiftMagnet={handleAddShiftMagnet}
+                onUpdateShiftMagnet={handleUpdateShiftMagnet}
+                onDeleteShiftMagnet={handleDeleteShiftMagnet}
+                requestedThreadId={requestedCrmThreadId}
+                onClearRequestedThreadId={() => setRequestedCrmThreadId(undefined)}
+                onOpenMagnetsTab={() => setActiveTab('MAGNETS')}
+                onTriggerCrmNotification={handleTriggerCrmNotification}
+              />
+            )}
 
-          {activeTab === 'COACH' && isAdminSession && (
-            <CoachDashboardView
-              students={students}
-              lessons={lessons}
-              selectedStudentId={activeStudentId}
-              onSelectStudent={setActiveStudentId}
-              appSettings={appSettings}
-              onUpdateAppSettings={setAppSettings}
-              onAddStudent={handleAddStudent}
-              onUpdateStudentSpecifics={handleUpdateStudentSpecifics}
-              onAddCustomVideoToStudent={handleAddCustomVideoToStudent}
-              onEditStudentVideo={handleEditStudentVideo}
-              onDeleteStudentVideo={handleDeleteStudentVideo}
-              onDeleteStudent={handleDeleteStudent}
-              onSendMessage={handleSendMessage}
-              onMarkMessagesRead={handleMarkMessagesRead}
-              onNavigateFromChatAction={handleNavigateFromChatAction}
-              onReviewStudentVideo={handleReviewStudentVideo}
-              onTriggerMissedAlertPush={handleTriggerMissedAlertPush}
-              onApproveGate={handleApproveGate}
-              onRequestGateRevision={handleRequestGateRevision}
-              onToggleStudentTask={(studentId, lessonNumber, taskIdx) =>
-                handleToggleTask(lessonNumber, taskIdx, studentId)
-              }
-              onOpenImportModal={() => {
-                setImportStatus(null);
-                setShowImportModal(true);
-              }}
-              onPreviewStudentDashboard={(studentId: string) => {
-                setActiveStudentId(studentId);
-                setRoleMode('STUDENT');
-                setActiveTab('CADENCE');
-                try {
-                  window.history.pushState({}, '', `/student?student=${studentId}`);
-                } catch {
-                  // ignore
+            {activeTab === 'COACH' && isAdminSession && (
+              <CoachDashboardView
+                students={students}
+                lessons={lessons}
+                selectedStudentId={activeStudentId}
+                onSelectStudent={setActiveStudentId}
+                appSettings={appSettings}
+                onUpdateAppSettings={setAppSettings}
+                onAddStudent={handleAddStudent}
+                onUpdateStudentSpecifics={handleUpdateStudentSpecifics}
+                onAddCustomVideoToStudent={handleAddCustomVideoToStudent}
+                onEditStudentVideo={handleEditStudentVideo}
+                onDeleteStudentVideo={handleDeleteStudentVideo}
+                onDeleteStudent={handleDeleteStudent}
+                onSendMessage={handleSendMessage}
+                onMarkMessagesRead={handleMarkMessagesRead}
+                onNavigateFromChatAction={handleNavigateFromChatAction}
+                onReviewStudentVideo={handleReviewStudentVideo}
+                onTriggerMissedAlertPush={handleTriggerMissedAlertPush}
+                onApproveGate={handleApproveGate}
+                onRequestGateRevision={handleRequestGateRevision}
+                onToggleStudentTask={(studentId, lessonNumber, taskIdx) =>
+                  handleToggleTask(lessonNumber, taskIdx, studentId)
                 }
-              }}
-            />
-          )}
+                onOpenImportModal={() => {
+                  setImportStatus(null);
+                  setShowImportModal(true);
+                }}
+                onPreviewStudentDashboard={(studentId: string) => {
+                  setActiveStudentId(studentId);
+                  setActiveTab('CADENCE');
+                  try {
+                    window.history.pushState({}, '', `/student?student=${studentId}`);
+                  } catch {
+                    // ignore
+                  }
+                }}
+              />
+            )}
+          </Suspense>
         </main>
 
         {/* Native-Style Fixed Bottom Navigation Bar for Mobile (< md) */}
@@ -2652,7 +2670,6 @@ export function App() {
                   key={item.id}
                   type="button"
                   onClick={() => {
-                    setRoleMode(item.role);
                     setActiveTab(item.id);
                     try {
                       if (item.id === 'COACH') {
