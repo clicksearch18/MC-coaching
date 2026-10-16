@@ -254,9 +254,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
   }, [student.worksheetAnswers, student.id]);
 
   const isIgConnected = Boolean(
-    outstandConfig.instagramAccountId ||
-      outstandConfig.instagramHandle ||
-      outstandConfig.socialAccountId
+    outstandConfig.instagramAccountId || outstandConfig.instagramHandle
   );
   const isFbConnected = Boolean(
     outstandConfig.facebookAccountId || outstandConfig.facebookPageName
@@ -282,6 +280,10 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
   const [connectingChannel, setConnectingChannel] = useState<'instagram' | 'facebook' | null>(
     null
   );
+  const [pendingSessionToken, setPendingSessionToken] = useState<string | null>(null);
+  const [pendingPages, setPendingPages] = useState<
+    { id: string; name?: string; username?: string; network?: string }[]
+  >([]);
 
   // Step 2: Lead Magnet URL & Keyword Trigger form state
   const [editingMagnetId, setEditingMagnetId] = useState<string | null>(null);
@@ -343,15 +345,103 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     }
   }, [requestedThreadId]);
 
-  // Handle OAuth redirect callback `?session=TOKEN` automatically in the background
+  const syncConnectedAccountsFromOutstand = async (preferredPageId?: string) => {
+    try {
+      const listRes = await fetch('/api/outstand/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'LIST_ACCOUNTS',
+          tenantId: student.id
+        })
+      });
+      const listJson = await listRes.json();
+      const list: { id: string; username?: string; name?: string; network?: string }[] =
+        Array.isArray(listJson?.data?.data)
+          ? listJson.data.data
+          : Array.isArray(listJson?.data)
+          ? listJson.data
+          : [];
+
+      if (list.length === 0) return;
+
+      const igAcc =
+        (preferredPageId &&
+          list.find(
+            a => a.id === preferredPageId && (a.network || '').toLowerCase() === 'instagram'
+          )) ||
+        list.find(a => (a.network || '').toLowerCase() === 'instagram');
+      const fbAcc =
+        (preferredPageId &&
+          list.find(
+            a => a.id === preferredPageId && (a.network || '').toLowerCase() === 'facebook'
+          )) ||
+        list.find(a => (a.network || '').toLowerCase() === 'facebook');
+
+      const nextCfg: OutstandConfig = {
+        ...outstandConfig,
+        instagramAccountId: igAcc?.id || outstandConfig.instagramAccountId,
+        instagramHandle:
+          igAcc?.username?.replace(/^@/, '') ||
+          igAcc?.name?.replace(/^@/, '') ||
+          outstandConfig.instagramHandle,
+        facebookAccountId: fbAcc?.id || outstandConfig.facebookAccountId,
+        facebookPageName: fbAcc?.name || fbAcc?.username || outstandConfig.facebookPageName,
+        socialAccountId: igAcc?.id || fbAcc?.id || outstandConfig.socialAccountId,
+        lastSyncedAt: new Date().toISOString()
+      };
+      saveOutstandConfig(nextCfg);
+      if (nextCfg.instagramHandle) {
+        setIgInput(nextCfg.instagramHandle);
+        onUpdateField?.('ig_handle', nextCfg.instagramHandle);
+        setEditingIg(false);
+      }
+      if (nextCfg.facebookPageName) {
+        setFbInput(nextCfg.facebookPageName);
+        setEditingFb(false);
+      }
+    } catch {
+      // Ignore background sync errors
+    }
+  };
+
+  const handleFinalizeSelectedPage = async (sessionToken: string, pageIds: string[]) => {
+    try {
+      await fetch('/api/outstand/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'FINALIZE_PENDING_CONNECTION',
+          sessionToken,
+          selectedPageIds: pageIds
+        })
+      });
+      setPendingSessionToken(null);
+      setPendingPages([]);
+      await syncConnectedAccountsFromOutstand(pageIds[0]);
+      setStatusBanner('Account connected! Now test your keyword trigger below.');
+    } catch {
+      setStatusBanner('Could not finalize account selection. Please try connecting again.');
+    }
+  };
+
+  // Sync accounts on mount and handle OAuth redirect callback `?session=TOKEN`
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const sessionToken = params.get('session') || params.get('outstand_session');
-    if (!sessionToken) return;
+    const connectedNetwork = params.get('connected_network');
 
-    const cleanUrl = `${window.location.origin}${window.location.pathname}${window.location.hash}`;
-    window.history.replaceState({}, document.title, cleanUrl);
+    if (sessionToken || connectedNetwork) {
+      setActiveView('SETUP');
+      const cleanUrl = `${window.location.origin}${window.location.pathname}${window.location.hash}`;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+
+    if (!sessionToken) {
+      syncConnectedAccountsFromOutstand();
+      return;
+    }
 
     (async () => {
       try {
@@ -364,65 +454,25 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           })
         });
         const json = await res.json();
-        const pages =
+        const pages: { id: string; name?: string; username?: string; network?: string }[] =
           json?.data?.available_pages ||
           json?.data?.pages ||
           json?.data?.accounts ||
           json?.data?.data ||
           [];
-        const pageIds = Array.isArray(pages) ? pages.map((p: { id: string }) => p.id) : [];
 
-        await fetch('/api/outstand/action', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'FINALIZE_PENDING_CONNECTION',
-            sessionToken,
-            selectedPageIds: pageIds
-          })
-        });
-
-        const listRes = await fetch('/api/outstand/action', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'LIST_ACCOUNTS',
-            tenantId: student.id
-          })
-        });
-        const listJson = await listRes.json();
-        const list: { id: string; username?: string; name?: string; network?: string }[] =
-          Array.isArray(listJson?.data?.data)
-            ? listJson.data.data
-            : Array.isArray(listJson?.data)
-            ? listJson.data
-            : [];
-
-        const igAcc = list.find(a => (a.network || '').toLowerCase() === 'instagram');
-        const fbAcc = list.find(a => (a.network || '').toLowerCase() === 'facebook');
-
-        const nextCfg: OutstandConfig = {
-          ...outstandConfig,
-          instagramAccountId: igAcc?.id || outstandConfig.instagramAccountId,
-          instagramHandle:
-            igAcc?.username?.replace(/^@/, '') || outstandConfig.instagramHandle,
-          facebookAccountId: fbAcc?.id || outstandConfig.facebookAccountId,
-          facebookPageName: fbAcc?.name || fbAcc?.username || outstandConfig.facebookPageName,
-          socialAccountId: igAcc?.id || fbAcc?.id || outstandConfig.socialAccountId,
-          lastSyncedAt: new Date().toISOString()
-        };
-        saveOutstandConfig(nextCfg);
-        if (nextCfg.instagramHandle) {
-          setIgInput(nextCfg.instagramHandle);
-          setEditingIg(false);
+        if (Array.isArray(pages) && pages.length > 1) {
+          // Let the user pick which specific Page / Instagram Business account to connect
+          setPendingSessionToken(sessionToken);
+          setPendingPages(pages);
+          setStatusBanner('Select which Page or Account you want to connect below.');
+          return;
         }
-        if (nextCfg.facebookPageName) {
-          setFbInput(nextCfg.facebookPageName);
-          setEditingFb(false);
-        }
-        setStatusBanner('Account connected! Now test your keyword trigger below.');
+
+        const pageIds = Array.isArray(pages) ? pages.map(p => p.id) : [];
+        await handleFinalizeSelectedPage(sessionToken, pageIds);
       } catch {
-        // Ignore network error
+        await syncConnectedAccountsFromOutstand();
       }
     })();
   }, []);
@@ -462,38 +512,26 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     });
   }, [threads, stageFilter, searchQuery]);
 
-  // Step 1 Handler: Connect Instagram or Facebook
+  // Step 1 Handler: Connect Instagram or Facebook via real OAuth (with manual handle fallback)
   const handleConnectAccount = async (network: 'instagram' | 'facebook') => {
     setConnectingChannel(network);
     const cleanIg = igInput.trim().replace(/^@/, '');
     const cleanFb = fbInput.trim();
 
-    // Save handle / page name immediately so connection state is confirmed
-    const updatedCfg: OutstandConfig = {
-      ...outstandConfig,
-      instagramHandle:
-        network === 'instagram' ? cleanIg || outstandConfig.instagramHandle || 'instagram_connected' : outstandConfig.instagramHandle,
-      instagramAccountId:
-        network === 'instagram'
-          ? outstandConfig.instagramAccountId || `ig_${student.id}`
-          : outstandConfig.instagramAccountId,
-      facebookPageName:
-        network === 'facebook' ? cleanFb || outstandConfig.facebookPageName || 'Facebook Page' : outstandConfig.facebookPageName,
-      facebookAccountId:
-        network === 'facebook'
-          ? outstandConfig.facebookAccountId || `fb_${student.id}`
-          : outstandConfig.facebookAccountId,
-      socialAccountId:
-        outstandConfig.socialAccountId ||
-        (network === 'instagram' ? `ig_${student.id}` : `fb_${student.id}`),
-      lastSyncedAt: new Date().toISOString()
-    };
+    // Pre-save any optional label the student typed, without faking a connected account ID yet
+    if (network === 'instagram' && cleanIg) {
+      onUpdateField?.('ig_handle', cleanIg);
+    }
 
     try {
       const redirectUri =
         typeof window !== 'undefined'
-          ? `${window.location.origin}${window.location.pathname}?connected_network=${network}`
-          : `https://mc-coaching-swart.vercel.app?connected_network=${network}`;
+          ? `${window.location.origin}${window.location.pathname}?tab=CRM&connected_network=${network}&student=${encodeURIComponent(
+              student.id
+            )}`
+          : `https://mc-coaching-swart.vercel.app?tab=CRM&connected_network=${network}&student=${encodeURIComponent(
+              student.id
+            )}`;
 
       const res = await fetch('/api/outstand/action', {
         method: 'POST',
@@ -508,28 +546,75 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
       });
       const json = await res.json();
       if (json?.ok && json?.authUrl) {
-        window.open(json.authUrl, '_blank', 'noopener,noreferrer');
+        // Redirect in the same window so OAuth returns cleanly to the CRM tab without duplicate tabs
+        window.location.assign(json.authUrl);
+        return;
       }
     } catch {
-      // Continue with saved account confirmation
+      // Fallback below if offline / local dev without API key
     }
 
-    saveOutstandConfig(updatedCfg);
-    if (network === 'instagram') {
-      if (cleanIg) onUpdateField?.('ig_handle', cleanIg);
+    // Fallback when running locally without live OAuth or when manual handle is entered
+    if (network === 'instagram' && cleanIg) {
+      saveOutstandConfig({
+        ...outstandConfig,
+        instagramHandle: cleanIg,
+        instagramAccountId: outstandConfig.instagramAccountId || `ig_${student.id}`,
+        socialAccountId: outstandConfig.socialAccountId || `ig_${student.id}`,
+        lastSyncedAt: new Date().toISOString()
+      });
       setEditingIg(false);
-    } else {
+    } else if (network === 'facebook' && cleanFb) {
+      saveOutstandConfig({
+        ...outstandConfig,
+        facebookPageName: cleanFb,
+        facebookAccountId: outstandConfig.facebookAccountId || `fb_${student.id}`,
+        socialAccountId: outstandConfig.socialAccountId || `fb_${student.id}`,
+        lastSyncedAt: new Date().toISOString()
+      });
       setEditingFb(false);
+    } else {
+      setStatusBanner(
+        `Could not start ${
+          network === 'facebook' ? 'Facebook' : 'Instagram'
+        } authorization. Enter your ${
+          network === 'facebook' ? 'Page Name' : '@handle'
+        } and click Connect again.`
+      );
     }
     setConnectingChannel(null);
   };
 
-  const handleDisconnectAccount = (network: 'instagram' | 'facebook') => {
+  const handleDisconnectAccount = async (network: 'instagram' | 'facebook') => {
+    const accountIdToRemove =
+      network === 'instagram'
+        ? outstandConfig.instagramAccountId
+        : outstandConfig.facebookAccountId;
+
+    if (accountIdToRemove && !accountIdToRemove.startsWith('ig_') && !accountIdToRemove.startsWith('fb_')) {
+      try {
+        await fetch('/api/outstand/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'DISCONNECT_ACCOUNT',
+            socialAccountId: accountIdToRemove
+          })
+        });
+      } catch {
+        // Continue clearing local state
+      }
+    }
+
     if (network === 'instagram') {
       saveOutstandConfig({
         ...outstandConfig,
         instagramAccountId: '',
-        instagramHandle: ''
+        instagramHandle: '',
+        socialAccountId:
+          outstandConfig.socialAccountId === outstandConfig.instagramAccountId
+            ? outstandConfig.facebookAccountId || ''
+            : outstandConfig.socialAccountId
       });
       setIgInput('');
       setEditingIg(true);
@@ -537,7 +622,11 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
       saveOutstandConfig({
         ...outstandConfig,
         facebookAccountId: '',
-        facebookPageName: ''
+        facebookPageName: '',
+        socialAccountId:
+          outstandConfig.socialAccountId === outstandConfig.facebookAccountId
+            ? outstandConfig.instagramAccountId || ''
+            : outstandConfig.socialAccountId
       });
       setFbInput('');
       setEditingFb(true);
@@ -865,10 +954,37 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     else if (scheduleOption === 'DAY_12') nextStage = 'LOOP_DAY12';
     else if (scheduleOption === 'DAY_30') nextStage = 'LOOP_DAY30';
 
+    const messageText = composerText.trim();
+    let outstandMessageId: string | null = null;
+
+    // Dispatch live message or scheduled follow-up via Outstand API when conversation is linked
+    if (
+      activeThread.outstandConversationId &&
+      !activeThread.outstandConversationId.startsWith('conv_starter_')
+    ) {
+      try {
+        const res = await fetch('/api/outstand/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'SEND_MESSAGE',
+            conversationId: activeThread.outstandConversationId,
+            content: messageText,
+            scheduledAt: scheduledIso || undefined
+          })
+        });
+        const json = await res.json();
+        outstandMessageId = json?.data?.id || json?.data?.data?.id || null;
+      } catch {
+        // Continue saving message in thread history
+      }
+    }
+
     const newMsg: DmCrmMessage = {
       id: `msg-out-${Date.now()}`,
+      outstandMessageId,
       direction: 'outbound_dm',
-      text: composerText.trim(),
+      text: messageText,
       createdAt: new Date(now).toISOString(),
       scheduledFor: scheduledIso,
       deliveryStatus: isScheduled ? 'scheduled' : 'sent'
@@ -885,7 +1001,8 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           ? {
               level: scheduleOption as 'DAY_2' | 'DAY_5' | 'DAY_12' | 'DAY_30',
               scheduledAt: scheduledIso!,
-              text: composerText.trim()
+              text: messageText,
+              outstandMessageId
             }
           : t.scheduledFollowup,
         messages: [...t.messages, newMsg]
@@ -897,7 +1014,27 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     setIsSending(false);
   };
 
-  const handleCancelScheduled = (thread: DmCrmThread) => {
+  const handleCancelScheduled = async (thread: DmCrmThread) => {
+    const scheduledMsg = thread.messages.find(m => m.deliveryStatus === 'scheduled');
+    const msgIdToCancel =
+      thread.scheduledFollowup?.outstandMessageId || scheduledMsg?.outstandMessageId;
+
+    if (thread.outstandConversationId && msgIdToCancel) {
+      try {
+        await fetch('/api/outstand/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'CANCEL_SCHEDULED_MESSAGE',
+            conversationId: thread.outstandConversationId,
+            messageId: msgIdToCancel
+          })
+        });
+      } catch {
+        // Continue clearing local scheduled message
+      }
+    }
+
     const updatedThreads = threads.map(t => {
       if (t.id !== thread.id) return t;
       return {
@@ -1043,6 +1180,26 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                 <span className="text-xs font-semibold text-emerald-400">✓ Connected</span>
               )}
             </div>
+
+            {pendingSessionToken && pendingPages.length > 1 && (
+              <div className="p-3.5 rounded-xl bg-[#07090D] border border-[#09ADEF]/40 space-y-2.5">
+                <p className="text-xs font-bold text-white">
+                  Select which Page or Account to connect:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {pendingPages.map(page => (
+                    <button
+                      key={page.id}
+                      type="button"
+                      onClick={() => handleFinalizeSelectedPage(pendingSessionToken, [page.id])}
+                      className="btn-2mm px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer"
+                    >
+                      Connect {page.name || page.username || page.id}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               {/* Instagram Row */}

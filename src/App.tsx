@@ -186,7 +186,19 @@ export function App() {
   );
   const [activeTab, setActiveTab] = useState<
     'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'CRM' | 'GROUP' | 'COACH'
-  >(() => (window.location.pathname.toLowerCase() === '/admin' ? 'COACH' : 'CADENCE'));
+  >(() => {
+    if (window.location.pathname.toLowerCase() === '/admin') return 'COACH';
+    const params = new URLSearchParams(window.location.search);
+    if (
+      params.get('session') ||
+      params.get('outstand_session') ||
+      params.get('connected_network') ||
+      params.get('tab')?.toUpperCase() === 'CRM'
+    ) {
+      return 'CRM';
+    }
+    return 'CADENCE';
+  });
   const [activeStudentId, setActiveStudentId] = useState<string>(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('student') || INITIAL_STUDENTS[0].id;

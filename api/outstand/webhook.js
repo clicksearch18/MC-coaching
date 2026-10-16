@@ -93,10 +93,11 @@ export default async function handler(req, res) {
       const handle = authorUsername ? `@${authorUsername}` : authorName || 'Prospect';
       const firstName = (authorName || authorUsername || 'there').split(/[ ._@-]/)[0];
 
-      // Find matching student by connected Outstand accountId (or fallback to first student)
+      // Find matching student by connected Outstand accountId or tenantId
       const targetStudent =
         students.find(s => {
           try {
+            if (data.tenantId === s.id || data.tenant_id === s.id) return true;
             const cfg = JSON.parse(s.worksheetAnswers?.outstand_config_json || '{}');
             if (!accountId) return false;
             return (
@@ -109,7 +110,7 @@ export default async function handler(req, res) {
           } catch {
             return false;
           }
-        }) || students[0];
+        }) || (students.length === 1 ? students[0] : null);
 
       if (!targetStudent) {
         return res.status(200).json({
@@ -149,13 +150,23 @@ export default async function handler(req, res) {
       const openerPart = (matchedMagnet.dmHandoffScript || '')
         .replace(/\[First Name\]/gi, firstName)
         .replace(/\[Name\]/gi, firstName)
+        .replace(/\[Shift Magnet Title\]/gi, matchedMagnet.workingTitle || '')
+        .replace(/\[Shift Magnet\]/gi, matchedMagnet.workingTitle || '')
+        .replace(/\[KEYWORD\]/gi, matchedMagnet.keywordTrigger || '')
         .replace(/\[Link\]/gi, matchedMagnet.trackingLink || '');
 
       const diagnosticPart =
         matchedMagnet.dmDiagnosticQuestion ||
         'Quick question while you open it — are you currently focused on:\nA) Fixing leaky ad funnels\nB) Escaping referral-only spiky months\nC) Closing deals in DMs without sales calls?\n\n(Just reply A, B, or C!)';
 
-      const combinedPrivateReply = `${openerPart}\n\n${diagnosticPart}`;
+      const alreadyHasQuestion =
+        openerPart.includes('A)') ||
+        openerPart.toLowerCase().includes('quick question') ||
+        openerPart.includes(diagnosticPart.slice(0, 25));
+
+      const combinedPrivateReply = alreadyHasQuestion
+        ? openerPart
+        : `${openerPart}\n\n${diagnosticPart}`;
 
       let outstandResult = null;
       let outstandConvoId = `outstand-conv-${commentId || Date.now()}`;
@@ -309,6 +320,7 @@ export default async function handler(req, res) {
       const targetStudent =
         students.find(s => {
           try {
+            if (data.tenantId === s.id || data.tenant_id === s.id) return true;
             const cfg = JSON.parse(s.worksheetAnswers?.outstand_config_json || '{}');
             if (!accountId) return false;
             return (
@@ -321,7 +333,7 @@ export default async function handler(req, res) {
           } catch {
             return false;
           }
-        }) || students[0];
+        }) || (students.length === 1 ? students[0] : null);
 
       if (supabase && targetStudent) {
         const existingThreads = (() => {
@@ -395,11 +407,22 @@ export default async function handler(req, res) {
 
         if (!matchedThread) {
           const firstName = (senderName || senderUsername || 'Prospect').split(/[ ._@-]/)[0];
+          const studentCfg = (() => {
+            try {
+              return JSON.parse(targetStudent.worksheetAnswers?.outstand_config_json || '{}');
+            } catch {
+              return {};
+            }
+          })();
+          const isFb =
+            String(data.network || '').toLowerCase() === 'facebook' ||
+            (accountId && studentCfg.facebookAccountId === accountId);
+
           updatedThreads.unshift({
             id: activeThreadId,
             outstandConversationId: conversationId || null,
             socialAccountId: accountId || null,
-            platform: 'instagram',
+            platform: isFb ? 'facebook' : 'instagram',
             prospectHandle: cleanSenderHandle,
             prospectName: firstName,
             matchedKeyword: 'INBOUND DM',

@@ -46,13 +46,26 @@ export default async function handler(req, res) {
     // 1. List Connected Social Accounts (Instagram, Facebook, etc.)
     if (action === 'LIST_ACCOUNTS') {
       const params = new URLSearchParams();
-      if (tenantId) params.set('tenantId', tenantId);
+      if (tenantId) params.set('tenant_id', tenantId);
       const qs = params.toString() ? `?${params.toString()}` : '';
-      const resp = await fetch(`${OUTSTAND_BASE_URL}/social-accounts${qs}`, {
+      let resp = await fetch(`${OUTSTAND_BASE_URL}/social-accounts${qs}`, {
         method: 'GET',
         headers
       });
-      const json = await resp.json().catch(() => ({}));
+      let json = await resp.json().catch(() => ({}));
+      const list = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
+
+      // Fallback: if tenant filter returned 0 accounts, check workspace-level accounts
+      if (tenantId && list.length === 0) {
+        const fallbackResp = await fetch(`${OUTSTAND_BASE_URL}/social-accounts`, {
+          method: 'GET',
+          headers
+        });
+        if (fallbackResp.ok) {
+          resp = fallbackResp;
+          json = await fallbackResp.json().catch(() => ({}));
+        }
+      }
       return res.status(resp.status).json({ ok: resp.ok, data: json });
     }
 
