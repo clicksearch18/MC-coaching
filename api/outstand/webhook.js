@@ -125,9 +125,9 @@ export default async function handler(req, res) {
     const escapeRegExp = str => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     // Helper to match an incoming webhook event to a student profile
-    const findMatchingStudent = (accountId, accountUsername, tenantId) => {
+    const findMatchingStudent = (accountId, accountUsername, tenantId, conversationId) => {
       const cleanAcctUser = String(accountUsername || '').replace(/^@/, '').toLowerCase();
-      return (
+      const matched =
         students.find(s => {
           try {
             if (tenantId && s.id === tenantId) return true;
@@ -149,13 +149,51 @@ export default async function handler(req, res) {
                 return true;
               }
             }
+            if (conversationId) {
+              const threads = JSON.parse(s.worksheetAnswers?.dm_crm_threads_json || '[]');
+              if (
+                Array.isArray(threads) &&
+                threads.some(t => t.outstandConversationId === conversationId)
+              ) {
+                return true;
+              }
+            }
             return false;
+          } catch {
+            return false;
+          }
+        }) || null;
+
+      if (matched) return matched;
+
+      // Fallback if there is a single student with an active Instagram/Facebook connection
+      return (
+        students.find(s => {
+          try {
+            const cfg = JSON.parse(s.worksheetAnswers?.outstand_config_json || '{}');
+            return Boolean(cfg.instagramAccountId || cfg.facebookAccountId || cfg.socialAccountId);
           } catch {
             return false;
           }
         }) || null
       );
     };
+
+    // 12 randomized public comment reply variations for anti-spam protection
+    const PUBLIC_COMMENT_REPLY_VARIATIONS = [
+      'Just sent it over to your DMs, [First Name]! 🙌',
+      'Check your DMs [First Name] — just dropped the link in there for you! 👉',
+      'Sent! Check your message requests if you don’t see it right away ⚡',
+      'Just shot that over to your inbox, [First Name]!',
+      'You got it! Just sent the resource to your DMs 🔥',
+      'All yours — check your DMs, just sent it over!',
+      'Just dropped it in your DMs, [First Name]! Let me know what you think.',
+      'Sent you a DM with the link! Check your inbox 👇',
+      'On its way to your DMs right now, [First Name]! ✅',
+      'Check your inbox — just sent that over to you!',
+      'Boom, just sent it to your DMs [First Name]!',
+      'Just DM’d it to you! Check your primary or requests folder 📩'
+    ];
 
     // -------------------------------------------------------------------------
     // EVENT 1: comment.received -> Keyword Match -> POST /v1/conversations
@@ -296,7 +334,24 @@ export default async function handler(req, res) {
       let outstandResult = null;
       let outstandConvoId = `outstand-conv-${commentId || Date.now()}`;
 
-      // Dispatch real Comment-to-DM Private Reply via Outstand API if key is configured
+      // Pick a randomized "Sent you a DM" public comment reply variation for anti-spam protection
+      const customPool =
+        Array.isArray(matchedMagnet.publicCommentReplies) &&
+        matchedMagnet.publicCommentReplies.length > 0
+          ? matchedMagnet.publicCommentReplies
+          : PUBLIC_COMMENT_REPLY_VARIATIONS;
+      const randomTemplate =
+        customPool[Math.floor(Math.random() * customPool.length)] ||
+        PUBLIC_COMMENT_REPLY_VARIATIONS[0];
+      const publicCommentReplyText = randomTemplate
+        .replace(/\[First Name\]/gi, firstName)
+        .replace(/\[Name\]/gi, firstName)
+        .replace(/\[Shift Magnet Title\]/gi, matchedMagnet.workingTitle || '')
+        .replace(/\[KEYWORD\]/gi, matchedMagnet.keywordTrigger || '');
+
+      let publicCommentReplyStatus = null;
+
+      // 1. Dispatch real Comment-to-DM Private Reply via Outstand API
       if (activeApiKey && accountId && commentId) {
         try {
           const resp = await fetch(`${OUTSTAND_BASE_URL}/conversations`, {
@@ -326,6 +381,37 @@ export default async function handler(req, res) {
           }
         } catch (err) {
           console.warn('POST /v1/conversations error:', err);
+        }
+
+        // 2. Dispatch Public Comment Reply ("Sent you a DM!") threaded under the user's comment
+        if (postId) {
+          try {
+            const replyAcctUsername =
+              cleanStudentIg ||
+              cleanStudentFb ||
+              String(accountUsername || '').replace(/^@/, '') ||
+              undefined;
+            const pubResp = await fetch(
+              `${OUTSTAND_BASE_URL}/posts/${encodeURIComponent(postId)}/replies`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${activeApiKey}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  content: publicCommentReplyText,
+                  platform_post_id: String(postId),
+                  ...(replyAcctUsername ? { account_username: replyAcctUsername } : {}),
+                  parent_comment_id: String(commentId)
+                }),
+                signal: AbortSignal.timeout(6000)
+              }
+            );
+            publicCommentReplyStatus = pubResp.ok ? 'sent' : `http_${pubResp.status}`;
+          } catch (pubErr) {
+            console.warn('POST /v1/posts/{id}/replies error:', pubErr);
+          }
         }
       }
 
@@ -442,6 +528,8 @@ export default async function handler(req, res) {
         keywordMatched: matchedMagnet.keywordTrigger,
         magnetSent: matchedMagnet.workingTitle,
         outstandConversationId: outstandConvoId,
+        publicCommentReply: publicCommentReplyText,
+        publicCommentReplyStatus,
         outstandError: outstandResult?.error || outstandResult?.message || null
       });
 
@@ -451,6 +539,7 @@ export default async function handler(req, res) {
         event: 'comment.received',
         keywordMatched: matchedMagnet.keywordTrigger,
         magnetSent: matchedMagnet.workingTitle,
+        publicCommentReply: publicCommentReplyText,
         outstandConversationId: outstandConvoId
       });
     }
@@ -490,7 +579,8 @@ export default async function handler(req, res) {
       const targetStudent = findMatchingStudent(
         accountId,
         accountUsername || data.recipientUsername,
-        data.tenantId || data.tenant_id
+        data.tenantId || data.tenant_id,
+        conversationId
       );
 
       if (supabase && targetStudent) {
