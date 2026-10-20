@@ -143,8 +143,12 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
 
   // Active inline Vimeo replay player state
   const [activeReplayId, setActiveReplayId] = useState<string | null>(null);
-  const [iframeSeekSeconds, setIframeSeekSeconds] = useState<number>(0);
+  // Stable initial start time used ONLY for constructing the iframe src when opening a player
+  const [playerMountStartSeconds, setPlayerMountStartSeconds] = useState<number>(0);
+  // Target seek time sent via postMessage on ready or chapter click without reloading the iframe
+  const pendingSeekSecondsRef = useRef<number>(0);
   const [livePlaybackSeconds, setLivePlaybackSeconds] = useState<Record<string, number>>({});
+  const [liveDurationSeconds, setLiveDurationSeconds] = useState<Record<string, number>>({});
   const vimeoIframeRefs = useRef<Record<string, HTMLIFrameElement | null>>({});
   const lastReportedTimeRef = useRef<Record<string, number>>({});
 
@@ -167,6 +171,7 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
       let data: {
         event?: string;
         method?: string;
+        value?: number;
         data?: { seconds?: number; duration?: number; percent?: number };
       } = {};
       try {
@@ -177,56 +182,66 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
 
       const activeIframe = vimeoIframeRefs.current[activeReplayId];
       if (data.event === 'ready' && activeIframe?.contentWindow) {
-        activeIframe.contentWindow.postMessage(
-          JSON.stringify({ method: 'addEventListener', value: 'playProgress' }),
-          '*'
-        );
-        activeIframe.contentWindow.postMessage(
-          JSON.stringify({ method: 'addEventListener', value: 'timeupdate' }),
-          '*'
-        );
-        activeIframe.contentWindow.postMessage(
-          JSON.stringify({ method: 'addEventListener', value: 'ended' }),
-          '*'
-        );
-        if (iframeSeekSeconds > 0) {
+        ['playProgress', 'timeupdate', 'pause', 'seeked', 'seek', 'ended'].forEach(evtName => {
+          activeIframe.contentWindow?.postMessage(
+            JSON.stringify({ method: 'addEventListener', value: evtName }),
+            '*'
+          );
+        });
+        if (pendingSeekSecondsRef.current > 0) {
           activeIframe.contentWindow.postMessage(
-            JSON.stringify({ method: 'seekTo', value: iframeSeekSeconds }),
+            JSON.stringify({ method: 'seekTo', value: pendingSeekSecondsRef.current }),
             '*'
           );
         }
         return;
       }
 
+      const isTimeEvent =
+        data.event === 'playProgress' ||
+        data.event === 'timeupdate' ||
+        data.event === 'pause' ||
+        data.event === 'seeked' ||
+        data.event === 'seek';
+
       if (
-        (data.event === 'playProgress' || data.event === 'timeupdate') &&
+        isTimeEvent &&
         data.data &&
         typeof data.data.seconds === 'number' &&
         typeof data.data.duration === 'number' &&
         data.data.duration > 0
       ) {
         const nowSec = Math.floor(data.data.seconds);
+        const totalDur = Math.floor(data.data.duration);
+
         setLivePlaybackSeconds(prev =>
           prev[activeReplayId] === nowSec ? prev : { ...prev, [activeReplayId]: nowSec }
         );
+        setLiveDurationSeconds(prev =>
+          prev[activeReplayId] === totalDur ? prev : { ...prev, [activeReplayId]: totalDur }
+        );
+
+        const isImmediateEvent =
+          data.event === 'pause' || data.event === 'seeked' || data.event === 'seek';
         const prevSec = lastReportedTimeRef.current[activeReplayId] ?? -10;
-        if (Math.abs(nowSec - prevSec) >= 2) {
+
+        if (isImmediateEvent || Math.abs(nowSec - prevSec) >= 1) {
           lastReportedTimeRef.current[activeReplayId] = nowSec;
           const pct =
             typeof data.data.percent === 'number'
               ? Math.round(data.data.percent * 100)
               : Math.round((data.data.seconds / data.data.duration) * 100);
-          onUpdateReplayProgress(activeReplayId, data.data.seconds, data.data.duration, pct);
+          onUpdateReplayProgress(activeReplayId, nowSec, totalDur, pct);
         }
       } else if (data.event === 'ended') {
-        const dur = data.data?.duration || 0;
+        const dur = Math.floor(data.data?.duration || liveDurationSeconds[activeReplayId] || 0);
         onUpdateReplayProgress(activeReplayId, dur, dur, 100);
       }
     };
 
     window.addEventListener('message', handleVimeoMessage);
     return () => window.removeEventListener('message', handleVimeoMessage);
-  }, [activeReplayId, iframeSeekSeconds, onUpdateReplayProgress]);
+  }, [activeReplayId, liveDurationSeconds, onUpdateReplayProgress]);
 
   // Hot-seat question form (max 2 inputs)
   const [showQuestionForm, setShowQuestionForm] = useState(false);
@@ -635,16 +650,17 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
               const progressPct = isWatched ? 100 : savedProg?.percent || 0;
               const isPlayingHere = activeReplayId === replay.id;
               const currentSecForReplay =
-                livePlaybackSeconds[replay.id] ??
-                (isPlayingHere ? iframeSeekSeconds : undefined) ??
-                savedProg?.currentTimeSeconds ??
-                0;
+                livePlaybackSeconds[replay.id] ?? savedProg?.currentTimeSeconds ?? 0;
+              const totalDurForReplay =
+                liveDurationSeconds[replay.id] || savedProg?.durationSeconds || 0;
               const currentTimestampLabel = formatSecondsToTimestamp(currentSecForReplay);
+              const totalDurationTimestampLabel =
+                totalDurForReplay > 0 ? formatSecondsToTimestamp(totalDurForReplay) : null;
               const isAskingHere = askingReplayId === replay.id;
 
               const vimeoEmbedSrc = resolveVimeoEmbedUrl(
                 replay.videoUrl,
-                isPlayingHere ? iframeSeekSeconds || savedProg?.currentTimeSeconds || 0 : 0
+                isPlayingHere ? playerMountStartSeconds : 0
               );
 
               const handleOpenAskQuestion = () => {
@@ -665,40 +681,46 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
               };
 
               const handleOpenAndPlay = (seekToSeconds?: number) => {
-                const fallbackTotalSec = parseDurationLabelToSeconds(replay.duration);
+                const fallbackTotalSec =
+                  totalDurForReplay > 0
+                    ? totalDurForReplay
+                    : parseDurationLabelToSeconds(replay.duration);
                 const targetSec =
                   seekToSeconds !== undefined
                     ? seekToSeconds
                     : savedProg?.currentTimeSeconds || 0;
 
-                setActiveReplayId(replay.id);
-                setIframeSeekSeconds(targetSec);
+                pendingSeekSecondsRef.current = targetSec;
                 setLivePlaybackSeconds(prev => ({ ...prev, [replay.id]: targetSec }));
                 if (askingReplayId === replay.id && seekToSeconds !== undefined) {
                   setQuestionTimestampDraft(formatSecondsToTimestamp(seekToSeconds));
                 }
 
-                // If player is already mounted, send direct Vimeo postMessage seek + play
+                // If player is already mounted, send direct Vimeo postMessage seek + play without changing iframe src
                 const activeIframe = vimeoIframeRefs.current[replay.id];
-                if (isPlayingHere && activeIframe?.contentWindow && seekToSeconds !== undefined) {
-                  activeIframe.contentWindow.postMessage(
-                    JSON.stringify({ method: 'seekTo', value: seekToSeconds }),
-                    '*'
-                  );
+                if (isPlayingHere && activeIframe?.contentWindow) {
+                  if (seekToSeconds !== undefined) {
+                    activeIframe.contentWindow.postMessage(
+                      JSON.stringify({ method: 'seekTo', value: seekToSeconds }),
+                      '*'
+                    );
+                  }
                   activeIframe.contentWindow.postMessage(
                     JSON.stringify({ method: 'play' }),
                     '*'
                   );
+                } else {
+                  // Opening player fresh: set initial start timestamp for #t=XXs and ready seekTo
+                  setPlayerMountStartSeconds(targetSec);
+                  setActiveReplayId(replay.id);
                 }
 
                 if (seekToSeconds !== undefined) {
                   const estPct = Math.min(
                     95,
-                    Math.max(10, Math.round((seekToSeconds / fallbackTotalSec) * 100))
+                    Math.max(1, Math.round((seekToSeconds / fallbackTotalSec) * 100))
                   );
                   onUpdateReplayProgress(replay.id, seekToSeconds, fallbackTotalSec, estPct);
-                } else if (!savedProg && !isWatched) {
-                  onUpdateReplayProgress(replay.id, 0, fallbackTotalSec, 5);
                 }
               };
 
@@ -714,16 +736,17 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
                         <span>·</span>
                         <span className="inline-flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          {replay.duration}
+                          {totalDurationTimestampLabel || replay.duration}
                         </span>
                         {isWatched ? (
                           <span className="text-emerald-400 font-semibold inline-flex items-center gap-1">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             100% Watched
                           </span>
-                        ) : progressPct > 0 ? (
+                        ) : currentSecForReplay > 0 || progressPct > 0 ? (
                           <span className="text-[#09ADEF] font-semibold">
-                            {progressPct}% Watched
+                            {progressPct}% Watched ({currentTimestampLabel}
+                            {totalDurationTimestampLabel ? ` / ${totalDurationTimestampLabel}` : ''})
                           </span>
                         ) : null}
                       </div>
@@ -757,8 +780,8 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
                           <>
                             <Play className="w-3.5 h-3.5" />
                             <span>
-                              {progressPct > 0 && progressPct < 100
-                                ? `Resume (${progressPct}%)`
+                              {currentSecForReplay > 0 && !isWatched
+                                ? `Resume at ${currentTimestampLabel}`
                                 : 'Play Replay'}
                             </span>
                           </>
@@ -778,7 +801,7 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
                         >
                           <MessageSquare className="w-3.5 h-3.5 text-[#09ADEF]" />
                           <span>
-                            {isPlayingHere
+                            {isPlayingHere || currentSecForReplay > 0
                               ? `Ask Question @ ${currentTimestampLabel}`
                               : 'Ask Question'}
                           </span>
@@ -843,7 +866,12 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
                       <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-neutral-400">
                         <span>
                           Playing in dashboard · Current position{' '}
-                          <strong className="font-mono text-white">{currentTimestampLabel}</strong>{' '}
+                          <strong className="font-mono text-white">
+                            {currentTimestampLabel}
+                            {totalDurationTimestampLabel
+                              ? ` / ${totalDurationTimestampLabel}`
+                              : ''}
+                          </strong>{' '}
                           ({progressPct}% watched)
                         </span>
                         <div className="flex items-center gap-3">

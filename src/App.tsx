@@ -1852,22 +1852,19 @@ export function App() {
     ) => {
       updateStudent(currentStudent.id, st => {
         const prevProg = st.replayProgress?.[replayId];
+        const effectiveDuration = Math.round(durationSeconds || prevProg?.durationSeconds || 0);
         const rawPercent =
           explicitPercent !== undefined
             ? explicitPercent
-            : durationSeconds > 0
-            ? Math.round((currentTimeSeconds / durationSeconds) * 100)
+            : effectiveDuration > 0
+            ? Math.round((currentTimeSeconds / effectiveDuration) * 100)
             : prevProg?.percent || 0;
-        const clampedPercent = Math.max(
-          prevProg?.percent || 0,
-          Math.min(100, Math.max(0, rawPercent))
-        );
-        const isCompleted = clampedPercent >= 90;
+        const clampedPercent = Math.min(100, Math.max(0, rawPercent));
         const currentWatched = st.watchedReplayIds || [];
+        const isAlreadyWatched = currentWatched.includes(replayId);
+        const isCompleted = isAlreadyWatched || clampedPercent >= 95;
         const nextWatched =
-          isCompleted && !currentWatched.includes(replayId)
-            ? [...currentWatched, replayId]
-            : currentWatched;
+          isCompleted && !isAlreadyWatched ? [...currentWatched, replayId] : currentWatched;
 
         return {
           ...st,
@@ -1877,7 +1874,7 @@ export function App() {
             [replayId]: {
               percent: isCompleted ? 100 : clampedPercent,
               currentTimeSeconds: Math.round(currentTimeSeconds),
-              durationSeconds: Math.round(durationSeconds || prevProg?.durationSeconds || 0),
+              durationSeconds: effectiveDuration,
               updatedAtISO: new Date().toISOString()
             }
           }
