@@ -12,7 +12,9 @@ import {
   ClipboardCheck,
   Edit3,
   Play,
-  X
+  X,
+  MessageSquare,
+  Send
 } from 'lucide-react';
 import {
   StudentProfile,
@@ -44,6 +46,15 @@ interface VaultAndCallsViewProps {
     durationSeconds: number,
     explicitPercent?: number
   ) => void;
+  onAskReplayQuestion?: (params: {
+    replayId: string;
+    replayTitle: string;
+    videoUrl: string;
+    timestampSeconds: number;
+    timestampLabel: string;
+    question: string;
+  }) => string;
+  onOpenGroupThread?: (postId?: string) => void;
   onAddResource: (resource: Omit<CoachingResourceItem, 'id'>) => void;
   onDeleteResource: (resourceId: string) => void;
   onSubmitWeeklyCheckIn: (checkIn: Omit<WeeklyScorecardCheckIn, 'id' | 'dateISO'>) => void;
@@ -59,6 +70,17 @@ const parseTimestampToSeconds = (ts: string): number => {
     return parts[0] * 60 + parts[1];
   }
   return parts[0] || 0;
+};
+
+const formatSecondsToTimestamp = (rawSeconds: number): string => {
+  const total = Math.max(0, Math.floor(rawSeconds || 0));
+  const hrs = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  if (hrs > 0) {
+    return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 };
 
 const parseDurationLabelToSeconds = (durationLabel: string): number => {
@@ -110,6 +132,8 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
   onDeleteReplay,
   onToggleWatchedReplay,
   onUpdateReplayProgress,
+  onAskReplayQuestion,
+  onOpenGroupThread,
   onAddResource,
   onDeleteResource,
   onSubmitWeeklyCheckIn
@@ -120,8 +144,19 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
   // Active inline Vimeo replay player state
   const [activeReplayId, setActiveReplayId] = useState<string | null>(null);
   const [iframeSeekSeconds, setIframeSeekSeconds] = useState<number>(0);
+  const [livePlaybackSeconds, setLivePlaybackSeconds] = useState<Record<string, number>>({});
   const vimeoIframeRefs = useRef<Record<string, HTMLIFrameElement | null>>({});
   const lastReportedTimeRef = useRef<Record<string, number>>({});
+
+  // Inline "Ask a Question on Video" state (captures video & timestamp -> posts to Group & notifies Coach)
+  const [askingReplayId, setAskingReplayId] = useState<string | null>(null);
+  const [questionTimestampDraft, setQuestionTimestampDraft] = useState<string>('00:00');
+  const [questionTextDraft, setQuestionTextDraft] = useState<string>('');
+  const [postedQuestionConfirmation, setPostedQuestionConfirmation] = useState<{
+    replayId: string;
+    postId: string;
+    timestampLabel: string;
+  } | null>(null);
 
   // Listen to Vimeo Player postMessage events for live playback progress & completion tracking
   useEffect(() => {
@@ -171,6 +206,9 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
         data.data.duration > 0
       ) {
         const nowSec = Math.floor(data.data.seconds);
+        setLivePlaybackSeconds(prev =>
+          prev[activeReplayId] === nowSec ? prev : { ...prev, [activeReplayId]: nowSec }
+        );
         const prevSec = lastReportedTimeRef.current[activeReplayId] ?? -10;
         if (Math.abs(nowSec - prevSec) >= 2) {
           lastReportedTimeRef.current[activeReplayId] = nowSec;
@@ -596,10 +634,35 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
               const savedProg = student.replayProgress?.[replay.id];
               const progressPct = isWatched ? 100 : savedProg?.percent || 0;
               const isPlayingHere = activeReplayId === replay.id;
+              const currentSecForReplay =
+                livePlaybackSeconds[replay.id] ??
+                (isPlayingHere ? iframeSeekSeconds : undefined) ??
+                savedProg?.currentTimeSeconds ??
+                0;
+              const currentTimestampLabel = formatSecondsToTimestamp(currentSecForReplay);
+              const isAskingHere = askingReplayId === replay.id;
+
               const vimeoEmbedSrc = resolveVimeoEmbedUrl(
                 replay.videoUrl,
                 isPlayingHere ? iframeSeekSeconds || savedProg?.currentTimeSeconds || 0 : 0
               );
+
+              const handleOpenAskQuestion = () => {
+                if (isAskingHere) {
+                  setAskingReplayId(null);
+                  return;
+                }
+                const activeIframe = vimeoIframeRefs.current[replay.id];
+                if (isPlayingHere && activeIframe?.contentWindow) {
+                  activeIframe.contentWindow.postMessage(
+                    JSON.stringify({ method: 'pause' }),
+                    '*'
+                  );
+                }
+                setAskingReplayId(replay.id);
+                setQuestionTimestampDraft(formatSecondsToTimestamp(currentSecForReplay));
+                setQuestionTextDraft('');
+              };
 
               const handleOpenAndPlay = (seekToSeconds?: number) => {
                 const fallbackTotalSec = parseDurationLabelToSeconds(replay.duration);
@@ -610,6 +673,10 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
 
                 setActiveReplayId(replay.id);
                 setIframeSeekSeconds(targetSec);
+                setLivePlaybackSeconds(prev => ({ ...prev, [replay.id]: targetSec }));
+                if (askingReplayId === replay.id && seekToSeconds !== undefined) {
+                  setQuestionTimestampDraft(formatSecondsToTimestamp(seekToSeconds));
+                }
 
                 // If player is already mounted, send direct Vimeo postMessage seek + play
                 const activeIframe = vimeoIframeRefs.current[replay.id];
@@ -668,7 +735,7 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
                       <button
                         type="button"
                         onClick={() => {
@@ -697,6 +764,26 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
                           </>
                         )}
                       </button>
+
+                      {onAskReplayQuestion && (
+                        <button
+                          type="button"
+                          onClick={handleOpenAskQuestion}
+                          aria-expanded={isAskingHere}
+                          className={`px-3 py-2 rounded-lg border text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer ${
+                            isAskingHere
+                              ? 'bg-[#09ADEF]/15 border-[#09ADEF] text-white'
+                              : 'bg-white/[0.03] border-white/10 text-neutral-200 hover:text-white'
+                          }`}
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 text-[#09ADEF]" />
+                          <span>
+                            {isPlayingHere
+                              ? `Ask Question @ ${currentTimestampLabel}`
+                              : 'Ask Question'}
+                          </span>
+                        </button>
+                      )}
 
                       <button
                         type="button"
@@ -753,20 +840,123 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
                         />
                       </div>
 
-                      <div className="flex items-center justify-between text-[11px] text-neutral-400">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-neutral-400">
                         <span>
-                          Playing in dashboard · Progress saves automatically ({progressPct}%)
+                          Playing in dashboard · Current position{' '}
+                          <strong className="font-mono text-white">{currentTimestampLabel}</strong>{' '}
+                          ({progressPct}% watched)
                         </span>
-                        <a
-                          href={replay.videoUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-neutral-400 hover:text-white inline-flex items-center gap-1"
-                        >
-                          <span>Open on Vimeo</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
+                        <div className="flex items-center gap-3">
+                          {onAskReplayQuestion && !isAskingHere && (
+                            <button
+                              type="button"
+                              onClick={handleOpenAskQuestion}
+                              className="text-[#09ADEF] hover:underline font-semibold inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              <MessageSquare className="w-3 h-3" />
+                              <span>Ask Question at {currentTimestampLabel}</span>
+                            </button>
+                          )}
+                          <a
+                            href={replay.videoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-neutral-400 hover:text-white inline-flex items-center gap-1"
+                          >
+                            <span>Open on Vimeo</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Inline "Ask a Question at Timestamp" Composer (Grabs Video + Timestamp -> Posts to Group & Notifies Coach) */}
+                  {isAskingHere && onAskReplayQuestion && (
+                    <form
+                      onSubmit={e => {
+                        e.preventDefault();
+                        const q = questionTextDraft.trim();
+                        if (!q) return;
+                        const cleanTs = questionTimestampDraft.trim() || '00:00';
+                        const tsSeconds = parseTimestampToSeconds(cleanTs);
+                        const postId = onAskReplayQuestion({
+                          replayId: replay.id,
+                          replayTitle: replay.title,
+                          videoUrl: replay.videoUrl,
+                          timestampSeconds: tsSeconds,
+                          timestampLabel: cleanTs,
+                          question: q
+                        });
+                        setAskingReplayId(null);
+                        setQuestionTextDraft('');
+                        setPostedQuestionConfirmation({
+                          replayId: replay.id,
+                          postId,
+                          timestampLabel: cleanTs
+                        });
+                      }}
+                      className="pt-3 border-t border-white/10 flex flex-col sm:flex-row sm:items-center gap-2"
+                    >
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[11px] font-semibold text-neutral-400">@</span>
+                        <input
+                          type="text"
+                          value={questionTimestampDraft}
+                          onChange={e => setQuestionTimestampDraft(e.target.value)}
+                          aria-label="Video timestamp MM:SS"
+                          placeholder="00:00"
+                          className="w-20 rounded-lg bg-black border border-white/15 px-2.5 py-2 text-xs font-mono font-bold text-[#09ADEF] text-center focus:outline-none focus:border-[#09ADEF]"
+                        />
+                      </div>
+
+                      <input
+                        type="text"
+                        required
+                        value={questionTextDraft}
+                        onChange={e => setQuestionTextDraft(e.target.value)}
+                        placeholder={`Ask a question on "${replay.title}" — posts to Group & notifies Coach...`}
+                        className="flex-1 rounded-lg bg-black border border-white/15 px-3.5 py-2 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#09ADEF]"
+                      />
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="submit"
+                          className="px-3.5 py-2 rounded-lg bg-[#09ADEF] hover:bg-[#09B3F8] text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>Post to Group</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAskingReplayId(null)}
+                          className="px-2.5 py-2 rounded-lg bg-white/[0.04] text-xs text-neutral-400 hover:text-white cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {/* Confirmation Banner After Posting Timestamp Question */}
+                  {postedQuestionConfirmation?.replayId === replay.id && (
+                    <div className="pt-2.5 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-300">
+                      <span>
+                        ✓ Question at{' '}
+                        <strong className="font-mono">
+                          {postedQuestionConfirmation.timestampLabel}
+                        </strong>{' '}
+                        posted to Group Discussion & Coach Josh notified.
+                      </span>
+                      {onOpenGroupThread && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenGroupThread(postedQuestionConfirmation.postId)}
+                          className="text-[#09ADEF] hover:underline font-bold cursor-pointer"
+                        >
+                          View in Discussion →
+                        </button>
+                      )}
                     </div>
                   )}
 

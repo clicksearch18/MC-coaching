@@ -15,7 +15,9 @@ import {
   Pin,
   Trash2,
   Search,
-  Share2
+  Share2,
+  Play,
+  X
 } from 'lucide-react';
 import {
   StudentProfile,
@@ -127,6 +129,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
 
   // Reply inputs keyed by postId
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+  const [activeVimeoPostId, setActiveVimeoPostId] = useState<string | null>(null);
 
   // Inline Coach Review drawer keyed by postId
   const [activeCoachReviewPostId, setActiveCoachReviewPostId] = useState<string | null>(null);
@@ -1007,20 +1010,98 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                   </div>
                 )}
 
-                {/* Optional External Link on General Thread */}
-                {post.type === 'GENERAL_THREAD' && post.videoUrl && /^https?:\/\//i.test(post.videoUrl) && (
-                  <div>
-                    <a
-                      href={post.videoUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#040507] hover:bg-white/[0.06] border border-[#09ADEF]/35 text-xs font-semibold text-[#09ADEF]"
-                    >
-                      <span>Open Attached Link</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
-                )}
+                {/* Optional Video / Timestamped Vimeo Player or External Link on General Thread */}
+                {post.type === 'GENERAL_THREAD' && post.videoUrl && /^https?:\/\//i.test(post.videoUrl) && (() => {
+                  const rawUrl = post.videoUrl.trim();
+                  const unlistedMatch = rawUrl.match(/vimeo\.com\/(?:video\/)?(\d+)\/([a-zA-Z0-9]+)/i);
+                  const queryHashMatch = rawUrl.match(/[?&]h=([a-zA-Z0-9]+)/i);
+                  const idMatch = rawUrl.match(/vimeo\.com\/(?:.*\/)?(\d+)/i);
+                  const timeFragMatch = rawUrl.match(/#t=(\d+)s?/i);
+                  const startSec = timeFragMatch ? parseInt(timeFragMatch[1], 10) : 0;
+                  const mins = Math.floor(startSec / 60);
+                  const secs = startSec % 60;
+                  const tsBadge =
+                    startSec > 0
+                      ? `@ ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+                      : '';
+                  const isPlayingVimeo = activeVimeoPostId === post.id;
+
+                  if (idMatch) {
+                    const videoId = idMatch[1];
+                    const hashToken = unlistedMatch?.[2] || queryHashMatch?.[1];
+                    const params = new URLSearchParams();
+                    if (hashToken) params.set('h', hashToken);
+                    params.set('autoplay', '1');
+                    params.set('dnt', '1');
+                    const embedSrc = `https://player.vimeo.com/video/${videoId}?${params.toString()}${
+                      startSec > 0 ? `#t=${startSec}s` : ''
+                    }`;
+
+                    return (
+                      <div className="space-y-2.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setActiveVimeoPostId(isPlayingVimeo ? null : post.id)
+                            }
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#09ADEF] hover:bg-[#09B3F8] text-white text-xs font-bold cursor-pointer"
+                          >
+                            {isPlayingVimeo ? (
+                              <>
+                                <X className="w-3.5 h-3.5" />
+                                <span>Close Video</span>
+                              </>
+                            ) : (
+                              <>
+                                <Play className="w-3.5 h-3.5" />
+                                <span>
+                                  {tsBadge ? `Play Video ${tsBadge}` : 'Play Attached Video'}
+                                </span>
+                              </>
+                            )}
+                          </button>
+
+                          <a
+                            href={rawUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-[#040507] hover:bg-white/[0.06] border border-white/10 text-xs font-semibold text-neutral-300 hover:text-white"
+                          >
+                            <span>Open on Vimeo</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+
+                        {isPlayingVimeo && (
+                          <div className="rounded-xl overflow-hidden bg-black aspect-video w-full">
+                            <iframe
+                              src={embedSrc}
+                              title={post.title}
+                              allow="autoplay; fullscreen; picture-in-picture"
+                              allowFullScreen
+                              className="w-full h-full border-0"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div>
+                      <a
+                        href={post.videoUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#040507] hover:bg-white/[0.06] border border-[#09ADEF]/35 text-xs font-semibold text-[#09ADEF]"
+                      >
+                        <span>Open Attached Link</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  );
+                })()}
 
                 {/* Cohort Reactions Row */}
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/[0.07]">

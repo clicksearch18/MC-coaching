@@ -1887,6 +1887,115 @@ export function App() {
     [currentStudent.id, updateStudent]
   );
 
+  const handleAskReplayQuestion = (params: {
+    replayId: string;
+    replayTitle: string;
+    videoUrl: string;
+    timestampSeconds: number;
+    timestampLabel: string;
+    question: string;
+  }): string => {
+    const isCoach = authSession.role === 'ADMIN';
+    const formattedStamp = new Date().toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    const newPostId = `group-replay-q-${Date.now()}`;
+    const authorName = isCoach ? 'Coach Josh Beechraft' : currentStudent.name;
+    const baseVideoUrl = params.videoUrl.replace(/#t=.*$/i, '').trim();
+    const safeSec = Math.max(0, Math.floor(params.timestampSeconds || 0));
+    const timestampedUrl = `${baseVideoUrl}#t=${safeSec}s`;
+    const postTitle = `Question on "${params.replayTitle}" (@ ${params.timestampLabel})`;
+
+    const newPost: GroupDiscussionPost = {
+      id: newPostId,
+      type: 'GENERAL_THREAD',
+      category: 'VIDEO_BREAKDOWN',
+      authorId: isCoach ? 'coach-josh' : currentStudent.id,
+      authorName,
+      authorAvatar: isCoach ? 'JB' : currentStudent.avatar,
+      authorCompany: isCoach ? '2mmShift / Market Concussion' : currentStudent.company,
+      authorNiche: isCoach ? '2mmShift Architect' : currentStudent.niche,
+      authorRole: isCoach ? 'COACH' : 'STUDENT',
+      title: postTitle,
+      body: params.question,
+      timestamp: formattedStamp,
+      createdAtISO: new Date().toISOString(),
+      videoUrl: timestampedUrl,
+      reactions: {
+        fire: [],
+        shift: [],
+        props: []
+      },
+      comments: []
+    };
+
+    saveGroupPosts(prev => [newPost, ...prev]);
+
+    // 1. Broadcast to the cohort group and notify Coach Josh directly in the student's message thread
+    const formattedTime = new Date().toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+
+    const updatedList = latestStudentsRef.current.map(st => {
+      const isAskingStudent = st.id === currentStudent.id;
+      const msg: ChatMessage = isAskingStudent
+        ? {
+            id: `msg-replay-q-coach-${Date.now()}`,
+            senderRole: isCoach ? 'COACH' : 'STUDENT',
+            senderName: authorName,
+            text: `❓ Question on "${params.replayTitle}" at ${params.timestampLabel}: "${params.question}"`,
+            timestamp: formattedTime,
+            relatedVideoTitle: `${params.replayTitle} (@ ${params.timestampLabel})`,
+            isAlert: !isCoach,
+            readByStudent: true,
+            readByCoach: isCoach,
+            actionTarget: {
+              label: 'Watch @ Timestamp & Reply in Group',
+              tab: 'GROUP',
+              groupPostId: newPostId
+            }
+          }
+        : {
+            id: `msg-replay-q-peer-${Date.now()}-${st.id}`,
+            senderRole: 'SYSTEM',
+            senderName: `Discussion · ${authorName}`,
+            text: `❓ ${authorName} asked a question on "${params.replayTitle}" (@ ${params.timestampLabel}): "${params.question}"`,
+            timestamp: formattedTime,
+            relatedVideoTitle: `${params.replayTitle} (@ ${params.timestampLabel})`,
+            readByStudent: false,
+            readByCoach: true,
+            actionTarget: {
+              label: 'Watch @ Timestamp & Discuss',
+              tab: 'GROUP',
+              groupPostId: newPostId
+            }
+          };
+
+      return {
+        ...st,
+        messages: [...st.messages, msg]
+      };
+    });
+
+    latestStudentsRef.current = updatedList;
+    setStudents(updatedList);
+    if (isSupabaseConfigured) {
+      upsertStudentsToSupabase(updatedList);
+    }
+
+    triggerWebPushAndBanner(
+      'Question Posted & Coach Notified!',
+      `Posted your question (@ ${params.timestampLabel}) to Group Discussion and notified Coach Josh.`,
+      'COACH_NUDGE'
+    );
+
+    return newPostId;
+  };
+
   const handleAddResource = (resource: Omit<CoachingResourceItem, 'id'>) => {
     const created: CoachingResourceItem = {
       ...resource,
@@ -3077,6 +3186,11 @@ export function App() {
                 onDeleteReplay={handleDeleteReplay}
                 onToggleWatchedReplay={handleToggleWatchedReplay}
                 onUpdateReplayProgress={handleUpdateReplayProgress}
+                onAskReplayQuestion={handleAskReplayQuestion}
+                onOpenGroupThread={postId => {
+                  setActiveTab('GROUP');
+                  if (postId) setRequestedGroupPostId(postId);
+                }}
                 onAddResource={handleAddResource}
                 onDeleteResource={handleDeleteResource}
                 onSubmitWeeklyCheckIn={handleSubmitWeeklyCheckIn}
