@@ -817,6 +817,10 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                         <span className="text-emerald-400 font-semibold">
                           Gate 0{stSubmittedGate} Ready
                         </span>
+                      ) : (st.watchedReplayIds?.length || 0) > 0 ? (
+                        <span className="text-emerald-400 font-medium">
+                          {st.watchedReplayIds?.length} Replays
+                        </span>
                       ) : (
                         <span>{st.streakDays}d Streak</span>
                       )}

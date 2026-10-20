@@ -286,6 +286,13 @@ export interface ChatMessage {
   actionTarget?: ChatMessageActionTarget;
 }
 
+export interface ReplayWatchProgress {
+  percent: number;
+  currentTimeSeconds: number;
+  durationSeconds: number;
+  updatedAtISO: string;
+}
+
 export interface StudentProfile {
   id: string;
   name: string;
@@ -315,6 +322,7 @@ export interface StudentProfile {
   messages: ChatMessage[];
   weeklyCheckIns?: WeeklyScorecardCheckIn[];
   watchedReplayIds?: string[];
+  replayProgress?: Record<string, ReplayWatchProgress>;
   onboardingDismissed?: boolean;
 }
 

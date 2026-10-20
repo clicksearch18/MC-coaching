@@ -197,7 +197,18 @@ export function App() {
   const [callReplays, setCallReplays] = useState<CoachingCallReplay[]>(() => {
     try {
       const saved = localStorage.getItem(CALL_REPLAYS_STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved) as CoachingCallReplay[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(r => {
+            const fallback = INITIAL_CALL_REPLAYS.find(ir => ir.id === r.id);
+            if (fallback && r.videoUrl.includes('loom.com/share/market-concussion-')) {
+              return fallback;
+            }
+            return r;
+          });
+        }
+      }
     } catch {
       // ignore
     }
@@ -1810,12 +1821,67 @@ export function App() {
       const current = st.watchedReplayIds || [];
       const exists = current.includes(replayId);
       const next = exists ? current.filter(id => id !== replayId) : [...current, replayId];
+      const existingProg = st.replayProgress?.[replayId];
+      const nextProgress = {
+        ...(st.replayProgress || {}),
+        [replayId]: {
+          percent: exists ? 0 : 100,
+          currentTimeSeconds: exists ? 0 : existingProg?.durationSeconds || 0,
+          durationSeconds: existingProg?.durationSeconds || 0,
+          updatedAtISO: new Date().toISOString()
+        }
+      };
       return {
         ...st,
-        watchedReplayIds: next
+        watchedReplayIds: next,
+        replayProgress: nextProgress
       };
     });
   };
+
+  const handleUpdateReplayProgress = useCallback(
+    (
+      replayId: string,
+      currentTimeSeconds: number,
+      durationSeconds: number,
+      explicitPercent?: number
+    ) => {
+      updateStudent(currentStudent.id, st => {
+        const prevProg = st.replayProgress?.[replayId];
+        const rawPercent =
+          explicitPercent !== undefined
+            ? explicitPercent
+            : durationSeconds > 0
+            ? Math.round((currentTimeSeconds / durationSeconds) * 100)
+            : prevProg?.percent || 0;
+        const clampedPercent = Math.max(
+          prevProg?.percent || 0,
+          Math.min(100, Math.max(0, rawPercent))
+        );
+        const isCompleted = clampedPercent >= 90;
+        const currentWatched = st.watchedReplayIds || [];
+        const nextWatched =
+          isCompleted && !currentWatched.includes(replayId)
+            ? [...currentWatched, replayId]
+            : currentWatched;
+
+        return {
+          ...st,
+          watchedReplayIds: nextWatched,
+          replayProgress: {
+            ...(st.replayProgress || {}),
+            [replayId]: {
+              percent: isCompleted ? 100 : clampedPercent,
+              currentTimeSeconds: Math.round(currentTimeSeconds),
+              durationSeconds: Math.round(durationSeconds || prevProg?.durationSeconds || 0),
+              updatedAtISO: new Date().toISOString()
+            }
+          }
+        };
+      });
+    },
+    [currentStudent.id, updateStudent]
+  );
 
   const handleAddResource = (resource: Omit<CoachingResourceItem, 'id'>) => {
     const created: CoachingResourceItem = {
@@ -3006,6 +3072,7 @@ export function App() {
                 onAddReplay={handleAddReplay}
                 onDeleteReplay={handleDeleteReplay}
                 onToggleWatchedReplay={handleToggleWatchedReplay}
+                onUpdateReplayProgress={handleUpdateReplayProgress}
                 onAddResource={handleAddResource}
                 onDeleteResource={handleDeleteResource}
                 onSubmitWeeklyCheckIn={handleSubmitWeeklyCheckIn}

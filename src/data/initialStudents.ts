@@ -428,12 +428,12 @@ export const INITIAL_CALL_REPLAYS: CoachingCallReplay[] = [
     title: 'Hot-Seat Review: Fixing Opening Hooks & Installing the 4-Take Recording Rhythm',
     dateLabel: 'Oct 16, 2026',
     duration: '52 mins',
-    videoUrl: 'https://www.loom.com/share/market-concussion-hooks-replay',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
     summary: 'Live teardown of student Day 1–10 videos, how to cut the 2-second throat-clearing pause before Take 1, and transitioning cleanly into the Shift Magnet CTA.',
     timestamps: [
-      { time: '04:15', label: 'Cutting the 2-second dead air before Take 1' },
-      { time: '18:40', label: 'Rewriting weak "educational" hooks into belief-breakers' },
-      { time: '36:10', label: 'Verbal Shift Magnet callout without sounding salesy' }
+      { time: '00:02', label: 'Cutting the 2-second dead air before Take 1' },
+      { time: '00:07', label: 'Rewriting weak "educational" hooks into belief-breakers' },
+      { time: '00:12', label: 'Verbal Shift Magnet callout without sounding salesy' }
     ]
   },
   {
@@ -441,12 +441,12 @@ export const INITIAL_CALL_REPLAYS: CoachingCallReplay[] = [
     title: 'Wiring Your $5/Day Andromeda ThruPlay Ladder & 25% Invisible List',
     dateLabel: 'Oct 9, 2026',
     duration: '47 mins',
-    videoUrl: 'https://www.loom.com/share/market-concussion-andromeda-replay',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
     summary: 'Step-by-step screen share inside Meta Ads Manager setting up the 6-video sequenced ThruPlay campaign and custom 25% viewer retargeting audiences.',
     timestamps: [
-      { time: '06:30', label: 'Naming conventions for V1–V6 Custom Audiences' },
-      { time: '21:15', label: 'Excluding downstream viewers to force sequential consumption' },
-      { time: '38:50', label: 'When to promote a Daily Video into the $5/day ad rotation' }
+      { time: '00:03', label: 'Naming conventions for V1–V6 Custom Audiences' },
+      { time: '00:08', label: 'Excluding downstream viewers to force sequential consumption' },
+      { time: '00:13', label: 'When to promote a Daily Video into the $5/day ad rotation' }
     ]
   },
   {
@@ -454,12 +454,12 @@ export const INITIAL_CALL_REPLAYS: CoachingCallReplay[] = [
     title: 'DM Handoff Clinic: Moving Commenters from Keyword Trigger to the 2-Page Offer Doc',
     dateLabel: 'Oct 2, 2026',
     duration: '58 mins',
-    videoUrl: 'https://www.loom.com/share/market-concussion-dm-clinic',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
     summary: 'Real student DM inbox audits showing why prospects ghost after receiving the PDF and the exact 3-option diagnostic question that restarts the conversation.',
     timestamps: [
-      { time: '09:05', label: 'The A/B/C diagnostic question that gets 65%+ replies' },
-      { time: '27:30', label: 'Diagnosing when a lead is ready for the 2-Page Offer Doc' },
-      { time: '44:20', label: 'Handling price questions asynchronously in DMs' }
+      { time: '00:05', label: 'The A/B/C diagnostic question that gets 65%+ replies' },
+      { time: '00:25', label: 'Diagnosing when a lead is ready for the 2-Page Offer Doc' },
+      { time: '00:45', label: 'Handling price questions asynchronously in DMs' }
     ]
   }
 ];

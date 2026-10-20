@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Video,
   FileText,
@@ -10,7 +10,9 @@ import {
   Calendar,
   HelpCircle,
   ClipboardCheck,
-  Edit3
+  Edit3,
+  Play,
+  X
 } from 'lucide-react';
 import {
   StudentProfile,
@@ -36,10 +38,67 @@ interface VaultAndCallsViewProps {
   onAddReplay: (replay: Omit<CoachingCallReplay, 'id'>) => void;
   onDeleteReplay: (replayId: string) => void;
   onToggleWatchedReplay: (replayId: string) => void;
+  onUpdateReplayProgress: (
+    replayId: string,
+    currentTimeSeconds: number,
+    durationSeconds: number,
+    explicitPercent?: number
+  ) => void;
   onAddResource: (resource: Omit<CoachingResourceItem, 'id'>) => void;
   onDeleteResource: (resourceId: string) => void;
   onSubmitWeeklyCheckIn: (checkIn: Omit<WeeklyScorecardCheckIn, 'id' | 'dateISO'>) => void;
 }
+
+const parseTimestampToSeconds = (ts: string): number => {
+  const parts = ts.trim().split(':').map(Number);
+  if (parts.some(isNaN)) return 0;
+  if (parts.length === 3) {
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  }
+  if (parts.length === 2) {
+    return parts[0] * 60 + parts[1];
+  }
+  return parts[0] || 0;
+};
+
+const parseDurationLabelToSeconds = (durationLabel: string): number => {
+  const match = durationLabel.match(/(\d+)/);
+  return match ? parseInt(match[1], 10) * 60 : 3000;
+};
+
+const resolveReplayPlaybackSource = (
+  rawUrl: string,
+  startSeconds = 0
+): { type: 'VIDEO' | 'IFRAME'; src: string } => {
+  const url = (rawUrl || '').trim();
+  if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url)) {
+    return { type: 'VIDEO', src: url };
+  }
+  const loomMatch = url.match(/loom\.com\/(?:share|embed)\/([a-zA-Z0-9_-]+)/i);
+  if (loomMatch) {
+    const tParam = startSeconds > 0 ? `?t=${Math.floor(startSeconds)}` : '';
+    return { type: 'IFRAME', src: `https://www.loom.com/embed/${loomMatch[1]}${tParam}` };
+  }
+  const ytMatch = url.match(
+    /(?:youtube\.com\/(?:watch\?v=|embed\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i
+  );
+  if (ytMatch) {
+    const startParam = startSeconds > 0 ? `&start=${Math.floor(startSeconds)}` : '';
+    return {
+      type: 'IFRAME',
+      src: `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&rel=0${startParam}`
+    };
+  }
+  const vimeoMatch = url.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
+  if (vimeoMatch) {
+    const hash = startSeconds > 0 ? `#t=${Math.floor(startSeconds)}s` : '';
+    return {
+      type: 'IFRAME',
+      src: `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1${hash}`
+    };
+  }
+  return { type: 'VIDEO', src: url };
+};
 
 const RESOURCE_CATEGORIES: { id: 'ALL' | ResourceCategory; label: string }[] = [
   { id: 'ALL', label: 'All Resources' },
@@ -62,12 +121,19 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
   onAddReplay,
   onDeleteReplay,
   onToggleWatchedReplay,
+  onUpdateReplayProgress,
   onAddResource,
   onDeleteResource,
   onSubmitWeeklyCheckIn
 }) => {
   const [subTab, setSubTab] = useState<'CALLS' | 'RESOURCES' | 'SCORECARD'>('CALLS');
   const [resourceFilter, setResourceFilter] = useState<'ALL' | ResourceCategory>('ALL');
+
+  // Active inline replay player state
+  const [activeReplayId, setActiveReplayId] = useState<string | null>(null);
+  const [iframeSeekSeconds, setIframeSeekSeconds] = useState<number>(0);
+  const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
+  const lastReportedTimeRef = useRef<Record<string, number>>({});
 
   // Hot-seat question form (max 2 inputs)
   const [showQuestionForm, setShowQuestionForm] = useState(false);
@@ -446,16 +512,21 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
             )}
           </section>
 
-          {/* Recent Call Recordings Header */}
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm sm:text-base font-bold text-white">
-              Recent Group Call Recordings ({replays.length})
-            </h2>
+          {/* Recent Call Recordings Header + Overall Replay Progress */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-3">
+              <h2 className="text-sm sm:text-base font-bold text-white">
+                Recent Group Call Recordings ({replays.length})
+              </h2>
+              <span className="px-2.5 py-0.5 rounded-full bg-white/[0.05] border border-white/10 text-[11px] font-semibold text-neutral-300">
+                {replays.filter(r => watchedIds.has(r.id)).length}/{replays.length} Completed
+              </span>
+            </div>
             {isAdminSession && (
               <button
                 type="button"
                 onClick={() => setShowAddReplayModal(true)}
-                className="px-3.5 py-2 rounded-lg bg-[#09ADEF] text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-2 rounded-lg bg-[#09ADEF] text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Replay</span>
@@ -463,30 +534,71 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
             )}
           </div>
 
-          {/* Replay Cards (Max 1 Card Border Level) */}
+          {/* Replay Cards (Max 1 Card Border Level, Inline Player + Progress Tracking) */}
           <div className="space-y-3">
             {replays.map(replay => {
               const isWatched = watchedIds.has(replay.id);
+              const savedProg = student.replayProgress?.[replay.id];
+              const progressPct = isWatched ? 100 : savedProg?.percent || 0;
+              const isPlayingHere = activeReplayId === replay.id;
+              const playbackSource = resolveReplayPlaybackSource(
+                replay.videoUrl,
+                isPlayingHere
+                  ? iframeSeekSeconds || savedProg?.currentTimeSeconds || 0
+                  : 0
+              );
+
+              const handleOpenAndPlay = (seekToSeconds?: number) => {
+                const fallbackTotalSec = parseDurationLabelToSeconds(replay.duration);
+                setActiveReplayId(replay.id);
+                if (seekToSeconds !== undefined) {
+                  setIframeSeekSeconds(seekToSeconds);
+                } else {
+                  setIframeSeekSeconds(savedProg?.currentTimeSeconds || 0);
+                }
+
+                // If opening an iframe embed or jumping to a timestamp, log initial or timestamp progress immediately
+                if (seekToSeconds !== undefined) {
+                  const vEl = videoRefs.current[replay.id];
+                  if (vEl && playbackSource.type === 'VIDEO') {
+                    vEl.currentTime = seekToSeconds;
+                    vEl.play().catch(() => {});
+                  } else {
+                    const estPct = Math.min(
+                      95,
+                      Math.max(15, Math.round((seekToSeconds / fallbackTotalSec) * 100))
+                    );
+                    onUpdateReplayProgress(replay.id, seekToSeconds, fallbackTotalSec, estPct);
+                  }
+                } else if (!savedProg && !isWatched) {
+                  onUpdateReplayProgress(replay.id, 0, fallbackTotalSec, 10);
+                }
+              };
+
               return (
                 <article
                   key={replay.id}
-                  className="rounded-2xl bg-[#07090D] border border-white/10 p-5 space-y-3"
+                  className="rounded-2xl bg-[#07090D] border border-white/10 p-5 space-y-3.5"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-xs text-neutral-400">
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400">
                         <span>{replay.dateLabel}</span>
                         <span>·</span>
                         <span className="inline-flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           {replay.duration}
                         </span>
-                        {isWatched && (
+                        {isWatched ? (
                           <span className="text-emerald-400 font-semibold inline-flex items-center gap-1">
                             <CheckCircle2 className="w-3.5 h-3.5" />
-                            Watched
+                            100% Watched
                           </span>
-                        )}
+                        ) : progressPct > 0 ? (
+                          <span className="text-[#09ADEF] font-semibold">
+                            {progressPct}% Watched
+                          </span>
+                        ) : null}
                       </div>
                       <h3 className="text-sm sm:text-base font-bold text-white">
                         {replay.title}
@@ -497,16 +609,34 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <a
-                        href={replay.videoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={`Watch replay: ${replay.title}`}
-                        className="px-3.5 py-2 rounded-lg bg-[#09ADEF] hover:bg-[#09B3F8] text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isPlayingHere) {
+                            setActiveReplayId(null);
+                          } else {
+                            handleOpenAndPlay();
+                          }
+                        }}
+                        aria-label={`Play replay in dashboard: ${replay.title}`}
+                        className="px-3.5 py-2 rounded-lg bg-[#09ADEF] hover:bg-[#09B3F8] text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
-                        <span>Watch Replay</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
+                        {isPlayingHere ? (
+                          <>
+                            <X className="w-3.5 h-3.5" />
+                            <span>Close Player</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-3.5 h-3.5" />
+                            <span>
+                              {progressPct > 0 && progressPct < 100
+                                ? `Resume (${progressPct}%)`
+                                : 'Play Replay'}
+                            </span>
+                          </>
+                        )}
+                      </button>
 
                       <button
                         type="button"
@@ -535,20 +665,111 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
                     </div>
                   </div>
 
-                  {replay.timestamps.length > 0 && (
-                    <div className="pt-3 border-t border-white/10 flex flex-wrap gap-x-5 gap-y-1.5 text-xs">
-                      {replay.timestamps.map((ts, idx) => (
+                  {/* Watch Progress Bar */}
+                  <div className="space-y-1">
+                    <div className="h-1.5 w-full rounded-full bg-white/[0.07] overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${
+                          isWatched ? 'bg-emerald-400' : 'bg-[#09ADEF]'
+                        }`}
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* In-Dashboard Video Player (HTML5 Video or Embedded Loom/YouTube/Vimeo) */}
+                  {isPlayingHere && (
+                    <div className="pt-1 space-y-2">
+                      <div className="rounded-xl overflow-hidden bg-black aspect-video w-full">
+                        {playbackSource.type === 'VIDEO' ? (
+                          <video
+                            ref={el => {
+                              videoRefs.current[replay.id] = el;
+                            }}
+                            src={playbackSource.src}
+                            controls
+                            autoPlay
+                            playsInline
+                            className="w-full h-full object-contain bg-black"
+                            onLoadedMetadata={e => {
+                              const vid = e.currentTarget;
+                              const targetStart =
+                                iframeSeekSeconds || savedProg?.currentTimeSeconds || 0;
+                              if (
+                                targetStart > 0 &&
+                                vid.duration > targetStart + 1 &&
+                                Math.abs(vid.currentTime - targetStart) > 2
+                              ) {
+                                vid.currentTime = targetStart;
+                              }
+                            }}
+                            onTimeUpdate={e => {
+                              const vid = e.currentTarget;
+                              if (!vid.duration || isNaN(vid.duration)) return;
+                              const nowSec = Math.floor(vid.currentTime);
+                              const prevSec = lastReportedTimeRef.current[replay.id] ?? -10;
+                              if (Math.abs(nowSec - prevSec) >= 2) {
+                                lastReportedTimeRef.current[replay.id] = nowSec;
+                                onUpdateReplayProgress(replay.id, vid.currentTime, vid.duration);
+                              }
+                            }}
+                            onEnded={e => {
+                              const vid = e.currentTarget;
+                              onUpdateReplayProgress(
+                                replay.id,
+                                vid.duration || 0,
+                                vid.duration || 0,
+                                100
+                              );
+                            }}
+                          />
+                        ) : (
+                          <iframe
+                            src={playbackSource.src}
+                            title={replay.title}
+                            allow="autoplay; fullscreen; picture-in-picture"
+                            allowFullScreen
+                            className="w-full h-full border-0"
+                          />
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] text-neutral-400">
+                        <span>
+                          Playing in dashboard · Progress saves automatically ({progressPct}%)
+                        </span>
                         <a
-                          key={idx}
                           href={replay.videoUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-neutral-300 hover:text-white transition-colors"
+                          className="text-neutral-400 hover:text-white inline-flex items-center gap-1"
                         >
-                          <span className="font-mono text-[#09ADEF] font-semibold">{ts.time}</span>
-                          <span>{ts.label}</span>
+                          <span>Open original link</span>
+                          <ExternalLink className="w-3 h-3" />
                         </a>
-                      ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Interactive Timestamp Chapters (Seek Directly Inside Dashboard Player) */}
+                  {replay.timestamps.length > 0 && (
+                    <div className="pt-2.5 border-t border-white/10 flex flex-wrap gap-x-5 gap-y-1.5 text-xs">
+                      {replay.timestamps.map((ts, idx) => {
+                        const sec = parseTimestampToSeconds(ts.time);
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleOpenAndPlay(sec)}
+                            className="inline-flex items-center gap-1.5 text-neutral-300 hover:text-white transition-colors cursor-pointer text-left"
+                          >
+                            <span className="font-mono text-[#09ADEF] font-semibold">
+                              {ts.time}
+                            </span>
+                            <span>{ts.label}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </article>
