@@ -85,12 +85,13 @@ export function subscribeToStudentsRealtime(
   onDelete: (studentId: string) => void
 ): () => void {
   if (!supabase) return () => {};
-  const channel = supabase
+  const client = supabase;
+  const channel = client
     .channel('mc_students_realtime_sync')
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'mc_students' },
-      payload => {
+      async payload => {
         if (payload.eventType === 'DELETE') {
           const deletedId = (payload.old as { id?: string })?.id;
           if (deletedId) onDelete(deletedId);
@@ -99,13 +100,23 @@ export function subscribeToStudentsRealtime(
         const row = payload.new as { id?: string; profile?: StudentProfile } | undefined;
         if (row?.profile && row.profile.id) {
           onUpsert(row.profile);
+        } else if (row?.id) {
+          // PostgreSQL pg_notify omits TOASTed JSONB columns >8KB; fetch fresh profile by id immediately
+          const { data } = await client
+            .from('mc_students')
+            .select('profile')
+            .eq('id', row.id)
+            .maybeSingle();
+          if (data?.profile) {
+            onUpsert(data.profile as StudentProfile);
+          }
         }
       }
     )
     .subscribe();
 
   return () => {
-    supabase.removeChannel(channel);
+    client.removeChannel(channel);
   };
 }
 

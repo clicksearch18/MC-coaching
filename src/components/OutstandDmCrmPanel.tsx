@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Send,
   CheckCircle2,
@@ -210,14 +210,29 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     m => Boolean(m.keywordTrigger?.trim() && m.trackingLink?.trim())
   ).length;
   const hasMagnetsWithLinks = activeMagnetsWithLinksCount > 0;
-  const isSetupComplete = Boolean(
-    hasAnyConnectedAccount && hasMagnetsWithLinks && outstandConfig.triggerTestedAt
-  );
+  const isSetupComplete = Boolean(hasAnyConnectedAccount && hasMagnetsWithLinks);
 
-  // View toggle: 'SETUP' vs 'INBOX' (defaults to SETUP until setup is complete, or INBOX once ready)
-  const [activeView, setActiveView] = useState<'SETUP' | 'INBOX'>(() =>
-    isSetupComplete ? 'INBOX' : 'SETUP'
-  );
+  // View toggle: 'INBOX' is the default whenever setup is complete (or saved in sessionStorage)
+  const [activeView, setActiveView] = useState<'SETUP' | 'INBOX'>(() => {
+    try {
+      const savedView = sessionStorage.getItem('mcm_crm_active_view');
+      if (savedView === 'INBOX' || savedView === 'SETUP') return savedView;
+    } catch {
+      // ignore
+    }
+    return isSetupComplete ? 'INBOX' : 'SETUP';
+  });
+  const userChoseSetupRef = useRef(false);
+
+  const handleSwitchView = (nextView: 'SETUP' | 'INBOX') => {
+    userChoseSetupRef.current = nextView === 'SETUP';
+    setActiveView(nextView);
+    try {
+      sessionStorage.setItem('mcm_crm_active_view', nextView);
+    } catch {
+      // ignore
+    }
+  };
 
   // Step 1: Connect Accounts state
   const [connectingChannel, setConnectingChannel] = useState<'instagram' | 'facebook' | null>(
@@ -260,29 +275,65 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     try {
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
-      // Filter out any legacy demo starter threads
-      return parsed.filter(
-        (t: DmCrmThread) =>
-          t.id !== 'crm-starter-1' && t.outstandConversationId !== 'conv_outstand_demo_01'
-      );
+      // Filter out legacy demo starter threads and orphaned threads from replaced IG connections
+      return parsed.filter((t: DmCrmThread) => {
+        if (t.id === 'crm-starter-1' || t.outstandConversationId === 'conv_outstand_demo_01') {
+          return false;
+        }
+        if (
+          outstandConfig.instagramAccountId &&
+          (!t.platform || t.platform === 'instagram') &&
+          t.socialAccountId &&
+          t.socialAccountId !== outstandConfig.instagramAccountId
+        ) {
+          return false;
+        }
+        return true;
+      });
     } catch {
       return [];
     }
-  }, [student.worksheetAnswers]);
+  }, [student.worksheetAnswers, outstandConfig.instagramAccountId]);
 
   const [selectedThreadId, setSelectedThreadId] = useState<string>(threads[0]?.id || '');
 
+  // Automatically default to INBOX once Supabase hydration confirms account is connected or conversations exist
+  useEffect(() => {
+    if ((isSetupComplete || threads.length > 0) && !userChoseSetupRef.current && !pendingSessionToken) {
+      setActiveView('INBOX');
+    }
+  }, [isSetupComplete, threads.length, pendingSessionToken]);
+
+  // Keep selectedThreadId valid when threads update or a new conversation arrives
+  useEffect(() => {
+    if (threads.length > 0 && (!selectedThreadId || !threads.some(t => t.id === selectedThreadId))) {
+      setSelectedThreadId(threads[0].id);
+    }
+  }, [threads, selectedThreadId]);
+
+  const latestThreadsRef = useRef<DmCrmThread[]>(threads);
+  latestThreadsRef.current = threads;
+  const latestConfigRef = useRef<OutstandConfig>(outstandConfig);
+  latestConfigRef.current = outstandConfig;
+  const latestSelectedThreadIdRef = useRef<string>(selectedThreadId);
+  latestSelectedThreadIdRef.current = selectedThreadId;
+  const latestActiveViewRef = useRef<'SETUP' | 'INBOX'>(activeView);
+  latestActiveViewRef.current = activeView;
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
   const saveThreads = (nextThreads: DmCrmThread[]) => {
+    latestThreadsRef.current = nextThreads;
     onUpdateField?.('dm_crm_threads_json', JSON.stringify(nextThreads));
   };
 
   const saveOutstandConfig = (nextCfg: OutstandConfig) => {
+    latestConfigRef.current = nextCfg;
     onUpdateField?.('outstand_config_json', JSON.stringify(nextCfg));
   };
 
   useEffect(() => {
     if (requestedThreadId) {
-      setActiveView('INBOX');
+      handleSwitchView('INBOX');
       setStageFilter('ALL');
       setSelectedThreadId(requestedThreadId);
       onClearRequestedThreadId?.();
@@ -293,8 +344,9 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     igAccId?: string,
     fbAccId?: string
   ) => {
-    const activeIgId = igAccId || outstandConfig.instagramAccountId;
-    const activeFbId = fbAccId || outstandConfig.facebookAccountId;
+    const cfg = latestConfigRef.current;
+    const activeIgId = igAccId || cfg.instagramAccountId;
+    const activeFbId = fbAccId || cfg.facebookAccountId;
     const accountIds = [
       { id: activeIgId, platform: 'instagram' as const },
       { id: activeFbId, platform: 'facebook' as const }
@@ -303,7 +355,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     if (accountIds.length === 0) return;
 
     try {
-      const mergedThreads = [...threads];
+      const mergedThreads = [...latestThreadsRef.current];
       let hasChanges = false;
 
       for (const acc of accountIds) {
@@ -312,7 +364,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'LIST_CONVERSATIONS',
-            apiKey: outstandConfig.apiKey || undefined,
+            apiKey: cfg.apiKey || undefined,
             socialAccountId: acc.id
           })
         });
@@ -346,7 +398,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 action: 'GET_MESSAGES',
-                apiKey: outstandConfig.apiKey || undefined,
+                apiKey: cfg.apiKey || undefined,
                 conversationId: conv.id
               })
             });
@@ -454,8 +506,9 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
 
           if (existingIdx === -1) {
             hasChanges = true;
+            const newThreadId = `crm-${conv.id}`;
             mergedThreads.unshift({
-              id: `crm-${conv.id}`,
+              id: newThreadId,
               outstandConversationId: conv.id,
               socialAccountId: acc.id || null,
               platform: acc.platform,
@@ -471,12 +524,34 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
               windowOpen: hasInboundDm,
               lastUserReplyAt: conv.lastInboundAt || (hasInboundDm ? ts : null),
               scheduledFollowup: null,
-              unreadCount: typeof conv.unreadCount === 'number' ? conv.unreadCount : 0,
+              unreadCount: 1,
               updatedAt: ts,
               messages: remoteMessages
             });
+            setSelectedThreadId(newThreadId);
+            onTriggerCrmNotification?.({
+              senderLabel: 'Live DM CRM',
+              text: latestInbound
+                ? `💬 @${handle} replied in DMs: "${latestInbound.text}"`
+                : `⚡ New DM conversation started with @${handle} (${inferredMagnet?.keywordTrigger || 'DM'}).`,
+              bannerTitle: latestInbound ? `💬 New DM from @${handle}` : `⚡ New Conversation: @${handle}`,
+              bannerBody: latestInbound
+                ? `"${latestInbound.text}"`
+                : `Sent ${inferredMagnet?.workingTitle || 'auto-reply'} to @${handle}.`,
+              threadId: newThreadId,
+              isAlert: true,
+              actionLabel: 'Open Conversation'
+            });
           } else {
             const existing = mergedThreads[existingIdx];
+            const prevInboundCount = (existing.messages || []).filter(
+              m => m.direction === 'inbound_dm'
+            ).length;
+            const nextInboundCount = remoteMessages.filter(
+              m => m.direction === 'inbound_dm'
+            ).length;
+            const hasNewInboundReply = nextInboundCount > prevInboundCount;
+
             const commentMsgs = (existing.messages || []).filter(
               m => m.direction === 'inbound_comment'
             );
@@ -496,9 +571,14 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
               prevMsgSig !== nextMsgSig ||
               existing.windowOpen !== (existing.windowOpen || hasInboundDm) ||
               existing.outstandConversationId !== conv.id ||
+              existing.socialAccountId !== acc.id ||
               (inferredMagnet && existing.matchedKeyword === 'DIRECT DM')
             ) {
               hasChanges = true;
+              const isViewingThisThread =
+                latestActiveViewRef.current === 'INBOX' &&
+                latestSelectedThreadIdRef.current === existing.id;
+
               mergedThreads[existingIdx] = {
                 ...existing,
                 outstandConversationId: conv.id,
@@ -516,7 +596,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                     ? inferredMagnet.workingTitle
                     : existing.matchedMagnetTitle,
                 stage:
-                  existing.stage === 'STAGE_S' && detectedConstraint
+                  existing.stage === 'STAGE_S' && (detectedConstraint || hasInboundDm)
                     ? 'STAGE_H'
                     : existing.stage,
                 constraintPicked: existing.constraintPicked || detectedConstraint,
@@ -525,9 +605,24 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                   conv.lastInboundAt ||
                   existing.lastUserReplyAt ||
                   (hasInboundDm ? ts : null),
+                unreadCount: hasNewInboundReply && !isViewingThisThread
+                  ? (existing.unreadCount || 0) + (nextInboundCount - prevInboundCount)
+                  : existing.unreadCount || 0,
                 updatedAt: ts,
                 messages: combinedMessages
               };
+
+              if (hasNewInboundReply && latestInbound) {
+                onTriggerCrmNotification?.({
+                  senderLabel: 'Live DM Reply',
+                  text: `💬 @${handle} replied: "${latestInbound.text}"`,
+                  bannerTitle: `💬 New Reply from @${handle}`,
+                  bannerBody: `"${latestInbound.text}"`,
+                  threadId: existing.id,
+                  isAlert: true,
+                  actionLabel: 'Reply Now'
+                });
+              }
             }
           }
         }
@@ -535,7 +630,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
 
       if (hasChanges) {
         saveThreads(mergedThreads);
-        if (!selectedThreadId && mergedThreads[0]) {
+        if (!latestSelectedThreadIdRef.current && mergedThreads[0]) {
           setSelectedThreadId(mergedThreads[0].id);
         }
       }
@@ -544,22 +639,27 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     }
   };
 
-  // Poll live conversations & DM replies every 8 seconds while the CRM panel is open
+  // Poll live conversations & DM replies every 3.5 seconds + on window focus/visibility
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (outstandConfig.instagramAccountId || outstandConfig.facebookAccountId) {
-        syncLiveConversationsFromOutstand(
-          outstandConfig.instagramAccountId,
-          outstandConfig.facebookAccountId
-        );
+    const runSync = () => {
+      const cfg = latestConfigRef.current;
+      if (cfg.instagramAccountId || cfg.facebookAccountId) {
+        syncLiveConversationsFromOutstand(cfg.instagramAccountId, cfg.facebookAccountId);
       }
-    }, 8000);
-    return () => clearInterval(interval);
-  }, [
-    outstandConfig.instagramAccountId,
-    outstandConfig.facebookAccountId,
-    threads
-  ]);
+    };
+    const interval = setInterval(runSync, 3500);
+    const onFocus = () => runSync();
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') runSync();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [outstandConfig.instagramAccountId, outstandConfig.facebookAccountId]);
 
   const syncConnectedAccountsFromOutstand = async (
     preferredPageId?: string,
@@ -1439,6 +1539,18 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const totalUnreadCount = useMemo(
+    () => threads.reduce((acc, t) => acc + (t.unreadCount || 0), 0),
+    [threads]
+  );
+
+  // Auto-scroll message container to bottom when active thread or message count changes
+  useEffect(() => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
+  }, [activeThread?.id, activeThread?.messages.length, activeView]);
+
   return (
     <div className="space-y-4">
       {/* Top Bar: Clean Mode Switcher + Connection Summary */}
@@ -1455,26 +1567,18 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           >
             <span
               className={`w-1.5 h-1.5 rounded-full ${
-                isIgConnected ? 'bg-emerald-400' : 'bg-neutral-500'
+                isIgConnected ? 'bg-emerald-400 animate-pulse' : 'bg-neutral-500'
               }`}
             />
-            {isIgConnected ? `IG: @${outstandConfig.instagramHandle}` : 'IG Not Connected'}
+            {isIgConnected ? `IG: @${outstandConfig.instagramHandle} · Live` : 'IG Not Connected'}
           </span>
 
-          <span
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${
-              isFbConnected
-                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
-                : 'bg-white/[0.04] text-neutral-400 border-white/10'
-            }`}
-          >
-            <span
-              className={`w-1.5 h-1.5 rounded-full ${
-                isFbConnected ? 'bg-emerald-400' : 'bg-neutral-500'
-              }`}
-            />
-            {isFbConnected ? `FB: ${outstandConfig.facebookPageName}` : 'FB Not Connected'}
-          </span>
+          {isFbConnected && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border bg-emerald-500/10 text-emerald-300 border-emerald-500/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              {`FB: ${outstandConfig.facebookPageName}`}
+            </span>
+          )}
 
           <span className="text-xs text-neutral-400">
             · {activeMagnetsWithLinksCount} Active{' '}
@@ -1485,7 +1589,23 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
         <div className="inline-flex rounded-lg bg-[#07090D] p-1 border border-white/10">
           <button
             type="button"
-            onClick={() => setActiveView('SETUP')}
+            onClick={() => handleSwitchView('INBOX')}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition ${
+              activeView === 'INBOX'
+                ? 'bg-[#09ADEF] text-white'
+                : 'text-neutral-400 hover:text-white'
+            }`}
+          >
+            <span>Conversations ({threads.length})</span>
+            {totalUnreadCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold leading-none">
+                {totalUnreadCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSwitchView('SETUP')}
             className={`px-3 py-1.5 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition ${
               activeView === 'SETUP'
                 ? 'bg-[#09ADEF] text-white'
@@ -1493,18 +1613,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
             }`}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span>1. Setup &amp; Triggers</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveView('INBOX')}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition ${
-              activeView === 'INBOX'
-                ? 'bg-[#09ADEF] text-white'
-                : 'text-neutral-400 hover:text-white'
-            }`}
-          >
-            <span>2. Conversations ({threads.length})</span>
+            <span>Setup &amp; Triggers</span>
           </button>
         </div>
       </div>
@@ -2057,6 +2166,11 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                             <span className="text-xs font-bold text-white truncate">
                               {thread.prospectName}
                             </span>
+                            {thread.unreadCount > 0 && (
+                              <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[9px] font-bold leading-none shrink-0">
+                                {thread.unreadCount} new
+                              </span>
+                            )}
                           </div>
 
                           <span
@@ -2137,7 +2251,10 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                   </div>
 
                   {/* Messages */}
-                  <div className="p-4 space-y-3 h-[400px] overflow-y-auto bg-[#030508]">
+                  <div
+                    ref={messagesContainerRef}
+                    className="p-4 space-y-3 h-[400px] overflow-y-auto bg-[#030508]"
+                  >
                     {activeThread.messages.map(msg => {
                       const isComment = msg.direction === 'inbound_comment';
                       const isInbound = msg.direction === 'inbound_dm';
@@ -2229,7 +2346,15 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                         rows={2}
                         value={composerText}
                         onChange={e => setComposerText(e.target.value)}
-                        placeholder={`Reply to @${activeThread.prospectHandle}...`}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            if (!isSending && composerText.trim()) {
+                              handleSendMessage(e as unknown as React.FormEvent);
+                            }
+                          }
+                        }}
+                        placeholder={`Reply to @${activeThread.prospectHandle}... (Press Enter to send)`}
                         className="w-full rounded-xl bg-[#0B0E17] border border-white/15 p-2.5 text-xs text-white focus:border-[#09ADEF] focus:outline-none leading-relaxed"
                       />
 

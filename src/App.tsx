@@ -77,6 +77,7 @@ const LESSONS_STORAGE_KEY = 'mcm_cam005_lessons_v2';
 const SETTINGS_STORAGE_KEY = 'mcm_cam005_settings_v1';
 const GROUP_POSTS_STORAGE_KEY = 'mcm_cam005_group_posts_v1';
 const AUTH_SESSION_KEY = 'mcm_cam005_auth_session_v1';
+const ACTIVE_TAB_STORAGE_KEY = 'mcm_cam005_active_tab_v1';
 const LEGACY_DEMO_IDS = new Set(['student-marcus', 'student-elena', 'student-devon']);
 
 const getTodayDateISO = () => new Date().toISOString().slice(0, 10);
@@ -119,6 +120,7 @@ interface PushBanner {
   title: string;
   body: string;
   type: 'COACH_NUDGE' | 'DAILY_LESSON' | 'MISSED_ALERT';
+  threadId?: string;
 }
 
 export function App() {
@@ -250,6 +252,19 @@ export function App() {
     ) {
       return 'CRM';
     }
+    const urlTab = params.get('tab')?.toUpperCase();
+    const validTabs = new Set(['CADENCE', 'WORKBOOK', 'MAGNETS', 'CRM', 'GROUP', 'COACH']);
+    if (urlTab && validTabs.has(urlTab)) {
+      return urlTab as 'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'CRM' | 'GROUP' | 'COACH';
+    }
+    try {
+      const savedTab = localStorage.getItem(ACTIVE_TAB_STORAGE_KEY)?.toUpperCase();
+      if (savedTab && validTabs.has(savedTab)) {
+        return savedTab as 'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'CRM' | 'GROUP' | 'COACH';
+      }
+    } catch {
+      // ignore
+    }
     return 'CADENCE';
   });
   const [activeStudentId, setActiveStudentId] = useState<string>(() => {
@@ -298,19 +313,34 @@ export function App() {
   const latestGroupPostsRef = useRef<GroupDiscussionPost[]>(groupPosts);
   latestGroupPostsRef.current = groupPosts;
 
+  // Persist activeTab to localStorage so browser reloads stay on the same tab
+  useEffect(() => {
+    try {
+      localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab);
+    } catch {
+      // ignore
+    }
+  }, [activeTab]);
+
   const triggerWebPushAndBanner = useCallback(
     async (
       title: string,
       body: string,
-      type: PushBanner['type'] = 'DAILY_LESSON'
+      type: PushBanner['type'] = 'DAILY_LESSON',
+      threadId?: string
     ) => {
+      const bannerId = `push-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       const newBanner: PushBanner = {
-        id: `push-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        id: bannerId,
         title,
         body,
-        type
+        type,
+        threadId
       };
       setPushBanners(prev => [newBanner, ...prev.slice(0, 2)]);
+      setTimeout(() => {
+        setPushBanners(prev => prev.filter(x => x.id !== bannerId));
+      }, 7500);
 
       if (typeof Notification !== 'undefined') {
         if (Notification.permission === 'default') {
@@ -500,99 +530,112 @@ export function App() {
     };
   }, [students]);
 
-  // Realtime subscription to mc_students so Coach & Student see live updates + push alerts
+  // Helper to merge an incoming remote StudentProfile (from Realtime or background sync) without clobbering active typing
+  const mergeIncomingRemoteStudent = useCallback(
+    (incomingStudent: StudentProfile) => {
+      if (LEGACY_DEMO_IDS.has(incomingStudent.id)) return;
+      const normalizedIncoming = normalizeStudentDailyStatus(incomingStudent);
+
+      setStudents(prev => {
+        const existing = prev.find(s => s.id === normalizedIncoming.id);
+        if (!existing) {
+          return [normalizedIncoming, ...prev];
+        }
+
+        // Detect newly arrived message from the opposite role (or SYSTEM / CRM notification) to fire a recipient-side push banner
+        if (normalizedIncoming.messages.length > existing.messages.length) {
+          const newestMsg = normalizedIncoming.messages[normalizedIncoming.messages.length - 1];
+          const isViewerAdmin = authSession.role === 'ADMIN';
+          if (isViewerAdmin && newestMsg.senderRole === 'STUDENT') {
+            triggerWebPushAndBanner(
+              `New Activity from ${normalizedIncoming.name}`,
+              newestMsg.text,
+              'COACH_NUDGE',
+              newestMsg.actionTarget?.crmThreadId
+            );
+          } else if (
+            !isViewerAdmin &&
+            (newestMsg.senderRole === 'COACH' || newestMsg.senderRole === 'SYSTEM') &&
+            normalizedIncoming.id === activeStudentId
+          ) {
+            triggerWebPushAndBanner(
+              `Notification · ${newestMsg.senderName}`,
+              newestMsg.text,
+              newestMsg.isAlert ? 'MISSED_ALERT' : 'COACH_NUDGE',
+              newestMsg.actionTarget?.crmThreadId
+            );
+          }
+        }
+
+        // Guard against stale echo overwriting active local typing
+        const lastLocalEdit = lastLocalEditTimestampRef.current[normalizedIncoming.id] || 0;
+        const isActivelyEditingLocally =
+          Boolean(dirtyStudentTimersRef.current[normalizedIncoming.id]) ||
+          Date.now() - lastLocalEdit < 2000;
+
+        if (isActivelyEditingLocally) {
+          const incomingThreadsJson = normalizedIncoming.worksheetAnswers?.['dm_crm_threads_json'];
+          const existingThreadsJson = existing.worksheetAnswers?.['dm_crm_threads_json'];
+          const hasNewMessages = normalizedIncoming.messages.length > existing.messages.length;
+          const hasNewDmThreads = Boolean(
+            incomingThreadsJson && incomingThreadsJson !== existingThreadsJson
+          );
+          if (hasNewMessages || hasNewDmThreads) {
+            return prev.map(s =>
+              s.id === normalizedIncoming.id
+                ? {
+                    ...s,
+                    messages: hasNewMessages ? normalizedIncoming.messages : s.messages,
+                    worksheetAnswers: hasNewDmThreads
+                      ? {
+                          ...s.worksheetAnswers,
+                          dm_crm_threads_json: incomingThreadsJson
+                        }
+                      : s.worksheetAnswers
+                  }
+                : s
+            );
+          }
+          return prev;
+        }
+
+        // Only trigger state update if messages or DM threads or status actually changed
+        const prevSig = `${existing.messages.length}|${existing.worksheetAnswers?.['dm_crm_threads_json'] || ''}|${existing.todayVideoStatus}|${existing.currentWeek}`;
+        const nextSig = `${normalizedIncoming.messages.length}|${normalizedIncoming.worksheetAnswers?.['dm_crm_threads_json'] || ''}|${normalizedIncoming.todayVideoStatus}|${normalizedIncoming.currentWeek}`;
+        if (prevSig === nextSig) return prev;
+
+        return prev.map(s => (s.id === normalizedIncoming.id ? normalizedIncoming : s));
+      });
+    },
+    [authSession.role, activeStudentId, triggerWebPushAndBanner]
+  );
+
+  // Realtime subscription + 5s background sync to mc_students so Coach & Student see live webhook updates with zero refresh
   useEffect(() => {
     if (!initialDbLoadDone || !isSupabaseConfigured) return;
 
     const unsubscribe = subscribeToStudentsRealtime(
       incomingStudent => {
-        if (LEGACY_DEMO_IDS.has(incomingStudent.id)) return;
-        const normalizedIncoming = normalizeStudentDailyStatus(incomingStudent);
-
-        setStudents(prev => {
-          const existing = prev.find(s => s.id === normalizedIncoming.id);
-          if (!existing) {
-            return [normalizedIncoming, ...prev];
-          }
-
-          // Detect newly arrived message from the opposite role (or Cohort Group SYSTEM notification) to fire a recipient-side push banner
-          if (normalizedIncoming.messages.length > existing.messages.length) {
-            const newestMsg = normalizedIncoming.messages[normalizedIncoming.messages.length - 1];
-            const isViewerAdmin = authSession.role === 'ADMIN';
-            if (isViewerAdmin && newestMsg.senderRole === 'STUDENT') {
-              triggerWebPushAndBanner(
-                `New Activity from ${normalizedIncoming.name}`,
-                newestMsg.text,
-                'COACH_NUDGE'
-              );
-            } else if (
-              !isViewerAdmin &&
-              (newestMsg.senderRole === 'COACH' || newestMsg.senderRole === 'SYSTEM') &&
-              normalizedIncoming.id === activeStudentId
-            ) {
-              triggerWebPushAndBanner(
-                `Notification · ${newestMsg.senderName}`,
-                newestMsg.text,
-                newestMsg.isAlert ? 'MISSED_ALERT' : 'COACH_NUDGE'
-              );
-            }
-          }
-
-          // Guard against stale Realtime echo overwriting active local typing
-          const lastLocalEdit = lastLocalEditTimestampRef.current[normalizedIncoming.id] || 0;
-          const isActivelyEditingLocally =
-            Boolean(dirtyStudentTimersRef.current[normalizedIncoming.id]) ||
-            Date.now() - lastLocalEdit < 1500;
-
-          if (isActivelyEditingLocally) {
-            // Preserve local worksheet/video edits while merging any newly arrived messages or webhook DM threads
-            const incomingThreadsJson = normalizedIncoming.worksheetAnswers?.['dm_crm_threads_json'];
-            const existingThreadsJson = existing.worksheetAnswers?.['dm_crm_threads_json'];
-            const hasNewMessages = normalizedIncoming.messages.length > existing.messages.length;
-            const hasNewDmThreads = Boolean(incomingThreadsJson && incomingThreadsJson !== existingThreadsJson);
-            if (hasNewMessages || hasNewDmThreads) {
-              return prev.map(s =>
-                s.id === normalizedIncoming.id
-                  ? {
-                      ...s,
-                      messages: hasNewMessages ? normalizedIncoming.messages : s.messages,
-                      worksheetAnswers: hasNewDmThreads
-                        ? {
-                            ...s.worksheetAnswers,
-                            dm_crm_threads_json: incomingThreadsJson,
-                            ...(normalizedIncoming.worksheetAnswers?.['dm_crm_processed_comments_json']
-                              ? {
-                                  dm_crm_processed_comments_json:
-                                    normalizedIncoming.worksheetAnswers['dm_crm_processed_comments_json']
-                                }
-                              : {}),
-                            ...(normalizedIncoming.worksheetAnswers?.['dm_crm_processed_messages_json']
-                              ? {
-                                  dm_crm_processed_messages_json:
-                                    normalizedIncoming.worksheetAnswers['dm_crm_processed_messages_json']
-                                }
-                              : {})
-                          }
-                        : s.worksheetAnswers
-                    }
-                  : s
-              );
-            }
-            return prev;
-          }
-
-          return prev.map(s => (s.id === normalizedIncoming.id ? normalizedIncoming : s));
-        });
+        mergeIncomingRemoteStudent(incomingStudent);
       },
       deletedId => {
         setStudents(prev => prev.filter(s => s.id !== deletedId));
       }
     );
 
+    const pollInterval = setInterval(async () => {
+      const remoteList = await fetchStudentsFromSupabase();
+      if (!remoteList) return;
+      for (const rs of remoteList) {
+        mergeIncomingRemoteStudent(rs);
+      }
+    }, 5000);
+
     return () => {
       unsubscribe();
+      clearInterval(pollInterval);
     };
-  }, [initialDbLoadDone, authSession.role, activeStudentId, triggerWebPushAndBanner]);
+  }, [initialDbLoadDone, mergeIncomingRemoteStudent]);
 
   // Realtime subscription to Cohort Group Discussions (mc_lessons week_number = -1)
   useEffect(() => {
@@ -852,7 +895,8 @@ export function App() {
       triggerWebPushAndBanner(
         params.bannerTitle,
         params.bannerBody,
-        params.isAlert ? 'COACH_NUDGE' : 'DAILY_LESSON'
+        params.isAlert ? 'COACH_NUDGE' : 'DAILY_LESSON',
+        params.threadId
       );
     },
     [currentStudent.id, updateStudent, triggerWebPushAndBanner]
@@ -2309,18 +2353,47 @@ export function App() {
         m => (m.senderRole === 'COACH' || m.senderRole === 'SYSTEM') && m.readByStudent === false
       ).length;
 
-  const crmThreadsCount = (() => {
+  const { crmThreadsCount, crmUnreadCount } = (() => {
     const raw = currentStudent.worksheetAnswers['dm_crm_threads_json'];
-    if (!raw) return 0;
+    const rawCfg = currentStudent.worksheetAnswers['outstand_config_json'];
+    let activeIgId = '';
+    try {
+      if (rawCfg) activeIgId = JSON.parse(rawCfg)?.instagramAccountId || '';
+    } catch {
+      // ignore
+    }
+    if (!raw) return { crmThreadsCount: 0, crmUnreadCount: 0 };
     try {
       const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return 0;
-      return parsed.filter(
-        (t: { id?: string; outstandConversationId?: string | null }) =>
-          t.id !== 'crm-starter-1' && t.outstandConversationId !== 'conv_outstand_demo_01'
-      ).length;
+      if (!Array.isArray(parsed)) return { crmThreadsCount: 0, crmUnreadCount: 0 };
+      const valid = parsed.filter(
+        (t: {
+          id?: string;
+          outstandConversationId?: string | null;
+          socialAccountId?: string | null;
+          platform?: string;
+        }) => {
+          if (t.id === 'crm-starter-1' || t.outstandConversationId === 'conv_outstand_demo_01') {
+            return false;
+          }
+          if (
+            activeIgId &&
+            (!t.platform || t.platform === 'instagram') &&
+            t.socialAccountId &&
+            t.socialAccountId !== activeIgId
+          ) {
+            return false;
+          }
+          return true;
+        }
+      );
+      const unread = valid.reduce(
+        (acc: number, t: { unreadCount?: number }) => acc + (t.unreadCount || 0),
+        0
+      );
+      return { crmThreadsCount: valid.length, crmUnreadCount: unread };
     } catch {
-      return 0;
+      return { crmThreadsCount: 0, crmUnreadCount: 0 };
     }
   })();
 
@@ -2329,7 +2402,13 @@ export function App() {
     { id: 'GROUP' as const, label: `Discussion (${groupPosts.length})`, shortLabel: 'Discussion', icon: Users, role: 'STUDENT' as const },
     { id: 'WORKBOOK' as const, label: 'Lessons 1–26', shortLabel: 'Lessons', icon: BookOpen, role: 'STUDENT' as const },
     { id: 'MAGNETS' as const, label: 'Shift Magnets', shortLabel: 'Magnets', icon: Magnet, role: 'STUDENT' as const },
-    { id: 'CRM' as const, label: `Live DM CRM (${crmThreadsCount})`, shortLabel: 'DM CRM', icon: Radio, role: 'STUDENT' as const },
+    {
+      id: 'CRM' as const,
+      label: crmUnreadCount > 0 ? `Live DM CRM (${crmUnreadCount} new)` : `Live DM CRM (${crmThreadsCount})`,
+      shortLabel: crmUnreadCount > 0 ? `CRM (${crmUnreadCount})` : 'DM CRM',
+      icon: Radio,
+      role: 'STUDENT' as const
+    },
     { id: 'COACH' as const, label: 'Admin', shortLabel: 'Admin', icon: UserCheck, role: 'COACH' as const }
   ];
 
@@ -2345,7 +2424,16 @@ export function App() {
           {pushBanners.map(b => (
             <div
               key={b.id}
+              onClick={() => {
+                if (b.threadId) {
+                  setActiveTab('CRM');
+                  setRequestedCrmThreadId(b.threadId);
+                  setPushBanners(prev => prev.filter(x => x.id !== b.id));
+                }
+              }}
               className={`rounded-2xl border p-3.5 sm:p-4 shadow-2xl backdrop-blur-xl flex items-start justify-between gap-3 ${
+                b.threadId ? 'cursor-pointer hover:border-[#09ADEF]' : ''
+              } ${
                 b.type === 'MISSED_ALERT'
                   ? 'border-rose-500/40 bg-[#14070B]/95 text-white'
                   : b.type === 'COACH_NUDGE'
@@ -2364,7 +2452,10 @@ export function App() {
               </div>
               <button
                 type="button"
-                onClick={() => setPushBanners(prev => prev.filter(x => x.id !== b.id))}
+                onClick={e => {
+                  e.stopPropagation();
+                  setPushBanners(prev => prev.filter(x => x.id !== b.id));
+                }}
                 className="text-xs text-neutral-400 hover:text-white cursor-pointer"
               >
                 ✕
@@ -2407,7 +2498,11 @@ export function App() {
                       if (item.id === 'COACH') {
                         window.history.pushState({}, '', '/admin');
                       } else {
-                        window.history.pushState({}, '', `/student?student=${currentStudent.id}`);
+                        window.history.pushState(
+                          {},
+                          '',
+                          `/student?student=${currentStudent.id}&tab=${item.id}`
+                        );
                       }
                     } catch {
                       // ignore
@@ -2766,7 +2861,11 @@ export function App() {
                       if (item.id === 'COACH') {
                         window.history.pushState({}, '', '/admin');
                       } else {
-                        window.history.pushState({}, '', `/student?student=${activeStudentId}`);
+                        window.history.pushState(
+                          {},
+                          '',
+                          `/student?student=${activeStudentId}&tab=${item.id}`
+                        );
                       }
                     } catch {
                       // ignore history errors
