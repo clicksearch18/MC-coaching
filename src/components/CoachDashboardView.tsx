@@ -84,7 +84,8 @@ interface CoachDashboardViewProps {
     videoId: string,
     reviewStatus: CoachReviewStatus,
     feedback: string,
-    appendToGroupThread?: boolean
+    appendToGroupThread?: boolean,
+    coachVideoUrl?: string
   ) => void;
   onTriggerMissedAlertPush: (student: StudentProfile) => void;
   onApproveGate: (studentId: string, phaseNum: number) => void;
@@ -148,6 +149,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
   const [reviewFilter, setReviewFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REVISION'>('ALL');
   const [expandedReviewKey, setExpandedReviewKey] = useState<string | null>(null);
   const [reviewDraftNotes, setReviewDraftNotes] = useState<Record<string, string>>({});
+  const [reviewDraftVideoUrls, setReviewDraftVideoUrls] = useState<Record<string, string>>({});
   const [reviewDraftStatus, setReviewDraftStatus] = useState<Record<string, CoachReviewStatus>>({});
   const [reviewAppendToGroup, setReviewAppendToGroup] = useState<Record<string, boolean>>({});
 
@@ -1765,6 +1767,16 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                                 placeholder={`Write review notes for ${item.studentName} on ${item.badge} ("${item.title}")...`}
                                 className="w-full rounded-xl bg-[#000000] border border-white/15 p-3 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#09ADEF]"
                               />
+
+                              <input
+                                type="url"
+                                value={reviewDraftVideoUrls[item.key] || ''}
+                                onChange={e =>
+                                  setReviewDraftVideoUrls(prev => ({ ...prev, [item.key]: e.target.value }))
+                                }
+                                placeholder="Optional: Paste Loom / Video Feedback URL (https://www.loom.com/share/...)"
+                                className="w-full rounded-xl bg-[#000000] border border-white/15 px-3 py-2 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#09ADEF]"
+                              />
                             </div>
 
                             <label className="flex items-center gap-2.5 p-3 rounded-xl bg-[#09ADEF]/10 border border-[#09ADEF]/30 cursor-pointer">
@@ -1796,13 +1808,15 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                                 type="button"
                                 onClick={() => {
                                   const shouldAppend = reviewAppendToGroup[item.key] ?? true;
+                                  const draftLoomUrl = (reviewDraftVideoUrls[item.key] || '').trim() || undefined;
                                   onReviewStudentVideo(
                                     item.studentId,
                                     item.videoType,
                                     item.videoId,
                                     draftStatus,
                                     draftNote.trim(),
-                                    shouldAppend
+                                    shouldAppend,
+                                    draftLoomUrl
                                   );
                                   setSaveBanner(
                                     `Sent "${draftStatus}" review & notes for ${item.badge} to ${item.studentName}${
@@ -1866,6 +1880,38 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Operator Weekly Scorecard Check-Ins (Bottleneck & Weekly Numbers) */}
+              {activeStudent.weeklyCheckIns && activeStudent.weeklyCheckIns.length > 0 && (
+                <div className="p-5 rounded-2xl bg-[#040507] border border-white/10 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#09ADEF]">
+                      Weekly Scorecard Check-Ins ({activeStudent.weeklyCheckIns.length})
+                    </span>
+                    <span className="text-[11px] text-zinc-400">
+                      Latest: {activeStudent.weeklyCheckIns[0].dateISO}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {activeStudent.weeklyCheckIns.slice(0, 3).map(ci => (
+                      <div
+                        key={ci.id}
+                        className="p-3.5 rounded-xl bg-black/50 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                      >
+                        <div>
+                          <span className="font-bold text-white">{ci.weekLabel}: </span>
+                          <span className="text-zinc-300">“{ci.bottleneckNote}”</span>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0 text-zinc-400">
+                          <span><strong className="text-white">{ci.videosPosted}</strong> Videos</span>
+                          <span><strong className="text-white">{ci.dmConversationsStarted}</strong> DMs</span>
+                          <span><strong className="text-emerald-400">{ci.callsOrDealsBooked}</strong> Wins</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Phase Gate Sign-Off Strip (Phases 01–05) */}
               <div className="p-5 rounded-2xl bg-[#040507] border border-white/10 space-y-3">

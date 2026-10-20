@@ -53,6 +53,8 @@ interface DailyCadenceViewProps {
     notifyCohort: boolean;
   }) => void;
   onOpenGroupThread?: (postId?: string) => void;
+  onQuickStartNavigate?: (tab: 'WORKBOOK' | 'MAGNETS' | 'VAULT' | 'CRM') => void;
+  onDismissOnboarding?: () => void;
   onOpenImportModal: () => void;
   requestedSubTab?: 'STUDIO' | 'QUEUE' | 'CORE5' | 'PLAYBOOK' | null;
   requestedVideoId?: string | null;
@@ -84,6 +86,8 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
   onUpdateCoreVideoStatus,
   onShareVideoToGroup,
   onOpenGroupThread,
+  onQuickStartNavigate,
+  onDismissOnboarding,
   requestedSubTab,
   requestedVideoId,
   requestedCoreVideoId,
@@ -282,8 +286,74 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
     { num: 4 as const, title: 'Verify Link', shortTitle: 'Verify' }
   ];
 
+  const onboardingTasks = [
+    {
+      id: 'lesson1',
+      label: '1. Complete Lesson 1 Thesis',
+      done: student.currentWeek > 1 || Boolean(student.tasksCompleted['1-0']),
+      action: () => onQuickStartNavigate?.('WORKBOOK')
+    },
+    {
+      id: 'magnet',
+      label: '2. Activate 1 Shift Magnet',
+      done: student.shiftMagnets.some(m => m.status === 'Live'),
+      action: () => onQuickStartNavigate?.('MAGNETS')
+    },
+    {
+      id: 'video1',
+      label: '3. Shoot & Verify Video #1',
+      done: completedSupportingCount > 0,
+      action: () => {
+        setSubTab('STUDIO');
+        setActiveStep(1);
+      }
+    },
+    {
+      id: 'checkin',
+      label: '4. Log Weekly Check-In',
+      done: (student.weeklyCheckIns?.length || 0) > 0,
+      action: () => onQuickStartNavigate?.('VAULT')
+    }
+  ];
+  const onboardingDoneCount = onboardingTasks.filter(t => t.done).length;
+
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* First 48 Hours Quick-Start Bar (Auto-hides once all 4 steps are done or dismissed) */}
+      {!student.onboardingDismissed && onboardingDoneCount < 4 && (
+        <div className="rounded-2xl bg-[#07090D] border border-white/10 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#09ADEF] mr-1">
+              Quick Start ({onboardingDoneCount}/4):
+            </span>
+            {onboardingTasks.map(task => (
+              <button
+                key={task.id}
+                type="button"
+                onClick={task.action}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  task.done
+                    ? 'bg-emerald-500/15 text-emerald-300'
+                    : 'bg-white/[0.04] hover:bg-white/[0.08] text-neutral-200'
+                }`}
+              >
+                {task.done && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                <span>{task.label}</span>
+              </button>
+            ))}
+          </div>
+          {onDismissOnboarding && (
+            <button
+              type="button"
+              onClick={onDismissOnboarding}
+              className="text-[11px] text-neutral-400 hover:text-white self-end sm:self-center shrink-0 cursor-pointer"
+            >
+              Hide
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Alert Banner when Coach Requests a Revision on any video */}
       {(revisionSupportingVideos.length > 0 || revisionCoreVideos.length > 0) && (
         <div className="p-3.5 sm:p-4 rounded-2xl bg-rose-500/10 border border-rose-500/35 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -463,6 +533,20 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   <p className="text-xs sm:text-sm text-white mt-1.5 leading-relaxed">
                     “{currentVideo.coachFeedback}”
                   </p>
+                )}
+                {currentVideo.coachVideoUrl && (
+                  <div className="mt-2">
+                    <a
+                      href={currentVideo.coachVideoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#09ADEF] text-white text-xs font-bold hover:bg-[#09B3F8] transition-colors"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                      <span>Watch Coach Video Breakdown</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                 )}
               </div>
             )}

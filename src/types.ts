@@ -37,6 +37,7 @@ export interface SupportingVideoItem {
   notes?: string;
   coachReviewStatus?: CoachReviewStatus;
   coachFeedback?: string;
+  coachVideoUrl?: string;
   coachReviewedAt?: string;
   sharedToGroup?: boolean;
   groupPostId?: string;
@@ -60,6 +61,7 @@ export interface CoreBrandVideo {
   videoUrl?: string;
   coachReviewStatus?: CoachReviewStatus;
   coachFeedback?: string;
+  coachVideoUrl?: string;
   coachReviewedAt?: string;
   sharedToGroup?: boolean;
   groupPostId?: string;
@@ -151,14 +153,66 @@ export interface WorkbookWeek {
 }
 
 export interface ChatMessageActionTarget {
-  tab: 'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'GROUP' | 'CRM';
+  tab: 'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'GROUP' | 'CRM' | 'VAULT';
   subTab?: 'STUDIO' | 'QUEUE' | 'CORE5' | 'PLAYBOOK';
+  vaultSubTab?: 'CALLS' | 'RESOURCES' | 'SCORECARD';
   videoId?: string;
   coreVideoId?: string;
   lessonNumber?: number;
   groupPostId?: string;
   crmThreadId?: string;
   label?: string;
+}
+
+export interface HotSeatQuestion {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentAvatar: string;
+  question: string;
+  videoUrl?: string;
+  timestamp: string;
+  answered?: boolean;
+}
+
+export interface UpcomingCoachingCall {
+  title: string;
+  dateTimeLabel: string;
+  topic: string;
+  joinUrl: string;
+  hotSeatQuestions: HotSeatQuestion[];
+}
+
+export interface CoachingCallReplay {
+  id: string;
+  title: string;
+  dateLabel: string;
+  duration: string;
+  videoUrl: string;
+  summary: string;
+  timestamps: { time: string; label: string }[];
+}
+
+export type ResourceCategory = 'TEMPLATES' | 'SWIPE_FILES' | 'TOOLS_GEAR';
+
+export interface CoachingResourceItem {
+  id: string;
+  title: string;
+  category: ResourceCategory;
+  format: string;
+  summary: string;
+  url: string;
+  featured?: boolean;
+}
+
+export interface WeeklyScorecardCheckIn {
+  id: string;
+  weekLabel: string;
+  dateISO: string;
+  videosPosted: number;
+  dmConversationsStarted: number;
+  callsOrDealsBooked: number;
+  bottleneckNote: string;
 }
 
 export interface GroupDiscussionComment {
@@ -207,6 +261,7 @@ export interface GroupDiscussionPost {
   // Appended Coach Review & Feedback
   coachReviewStatus?: CoachReviewStatus;
   coachFeedback?: string;
+  coachVideoUrl?: string;
   coachReviewedAt?: string;
   // Reactions & Discussion Thread
   reactions: {
@@ -258,6 +313,9 @@ export interface StudentProfile {
   coreVideos: CoreBrandVideo[];
   shiftMagnets: ShiftMagnet[];
   messages: ChatMessage[];
+  weeklyCheckIns?: WeeklyScorecardCheckIn[];
+  watchedReplayIds?: string[];
+  onboardingDismissed?: boolean;
 }
 
 export interface EmailTemplateConfig {

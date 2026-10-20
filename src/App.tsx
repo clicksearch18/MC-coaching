@@ -11,13 +11,17 @@ import {
   LogOut,
   ExternalLink,
   Users,
-  Radio
+  Radio,
+  FolderOpen
 } from 'lucide-react';
 import {
   INITIAL_STUDENTS,
   createNewStudentProfile,
   DEFAULT_APP_SETTINGS,
-  INITIAL_GROUP_POSTS
+  INITIAL_GROUP_POSTS,
+  INITIAL_UPCOMING_CALL,
+  INITIAL_CALL_REPLAYS,
+  INITIAL_RESOURCES
 } from './data/initialStudents';
 import { WORKBOOK_WEEKS } from './data/workbookData';
 import {
@@ -32,7 +36,11 @@ import {
   ChatMessageActionTarget,
   GroupDiscussionPost,
   GroupDiscussionCategory,
-  GroupDiscussionComment
+  GroupDiscussionComment,
+  UpcomingCoachingCall,
+  CoachingCallReplay,
+  CoachingResourceItem,
+  WeeklyScorecardCheckIn
 } from './types';
 import { DailyCadenceView } from './components/DailyCadenceView';
 import { LoginView } from './components/LoginView';
@@ -53,6 +61,9 @@ const CoachDashboardView = lazy(() =>
 );
 const GroupDiscussionView = lazy(() =>
   import('./components/GroupDiscussionView').then(m => ({ default: m.GroupDiscussionView }))
+);
+const VaultAndCallsView = lazy(() =>
+  import('./components/VaultAndCallsView').then(m => ({ default: m.VaultAndCallsView }))
 );
 import {
   fetchStudentsFromSupabase,
@@ -76,6 +87,9 @@ const STORAGE_KEY = 'mcm_cam005_students_v5_clean';
 const LESSONS_STORAGE_KEY = 'mcm_cam005_lessons_v2';
 const SETTINGS_STORAGE_KEY = 'mcm_cam005_settings_v1';
 const GROUP_POSTS_STORAGE_KEY = 'mcm_cam005_group_posts_v1';
+const UPCOMING_CALL_STORAGE_KEY = 'mcm_cam005_upcoming_call_v1';
+const CALL_REPLAYS_STORAGE_KEY = 'mcm_cam005_call_replays_v1';
+const RESOURCES_STORAGE_KEY = 'mcm_cam005_resources_v1';
 const AUTH_SESSION_KEY = 'mcm_cam005_auth_session_v1';
 const ACTIVE_TAB_STORAGE_KEY = 'mcm_cam005_active_tab_v1';
 const LEGACY_DEMO_IDS = new Set(['student-marcus', 'student-elena', 'student-devon']);
@@ -170,6 +184,36 @@ export function App() {
     return INITIAL_GROUP_POSTS;
   });
 
+  const [upcomingCall, setUpcomingCall] = useState<UpcomingCoachingCall>(() => {
+    try {
+      const saved = localStorage.getItem(UPCOMING_CALL_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return INITIAL_UPCOMING_CALL;
+  });
+
+  const [callReplays, setCallReplays] = useState<CoachingCallReplay[]>(() => {
+    try {
+      const saved = localStorage.getItem(CALL_REPLAYS_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return INITIAL_CALL_REPLAYS;
+  });
+
+  const [resources, setResources] = useState<CoachingResourceItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(RESOURCES_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return INITIAL_RESOURCES;
+  });
+
   const [authSession, setAuthSession] = useState<AuthSession>(() => {
     const path = window.location.pathname.toLowerCase();
     const params = new URLSearchParams(window.location.search);
@@ -228,7 +272,7 @@ export function App() {
     window.location.pathname.toLowerCase() === '/admin' ? 'COACH' : 'STUDENT'
   );
   const [activeTab, setActiveTab] = useState<
-    'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'CRM' | 'GROUP' | 'COACH'
+    'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'CRM' | 'GROUP' | 'VAULT' | 'COACH'
   >(() => {
     if (window.location.pathname.toLowerCase() === '/admin') return 'COACH';
     const params = new URLSearchParams(window.location.search);
@@ -253,14 +297,14 @@ export function App() {
       return 'CRM';
     }
     const urlTab = params.get('tab')?.toUpperCase();
-    const validTabs = new Set(['CADENCE', 'WORKBOOK', 'MAGNETS', 'CRM', 'GROUP', 'COACH']);
+    const validTabs = new Set(['CADENCE', 'WORKBOOK', 'MAGNETS', 'CRM', 'GROUP', 'VAULT', 'COACH']);
     if (urlTab && validTabs.has(urlTab)) {
-      return urlTab as 'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'CRM' | 'GROUP' | 'COACH';
+      return urlTab as 'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'CRM' | 'GROUP' | 'VAULT' | 'COACH';
     }
     try {
       const savedTab = localStorage.getItem(ACTIVE_TAB_STORAGE_KEY)?.toUpperCase();
       if (savedTab && validTabs.has(savedTab)) {
-        return savedTab as 'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'CRM' | 'GROUP' | 'COACH';
+        return savedTab as 'CADENCE' | 'WORKBOOK' | 'MAGNETS' | 'CRM' | 'GROUP' | 'VAULT' | 'COACH';
       }
     } catch {
       // ignore
@@ -290,6 +334,9 @@ export function App() {
   // Deep-link navigation targets (triggered from Chat Action pills)
   const [requestedCadenceSubTab, setRequestedCadenceSubTab] = useState<
     'STUDIO' | 'QUEUE' | 'CORE5' | 'PLAYBOOK' | undefined
+  >(undefined);
+  const [requestedVaultSubTab, setRequestedVaultSubTab] = useState<
+    'CALLS' | 'RESOURCES' | 'SCORECARD' | undefined
   >(undefined);
   const [requestedVideoId, setRequestedVideoId] = useState<string | undefined>(undefined);
   const [requestedCoreVideoId, setRequestedCoreVideoId] = useState<string | undefined>(undefined);
@@ -748,14 +795,14 @@ export function App() {
     [scheduleSingleStudentSync]
   );
 
-  // Broadcast a Discussion notification into all students' inboxes so every student gets notified
+  // Broadcast a Discussion or Vault notification into all students' inboxes so every student gets notified
   const broadcastCohortGroupNotification = useCallback(
     (params: {
       excludeStudentId?: string;
       senderName: string;
       text: string;
       relatedVideoTitle?: string;
-      groupPostId: string;
+      groupPostId?: string;
       actionLabel?: string;
     }) => {
       const formattedTime = new Date().toLocaleTimeString([], {
@@ -768,17 +815,25 @@ export function App() {
         const notifMsg: ChatMessage = {
           id: `msg-group-${Date.now()}-${st.id}`,
           senderRole: 'SYSTEM',
-          senderName: `Discussion · ${params.senderName}`,
+          senderName: params.groupPostId
+            ? `Discussion · ${params.senderName}`
+            : `Vault & Calls · ${params.senderName}`,
           text: params.text,
           timestamp: formattedTime,
           relatedVideoTitle: params.relatedVideoTitle,
           readByStudent: isActor,
           readByCoach: authSession.role === 'ADMIN',
-          actionTarget: {
-            label: params.actionLabel || 'Open Discussion Thread',
-            tab: 'GROUP',
-            groupPostId: params.groupPostId
-          }
+          actionTarget: params.groupPostId
+            ? {
+                label: params.actionLabel || 'Open Discussion Thread',
+                tab: 'GROUP',
+                groupPostId: params.groupPostId
+              }
+            : {
+                label: params.actionLabel || 'Watch Call Replay',
+                tab: 'VAULT',
+                vaultSubTab: 'CALLS'
+              }
         };
         return {
           ...st,
@@ -852,6 +907,9 @@ export function App() {
     } else if (target.tab === 'GROUP') {
       setActiveTab('GROUP');
       if (target.groupPostId) setRequestedGroupPostId(target.groupPostId);
+    } else if (target.tab === 'VAULT') {
+      setActiveTab('VAULT');
+      if (target.vaultSubTab) setRequestedVaultSubTab(target.vaultSubTab);
     }
   };
 
@@ -1386,7 +1444,8 @@ export function App() {
     videoId: string,
     reviewStatus: CoachReviewStatus,
     feedback: string,
-    appendToGroupThread = true
+    appendToGroupThread = true,
+    coachVideoUrl?: string
   ) => {
     const reviewedTime = new Date().toLocaleDateString('en-US', {
       month: 'short',
@@ -1409,6 +1468,7 @@ export function App() {
                   ...v,
                   coachReviewStatus: reviewStatus,
                   coachFeedback: feedback,
+                  coachVideoUrl: coachVideoUrl || v.coachVideoUrl,
                   coachReviewedAt: reviewedTime,
                   sharedToGroup: appendToGroupThread ? true : v.sharedToGroup,
                   groupPostId: appendToGroupThread ? deterministicPostId : v.groupPostId
@@ -1427,6 +1487,7 @@ export function App() {
                   ...c,
                   coachReviewStatus: reviewStatus,
                   coachFeedback: feedback,
+                  coachVideoUrl: coachVideoUrl || c.coachVideoUrl,
                   coachReviewedAt: reviewedTime,
                   sharedToGroup: appendToGroupThread ? true : c.sharedToGroup,
                   groupPostId: appendToGroupThread ? deterministicPostId : c.groupPostId
@@ -1650,6 +1711,184 @@ export function App() {
 
   const handleDeleteGroupPost = (postId: string) => {
     saveGroupPosts(prev => prev.filter(p => p.id !== postId));
+  };
+
+  // Vault & Calls Handlers
+  const handleUpdateUpcomingCall = (updated: UpcomingCoachingCall) => {
+    setUpcomingCall(updated);
+    try {
+      localStorage.setItem(UPCOMING_CALL_STORAGE_KEY, JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
+    triggerWebPushAndBanner(
+      'Upcoming Call Updated',
+      `Next Live Call set to ${updated.dateTimeLabel}.`,
+      'DAILY_LESSON'
+    );
+  };
+
+  const handleSubmitHotSeatQuestion = (question: string, videoUrl?: string) => {
+    const newQ = {
+      id: `hs-${Date.now()}`,
+      studentId: currentStudent.id,
+      studentName: currentStudent.name,
+      studentAvatar: currentStudent.avatar,
+      question,
+      videoUrl,
+      timestamp: 'Just now',
+      answered: false
+    };
+    const updated: UpcomingCoachingCall = {
+      ...upcomingCall,
+      hotSeatQuestions: [newQ, ...upcomingCall.hotSeatQuestions]
+    };
+    setUpcomingCall(updated);
+    try {
+      localStorage.setItem(UPCOMING_CALL_STORAGE_KEY, JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
+    triggerWebPushAndBanner(
+      'Hot-Seat Question Submitted!',
+      'Added your question to the live coaching call queue.',
+      'DAILY_LESSON'
+    );
+  };
+
+  const handleToggleHotSeatAnswered = (questionId: string) => {
+    const updated: UpcomingCoachingCall = {
+      ...upcomingCall,
+      hotSeatQuestions: upcomingCall.hotSeatQuestions.map(q =>
+        q.id === questionId ? { ...q, answered: !q.answered } : q
+      )
+    };
+    setUpcomingCall(updated);
+    try {
+      localStorage.setItem(UPCOMING_CALL_STORAGE_KEY, JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleAddReplay = (replay: Omit<CoachingCallReplay, 'id'>) => {
+    const created: CoachingCallReplay = {
+      ...replay,
+      id: `replay-${Date.now()}`
+    };
+    const next = [created, ...callReplays];
+    setCallReplays(next);
+    try {
+      localStorage.setItem(CALL_REPLAYS_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+    broadcastCohortGroupNotification({
+      senderName: 'Coach Josh Beechraft',
+      text: `🎥 New Group Coaching Call Replay Posted: "${created.title}" — Watch the timestamped breakdown in Vault & Calls!`,
+      actionLabel: 'Watch Call Replay'
+    });
+    triggerWebPushAndBanner(
+      'Call Replay Published!',
+      `"${created.title}" is now live in Vault & Calls.`,
+      'DAILY_LESSON'
+    );
+  };
+
+  const handleDeleteReplay = (replayId: string) => {
+    const next = callReplays.filter(r => r.id !== replayId);
+    setCallReplays(next);
+    try {
+      localStorage.setItem(CALL_REPLAYS_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleToggleWatchedReplay = (replayId: string) => {
+    updateStudent(currentStudent.id, st => {
+      const current = st.watchedReplayIds || [];
+      const exists = current.includes(replayId);
+      const next = exists ? current.filter(id => id !== replayId) : [...current, replayId];
+      return {
+        ...st,
+        watchedReplayIds: next
+      };
+    });
+  };
+
+  const handleAddResource = (resource: Omit<CoachingResourceItem, 'id'>) => {
+    const created: CoachingResourceItem = {
+      ...resource,
+      id: `res-${Date.now()}`
+    };
+    const next = [created, ...resources];
+    setResources(next);
+    try {
+      localStorage.setItem(RESOURCES_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+    triggerWebPushAndBanner(
+      'Resource Added to Vault!',
+      `"${created.title}" is now available in Tools & Downloads.`,
+      'DAILY_LESSON'
+    );
+  };
+
+  const handleDeleteResource = (resourceId: string) => {
+    const next = resources.filter(r => r.id !== resourceId);
+    setResources(next);
+    try {
+      localStorage.setItem(RESOURCES_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleSubmitWeeklyCheckIn = (
+    checkIn: Omit<WeeklyScorecardCheckIn, 'id' | 'dateISO'>
+  ) => {
+    const todayISO = getTodayDateISO();
+    const formattedTime = new Date().toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    const entry: WeeklyScorecardCheckIn = {
+      ...checkIn,
+      id: `checkin-${Date.now()}`,
+      dateISO: todayISO
+    };
+
+    updateStudent(currentStudent.id, st => {
+      const checkInMsg: ChatMessage = {
+        id: `msg-checkin-${Date.now()}`,
+        senderRole: 'STUDENT',
+        senderName: st.name,
+        text: `📊 ${checkIn.weekLabel}: ${checkIn.videosPosted} Videos Posted · ${checkIn.dmConversationsStarted} New DMs · ${checkIn.callsOrDealsBooked} Offer Docs/Wins — Bottleneck: "${checkIn.bottleneckNote}"`,
+        timestamp: formattedTime,
+        readByStudent: true,
+        readByCoach: false,
+        actionTarget: {
+          label: 'View Operator Scorecard',
+          tab: 'VAULT',
+          vaultSubTab: 'SCORECARD'
+        }
+      };
+
+      return {
+        ...st,
+        dmConversationsWeekly: checkIn.dmConversationsStarted,
+        weeklyCheckIns: [entry, ...(st.weeklyCheckIns || [])],
+        messages: [...st.messages, checkInMsg]
+      };
+    });
+
+    triggerWebPushAndBanner(
+      'Weekly Check-In Logged!',
+      `Sent your ${checkIn.weekLabel} numbers & bottleneck note to Coach Josh.`,
+      'DAILY_LESSON'
+    );
   };
 
   const applyWorksheetUpdatesWithCoreSync = (
@@ -2409,6 +2648,13 @@ export function App() {
       icon: Radio,
       role: 'STUDENT' as const
     },
+    {
+      id: 'VAULT' as const,
+      label: 'Vault & Calls',
+      shortLabel: 'Vault',
+      icon: FolderOpen,
+      role: 'STUDENT' as const
+    },
     { id: 'COACH' as const, label: 'Admin', shortLabel: 'Admin', icon: UserCheck, role: 'COACH' as const }
   ];
 
@@ -2716,6 +2962,15 @@ export function App() {
                 setActiveTab('GROUP');
                 if (postId) setRequestedGroupPostId(postId);
               }}
+              onQuickStartNavigate={targetTab => {
+                setActiveTab(targetTab);
+                if (targetTab === 'VAULT') {
+                  setRequestedVaultSubTab('SCORECARD');
+                }
+              }}
+              onDismissOnboarding={() => {
+                updateStudent(currentStudent.id, st => ({ ...st, onboardingDismissed: true }));
+              }}
               requestedSubTab={requestedCadenceSubTab}
               requestedVideoId={requestedVideoId}
               requestedCoreVideoId={requestedCoreVideoId}
@@ -2736,6 +2991,27 @@ export function App() {
               <div className="py-16 text-center text-xs text-neutral-500">Loading workspace...</div>
             }
           >
+            {activeTab === 'VAULT' && (
+              <VaultAndCallsView
+                student={currentStudent}
+                isAdminSession={isAdminSession}
+                upcomingCall={upcomingCall}
+                replays={callReplays}
+                resources={resources}
+                requestedSubTab={requestedVaultSubTab}
+                onClearRequestedSubTab={() => setRequestedVaultSubTab(undefined)}
+                onUpdateUpcomingCall={handleUpdateUpcomingCall}
+                onSubmitHotSeatQuestion={handleSubmitHotSeatQuestion}
+                onToggleHotSeatAnswered={handleToggleHotSeatAnswered}
+                onAddReplay={handleAddReplay}
+                onDeleteReplay={handleDeleteReplay}
+                onToggleWatchedReplay={handleToggleWatchedReplay}
+                onAddResource={handleAddResource}
+                onDeleteResource={handleDeleteResource}
+                onSubmitWeeklyCheckIn={handleSubmitWeeklyCheckIn}
+              />
+            )}
+
             {activeTab === 'GROUP' && (
               <GroupDiscussionView
                 students={students}

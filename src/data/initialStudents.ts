@@ -8,7 +8,10 @@ import {
   ShiftMagnet,
   AppEmailAndAdminSettings,
   EmailTemplateConfig,
-  GroupDiscussionPost
+  GroupDiscussionPost,
+  UpcomingCoachingCall,
+  CoachingCallReplay,
+  CoachingResourceItem
 } from '../types';
 
 const defaultShiftMagnets: ShiftMagnet[] = [
@@ -401,5 +404,127 @@ export const INITIAL_GROUP_POSTS: GroupDiscussionPost[] = [
     comments: []
   }
 ];
+
+export const INITIAL_UPCOMING_CALL: UpcomingCoachingCall = {
+  title: 'Weekly Cohort Coaching & Hot-Seat Breakdowns',
+  dateTimeLabel: 'Thursdays · 2:00 PM EST',
+  topic: 'Reviewing Student B1–B2 Core Videos, Tightening 3-Second Hooks & Live DM Handoff Audits',
+  joinUrl: 'https://zoom.us/j/marketconcussion',
+  hotSeatQuestions: [
+    {
+      id: 'hs-1',
+      studentId: 'student-josh',
+      studentName: 'Josh Beechraft',
+      studentAvatar: 'JB',
+      question: 'Drop any video link or DM thread you want reviewed live at the start of Thursday’s call.',
+      timestamp: 'Pinned'
+    }
+  ]
+};
+
+export const INITIAL_CALL_REPLAYS: CoachingCallReplay[] = [
+  {
+    id: 'replay-1',
+    title: 'Hot-Seat Review: Fixing Opening Hooks & Installing the 4-Take Recording Rhythm',
+    dateLabel: 'Oct 16, 2026',
+    duration: '52 mins',
+    videoUrl: 'https://www.loom.com/share/market-concussion-hooks-replay',
+    summary: 'Live teardown of student Day 1–10 videos, how to cut the 2-second throat-clearing pause before Take 1, and transitioning cleanly into the Shift Magnet CTA.',
+    timestamps: [
+      { time: '04:15', label: 'Cutting the 2-second dead air before Take 1' },
+      { time: '18:40', label: 'Rewriting weak "educational" hooks into belief-breakers' },
+      { time: '36:10', label: 'Verbal Shift Magnet callout without sounding salesy' }
+    ]
+  },
+  {
+    id: 'replay-2',
+    title: 'Wiring Your $5/Day Andromeda ThruPlay Ladder & 25% Invisible List',
+    dateLabel: 'Oct 9, 2026',
+    duration: '47 mins',
+    videoUrl: 'https://www.loom.com/share/market-concussion-andromeda-replay',
+    summary: 'Step-by-step screen share inside Meta Ads Manager setting up the 6-video sequenced ThruPlay campaign and custom 25% viewer retargeting audiences.',
+    timestamps: [
+      { time: '06:30', label: 'Naming conventions for V1–V6 Custom Audiences' },
+      { time: '21:15', label: 'Excluding downstream viewers to force sequential consumption' },
+      { time: '38:50', label: 'When to promote a Daily Video into the $5/day ad rotation' }
+    ]
+  },
+  {
+    id: 'replay-3',
+    title: 'DM Handoff Clinic: Moving Commenters from Keyword Trigger to the 2-Page Offer Doc',
+    dateLabel: 'Oct 2, 2026',
+    duration: '58 mins',
+    videoUrl: 'https://www.loom.com/share/market-concussion-dm-clinic',
+    summary: 'Real student DM inbox audits showing why prospects ghost after receiving the PDF and the exact 3-option diagnostic question that restarts the conversation.',
+    timestamps: [
+      { time: '09:05', label: 'The A/B/C diagnostic question that gets 65%+ replies' },
+      { time: '27:30', label: 'Diagnosing when a lead is ready for the 2-Page Offer Doc' },
+      { time: '44:20', label: 'Handling price questions asynchronously in DMs' }
+    ]
+  }
+];
+
+export const INITIAL_RESOURCES: CoachingResourceItem[] = [
+  {
+    id: 'res-1',
+    title: 'The 2-Page Super Signature Offer Doc (Google Doc Template)',
+    category: 'TEMPLATES',
+    format: 'Google Doc Template',
+    summary: 'Make-a-copy template with all 17 belief-shifting sections pre-formatted to close $3k–$30k deals in DMs without sales calls.',
+    url: 'https://marketconcussion.com/offer-doc-template',
+    featured: true
+  },
+  {
+    id: 'res-2',
+    title: '4-Take Smartphone Studio & Teleprompter Setup Checklist',
+    category: 'TEMPLATES',
+    format: '1-Page PDF Checklist',
+    summary: 'Exact framing, eye-line, lighting, and 4-take punch-in checklist so you can shoot 3 daily videos in under 15 minutes.',
+    url: 'https://marketconcussion.com/4-take-studio-checklist',
+    featured: true
+  },
+  {
+    id: 'res-3',
+    title: 'VA / Video Editor Hand-Off SOP (Jump-Cuts & Captions)',
+    category: 'TEMPLATES',
+    format: 'Editor SOP Guide',
+    summary: 'Send this directly to your editor so they know how to stitch your 4 takes, remove dead air, and format captions.',
+    url: 'https://marketconcussion.com/editor-sop'
+  },
+  {
+    id: 'res-4',
+    title: 'Hall of Fame Swipe File: 25 Winning First-3-Second Hooks',
+    category: 'SWIPE_FILES',
+    format: 'Swipe Vault',
+    summary: 'Real highest-retention student hooks broken down by Actionable, Analytical, Psychological, and Aspirational angles.',
+    url: 'https://marketconcussion.com/winning-hooks-swipe',
+    featured: true
+  },
+  {
+    id: 'res-5',
+    title: 'Booked-in-DMs Swipe File: 10 Real Comment-to-Close Thread Screenshots',
+    category: 'SWIPE_FILES',
+    format: 'Annotated Threads',
+    summary: 'Word-for-word Instagram and Facebook DM threads showing the exact transition from keyword trigger to Offer Doc close.',
+    url: 'https://marketconcussion.com/dm-threads-swipe'
+  },
+  {
+    id: 'res-6',
+    title: 'The $5/Day Andromeda Ad Manager Wiring Blueprint',
+    category: 'TEMPLATES',
+    format: 'Step-by-Step PDF',
+    summary: 'Visual click-by-click guide for building your 25% video viewer retargeting pool and Master Full List rollup.',
+    url: 'https://marketconcussion.com/5-dollar-wiring'
+  },
+  {
+    id: 'res-7',
+    title: 'Recommended Studio Gear & Teleprompter App Stack',
+    category: 'TOOLS_GEAR',
+    format: 'Gear & App List',
+    summary: 'Our tested wireless mic (DJI Mic 2 / Rode), desk key light, phone mount, and captioning/teleprompter apps.',
+    url: 'https://marketconcussion.com/studio-gear-stack'
+  }
+];
+
 
 
