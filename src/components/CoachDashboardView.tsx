@@ -1367,7 +1367,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                                     [item.key]: e.target.value
                                   }))
                                 }
-                                placeholder="Optional Loom feedback URL..."
+                                placeholder="Optional Vimeo feedback URL (https://vimeo.com/...)..."
                                 className="w-full rounded-xl bg-black/60 border border-white/15 px-3 py-2 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#09ADEF]"
                               />
                             </div>

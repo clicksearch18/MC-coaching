@@ -113,6 +113,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
   const [showQueueDrawer, setShowQueueDrawer] = useState(false);
   const [teleprompterLargeText, setTeleprompterLargeText] = useState(false);
   const [fullscreenPrompter, setFullscreenPrompter] = useState(false);
+  const [showCoachVideoPlayer, setShowCoachVideoPlayer] = useState(false);
 
   // Reset local studio & slider state when switching active student
   useEffect(() => {
@@ -535,17 +536,42 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   </p>
                 )}
                 {currentVideo.coachVideoUrl && (
-                  <div className="mt-2">
-                    <a
-                      href={currentVideo.coachVideoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#09ADEF] text-white text-xs font-bold hover:bg-[#09B3F8] transition-colors"
+                  <div className="mt-2 space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowCoachVideoPlayer(prev => !prev)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#09ADEF] text-white text-xs font-bold hover:bg-[#09B3F8] transition-colors cursor-pointer"
                     >
                       <Play className="w-3.5 h-3.5" />
-                      <span>Watch Coach Video Breakdown</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
+                      <span>
+                        {showCoachVideoPlayer
+                          ? 'Hide Coach Video Breakdown'
+                          : 'Watch Coach Video Breakdown'}
+                      </span>
+                    </button>
+                    {showCoachVideoPlayer && (
+                      <div className="rounded-xl overflow-hidden bg-black aspect-video w-full max-w-xl">
+                        <iframe
+                          src={(() => {
+                            const raw = currentVideo.coachVideoUrl.trim();
+                            const unlisted = raw.match(/vimeo\.com\/(?:video\/)?(\d+)\/([a-zA-Z0-9]+)/i);
+                            const qHash = raw.match(/[?&]h=([a-zA-Z0-9]+)/i);
+                            const idMatch = raw.match(/vimeo\.com\/(?:.*\/)?(\d+)/i);
+                            if (idMatch) {
+                              const h = unlisted?.[2] || qHash?.[1];
+                              return `https://player.vimeo.com/video/${idMatch[1]}?autoplay=1&dnt=1${
+                                h ? `&h=${h}` : ''
+                              }`;
+                            }
+                            return raw;
+                          })()}
+                          title="Coach Video Breakdown"
+                          allow="autoplay; fullscreen; picture-in-picture"
+                          allowFullScreen
+                          className="w-full h-full border-0"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

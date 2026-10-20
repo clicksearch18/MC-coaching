@@ -66,38 +66,26 @@ const parseDurationLabelToSeconds = (durationLabel: string): number => {
   return match ? parseInt(match[1], 10) * 60 : 3000;
 };
 
-const resolveReplayPlaybackSource = (
-  rawUrl: string,
-  startSeconds = 0
-): { type: 'VIDEO' | 'IFRAME'; src: string } => {
+const resolveVimeoEmbedUrl = (rawUrl: string, startSeconds = 0): string => {
   const url = (rawUrl || '').trim();
-  if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url)) {
-    return { type: 'VIDEO', src: url };
+  // Match standard Vimeo, unlisted Vimeo (vimeo.com/12345/abcdef), or player.vimeo.com/video/12345?h=abcdef
+  const unlistedMatch = url.match(/vimeo\.com\/(?:video\/)?(\d+)\/([a-zA-Z0-9]+)/i);
+  const queryHashMatch = url.match(/[?&]h=([a-zA-Z0-9]+)/i);
+  const idMatch = url.match(/vimeo\.com\/(?:.*\/)?(\d+)/i);
+
+  if (idMatch) {
+    const videoId = idMatch[1];
+    const hashToken = unlistedMatch?.[2] || queryHashMatch?.[1];
+    const params = new URLSearchParams();
+    if (hashToken) params.set('h', hashToken);
+    params.set('autoplay', '1');
+    params.set('api', '1');
+    params.set('dnt', '1');
+    const timeFrag = startSeconds > 0 ? `#t=${Math.floor(startSeconds)}s` : '';
+    return `https://player.vimeo.com/video/${videoId}?${params.toString()}${timeFrag}`;
   }
-  const loomMatch = url.match(/loom\.com\/(?:share|embed)\/([a-zA-Z0-9_-]+)/i);
-  if (loomMatch) {
-    const tParam = startSeconds > 0 ? `?t=${Math.floor(startSeconds)}` : '';
-    return { type: 'IFRAME', src: `https://www.loom.com/embed/${loomMatch[1]}${tParam}` };
-  }
-  const ytMatch = url.match(
-    /(?:youtube\.com\/(?:watch\?v=|embed\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i
-  );
-  if (ytMatch) {
-    const startParam = startSeconds > 0 ? `&start=${Math.floor(startSeconds)}` : '';
-    return {
-      type: 'IFRAME',
-      src: `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&rel=0${startParam}`
-    };
-  }
-  const vimeoMatch = url.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
-  if (vimeoMatch) {
-    const hash = startSeconds > 0 ? `#t=${Math.floor(startSeconds)}s` : '';
-    return {
-      type: 'IFRAME',
-      src: `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1${hash}`
-    };
-  }
-  return { type: 'VIDEO', src: url };
+
+  return url;
 };
 
 const RESOURCE_CATEGORIES: { id: 'ALL' | ResourceCategory; label: string }[] = [
@@ -129,11 +117,78 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
   const [subTab, setSubTab] = useState<'CALLS' | 'RESOURCES' | 'SCORECARD'>('CALLS');
   const [resourceFilter, setResourceFilter] = useState<'ALL' | ResourceCategory>('ALL');
 
-  // Active inline replay player state
+  // Active inline Vimeo replay player state
   const [activeReplayId, setActiveReplayId] = useState<string | null>(null);
   const [iframeSeekSeconds, setIframeSeekSeconds] = useState<number>(0);
-  const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
+  const vimeoIframeRefs = useRef<Record<string, HTMLIFrameElement | null>>({});
   const lastReportedTimeRef = useRef<Record<string, number>>({});
+
+  // Listen to Vimeo Player postMessage events for live playback progress & completion tracking
+  useEffect(() => {
+    if (!activeReplayId) return;
+
+    const handleVimeoMessage = (event: MessageEvent) => {
+      if (!event.origin.includes('vimeo.com')) return;
+      let data: {
+        event?: string;
+        method?: string;
+        data?: { seconds?: number; duration?: number; percent?: number };
+      } = {};
+      try {
+        data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+      } catch {
+        return;
+      }
+
+      const activeIframe = vimeoIframeRefs.current[activeReplayId];
+      if (data.event === 'ready' && activeIframe?.contentWindow) {
+        activeIframe.contentWindow.postMessage(
+          JSON.stringify({ method: 'addEventListener', value: 'playProgress' }),
+          '*'
+        );
+        activeIframe.contentWindow.postMessage(
+          JSON.stringify({ method: 'addEventListener', value: 'timeupdate' }),
+          '*'
+        );
+        activeIframe.contentWindow.postMessage(
+          JSON.stringify({ method: 'addEventListener', value: 'ended' }),
+          '*'
+        );
+        if (iframeSeekSeconds > 0) {
+          activeIframe.contentWindow.postMessage(
+            JSON.stringify({ method: 'seekTo', value: iframeSeekSeconds }),
+            '*'
+          );
+        }
+        return;
+      }
+
+      if (
+        (data.event === 'playProgress' || data.event === 'timeupdate') &&
+        data.data &&
+        typeof data.data.seconds === 'number' &&
+        typeof data.data.duration === 'number' &&
+        data.data.duration > 0
+      ) {
+        const nowSec = Math.floor(data.data.seconds);
+        const prevSec = lastReportedTimeRef.current[activeReplayId] ?? -10;
+        if (Math.abs(nowSec - prevSec) >= 2) {
+          lastReportedTimeRef.current[activeReplayId] = nowSec;
+          const pct =
+            typeof data.data.percent === 'number'
+              ? Math.round(data.data.percent * 100)
+              : Math.round((data.data.seconds / data.data.duration) * 100);
+          onUpdateReplayProgress(activeReplayId, data.data.seconds, data.data.duration, pct);
+        }
+      } else if (data.event === 'ended') {
+        const dur = data.data?.duration || 0;
+        onUpdateReplayProgress(activeReplayId, dur, dur, 100);
+      }
+    };
+
+    window.addEventListener('message', handleVimeoMessage);
+    return () => window.removeEventListener('message', handleVimeoMessage);
+  }, [activeReplayId, iframeSeekSeconds, onUpdateReplayProgress]);
 
   // Hot-seat question form (max 2 inputs)
   const [showQuestionForm, setShowQuestionForm] = useState(false);
@@ -534,44 +589,49 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
             )}
           </div>
 
-          {/* Replay Cards (Max 1 Card Border Level, Inline Player + Progress Tracking) */}
+          {/* Replay Cards (Max 1 Card Border Level, Inline Vimeo Player + Progress Tracking) */}
           <div className="space-y-3">
             {replays.map(replay => {
               const isWatched = watchedIds.has(replay.id);
               const savedProg = student.replayProgress?.[replay.id];
               const progressPct = isWatched ? 100 : savedProg?.percent || 0;
               const isPlayingHere = activeReplayId === replay.id;
-              const playbackSource = resolveReplayPlaybackSource(
+              const vimeoEmbedSrc = resolveVimeoEmbedUrl(
                 replay.videoUrl,
-                isPlayingHere
-                  ? iframeSeekSeconds || savedProg?.currentTimeSeconds || 0
-                  : 0
+                isPlayingHere ? iframeSeekSeconds || savedProg?.currentTimeSeconds || 0 : 0
               );
 
               const handleOpenAndPlay = (seekToSeconds?: number) => {
                 const fallbackTotalSec = parseDurationLabelToSeconds(replay.duration);
+                const targetSec =
+                  seekToSeconds !== undefined
+                    ? seekToSeconds
+                    : savedProg?.currentTimeSeconds || 0;
+
                 setActiveReplayId(replay.id);
-                if (seekToSeconds !== undefined) {
-                  setIframeSeekSeconds(seekToSeconds);
-                } else {
-                  setIframeSeekSeconds(savedProg?.currentTimeSeconds || 0);
+                setIframeSeekSeconds(targetSec);
+
+                // If player is already mounted, send direct Vimeo postMessage seek + play
+                const activeIframe = vimeoIframeRefs.current[replay.id];
+                if (isPlayingHere && activeIframe?.contentWindow && seekToSeconds !== undefined) {
+                  activeIframe.contentWindow.postMessage(
+                    JSON.stringify({ method: 'seekTo', value: seekToSeconds }),
+                    '*'
+                  );
+                  activeIframe.contentWindow.postMessage(
+                    JSON.stringify({ method: 'play' }),
+                    '*'
+                  );
                 }
 
-                // If opening an iframe embed or jumping to a timestamp, log initial or timestamp progress immediately
                 if (seekToSeconds !== undefined) {
-                  const vEl = videoRefs.current[replay.id];
-                  if (vEl && playbackSource.type === 'VIDEO') {
-                    vEl.currentTime = seekToSeconds;
-                    vEl.play().catch(() => {});
-                  } else {
-                    const estPct = Math.min(
-                      95,
-                      Math.max(15, Math.round((seekToSeconds / fallbackTotalSec) * 100))
-                    );
-                    onUpdateReplayProgress(replay.id, seekToSeconds, fallbackTotalSec, estPct);
-                  }
+                  const estPct = Math.min(
+                    95,
+                    Math.max(10, Math.round((seekToSeconds / fallbackTotalSec) * 100))
+                  );
+                  onUpdateReplayProgress(replay.id, seekToSeconds, fallbackTotalSec, estPct);
                 } else if (!savedProg && !isWatched) {
-                  onUpdateReplayProgress(replay.id, 0, fallbackTotalSec, 10);
+                  onUpdateReplayProgress(replay.id, 0, fallbackTotalSec, 5);
                 }
               };
 
@@ -677,61 +737,20 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
                     </div>
                   </div>
 
-                  {/* In-Dashboard Video Player (HTML5 Video or Embedded Loom/YouTube/Vimeo) */}
+                  {/* In-Dashboard Vimeo Player */}
                   {isPlayingHere && (
                     <div className="pt-1 space-y-2">
                       <div className="rounded-xl overflow-hidden bg-black aspect-video w-full">
-                        {playbackSource.type === 'VIDEO' ? (
-                          <video
-                            ref={el => {
-                              videoRefs.current[replay.id] = el;
-                            }}
-                            src={playbackSource.src}
-                            controls
-                            autoPlay
-                            playsInline
-                            className="w-full h-full object-contain bg-black"
-                            onLoadedMetadata={e => {
-                              const vid = e.currentTarget;
-                              const targetStart =
-                                iframeSeekSeconds || savedProg?.currentTimeSeconds || 0;
-                              if (
-                                targetStart > 0 &&
-                                vid.duration > targetStart + 1 &&
-                                Math.abs(vid.currentTime - targetStart) > 2
-                              ) {
-                                vid.currentTime = targetStart;
-                              }
-                            }}
-                            onTimeUpdate={e => {
-                              const vid = e.currentTarget;
-                              if (!vid.duration || isNaN(vid.duration)) return;
-                              const nowSec = Math.floor(vid.currentTime);
-                              const prevSec = lastReportedTimeRef.current[replay.id] ?? -10;
-                              if (Math.abs(nowSec - prevSec) >= 2) {
-                                lastReportedTimeRef.current[replay.id] = nowSec;
-                                onUpdateReplayProgress(replay.id, vid.currentTime, vid.duration);
-                              }
-                            }}
-                            onEnded={e => {
-                              const vid = e.currentTarget;
-                              onUpdateReplayProgress(
-                                replay.id,
-                                vid.duration || 0,
-                                vid.duration || 0,
-                                100
-                              );
-                            }}
-                          />
-                        ) : (
-                          <iframe
-                            src={playbackSource.src}
-                            title={replay.title}
-                            allow="autoplay; fullscreen; picture-in-picture"
-                            allowFullScreen
-                            className="w-full h-full border-0"
-                          />
-                        )}
+                        <iframe
+                          ref={el => {
+                            vimeoIframeRefs.current[replay.id] = el;
+                          }}
+                          src={vimeoEmbedSrc}
+                          title={replay.title}
+                          allow="autoplay; fullscreen; picture-in-picture"
+                          allowFullScreen
+                          className="w-full h-full border-0"
+                        />
                       </div>
 
                       <div className="flex items-center justify-between text-[11px] text-neutral-400">
@@ -744,14 +763,14 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
                           rel="noopener noreferrer"
                           className="text-neutral-400 hover:text-white inline-flex items-center gap-1"
                         >
-                          <span>Open original link</span>
+                          <span>Open on Vimeo</span>
                           <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
                     </div>
                   )}
 
-                  {/* Interactive Timestamp Chapters (Seek Directly Inside Dashboard Player) */}
+                  {/* Interactive Timestamp Chapters (Seek Directly Inside Vimeo Player) */}
                   {replay.timestamps.length > 0 && (
                     <div className="pt-2.5 border-t border-white/10 flex flex-wrap gap-x-5 gap-y-1.5 text-xs">
                       {replay.timestamps.map((ts, idx) => {
@@ -1113,7 +1132,7 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
           </div>
           <div>
             <label htmlFor="add-replay-url" className="block font-semibold text-neutral-300 mb-1">
-              Recording URL (Loom / Vimeo / YouTube)
+              Vimeo Recording URL
             </label>
             <input
               id="add-replay-url"
@@ -1121,7 +1140,7 @@ export const VaultAndCallsView: React.FC<VaultAndCallsViewProps> = ({
               required
               value={replayUrl}
               onChange={e => setReplayUrl(e.target.value)}
-              placeholder="https://www.loom.com/share/..."
+              placeholder="https://vimeo.com/..."
               className="w-full rounded-lg bg-[#05070A] border border-white/15 px-3.5 py-2.5 text-white focus:outline-none focus:border-[#09ADEF]"
             />
           </div>

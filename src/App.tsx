@@ -202,7 +202,11 @@ export function App() {
         if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed.map(r => {
             const fallback = INITIAL_CALL_REPLAYS.find(ir => ir.id === r.id);
-            if (fallback && r.videoUrl.includes('loom.com/share/market-concussion-')) {
+            if (
+              fallback &&
+              (r.videoUrl.includes('loom.com/share/market-concussion-') ||
+                r.videoUrl.includes('commondatastorage.googleapis.com'))
+            ) {
               return fallback;
             }
             return r;
