@@ -74,13 +74,13 @@ export default async function handler(req, res) {
     if (supabase) {
       const [{ data: studentRows }, { data: settingsRow }] = await Promise.all([
         supabase.from('mc_students').select('id, profile'),
-        supabase.from('mc_lessons').select('data').eq('week_number', 0).maybeSingle()
+        supabase.from('mc_lessons').select('lesson').eq('week_number', 0).maybeSingle()
       ]);
 
       if (Array.isArray(studentRows)) {
         students = studentRows.map(r => r.profile).filter(Boolean);
       }
-      settingsData = settingsRow?.data || {};
+      settingsData = settingsRow?.lesson || {};
       if (!globalApiKey && settingsData.outstandApiKey) {
         globalApiKey = settingsData.outstandApiKey;
       }
@@ -91,10 +91,10 @@ export default async function handler(req, res) {
       try {
         const { data: freshSettingsRow } = await supabase
           .from('mc_lessons')
-          .select('data')
+          .select('lesson')
           .eq('week_number', 0)
           .maybeSingle();
-        const currentData = freshSettingsRow?.data || settingsData || {};
+        const currentData = freshSettingsRow?.lesson || settingsData || {};
         const prevLogs = Array.isArray(currentData.webhookLogs) ? currentData.webhookLogs : [];
         const logEntry = {
           id: `wh-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -109,7 +109,7 @@ export default async function handler(req, res) {
         await supabase.from('mc_lessons').upsert(
           {
             week_number: 0,
-            data: {
+            lesson: {
               ...currentData,
               webhookLogs: [logEntry, ...prevLogs].slice(0, 50)
             },
@@ -265,7 +265,7 @@ export default async function handler(req, res) {
       }
 
       // Build combined Stage S (Link Delivery) + Stage H (A/B/C Diagnostic) Private Reply
-      const openerPart = (matchedMagnet.dmHandoffScript || '')
+      const rawOpener = (matchedMagnet.dmHandoffScript || '')
         .replace(/\[First Name\]/gi, firstName)
         .replace(/\[Name\]/gi, firstName)
         .replace(/\[Shift Magnet Title\]/gi, matchedMagnet.workingTitle || '')
@@ -273,14 +273,21 @@ export default async function handler(req, res) {
         .replace(/\[KEYWORD\]/gi, matchedMagnet.keywordTrigger || '')
         .replace(/\[Link\]/gi, matchedMagnet.trackingLink || '');
 
+      const cleanUrl = (matchedMagnet.trackingLink || '').trim();
+      const openerPart =
+        cleanUrl && !rawOpener.includes(cleanUrl)
+          ? `${rawOpener}\n\n🔗 ${cleanUrl}`
+          : rawOpener;
+
       const diagnosticPart =
         matchedMagnet.dmDiagnosticQuestion ||
         'Quick question while you open it — are you currently focused on:\nA) Fixing leaky ad funnels\nB) Escaping referral-only spiky months\nC) Closing deals in DMs without sales calls?\n\n(Just reply A, B, or C!)';
 
       const alreadyHasQuestion =
-        openerPart.includes('A)') ||
-        openerPart.toLowerCase().includes('quick question') ||
-        openerPart.includes(diagnosticPart.slice(0, 25));
+        rawOpener.includes('?') ||
+        rawOpener.includes('A)') ||
+        rawOpener.toLowerCase().includes('quick question') ||
+        rawOpener.includes(diagnosticPart.slice(0, 25));
 
       const combinedPrivateReply = alreadyHasQuestion
         ? openerPart

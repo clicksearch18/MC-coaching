@@ -18,11 +18,11 @@ async function resolveOutstandApiKey(clientApiKey) {
     const supabase = createClient(url, key);
     const { data: settingsRow } = await supabase
       .from('mc_lessons')
-      .select('data')
+      .select('lesson')
       .eq('week_number', 0)
       .maybeSingle();
-    if (settingsRow?.data?.outstandApiKey) {
-      return settingsRow.data.outstandApiKey;
+    if (settingsRow?.lesson?.outstandApiKey) {
+      return settingsRow.lesson.outstandApiKey;
     }
     const { data: studentRows } = await supabase.from('mc_students').select('id, profile');
     for (const row of studentRows || []) {
