@@ -154,12 +154,13 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
   return (
     <div className="space-y-4">
       {/* Compact Header */}
-      <div className="glass-panel rounded-xl px-5 py-4 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="relative rounded-2xl bg-[#0F1626]/90 border border-brand-500/30 glow-cyan px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 overflow-hidden">
+        <div className="absolute -top-12 -right-12 w-36 h-36 bg-brand-500/10 rounded-full blur-3xl pointer-events-none" />
         <div>
-          <h1 className="font-display text-2xl text-white tracking-wide uppercase">
+          <h1 className="text-xl font-bold text-white tracking-tight">
             Shift Magnets &amp; Keyword Triggers
           </h1>
-          <p className="text-xs text-neutral-400 mt-0.5">
+          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
             Add your Lead Magnet URLs and the comment keywords that trigger them in DMs.
           </p>
         </div>
@@ -169,17 +170,17 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
             <button
               type="button"
               onClick={onOpenLiveCrm}
-              className="px-3.5 py-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-xs font-semibold text-white inline-flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 active:scale-95 transition-all text-xs font-medium text-slate-200 inline-flex items-center gap-1.5 cursor-pointer"
             >
               <span>Connect IG/FB &amp; Test</span>
-              <ArrowRight className="w-3.5 h-3.5 text-[#09ADEF]" />
+              <ArrowRight className="w-3.5 h-3.5 text-brand-400" />
             </button>
           )}
 
           <button
             type="button"
             onClick={openAddModal}
-            className="btn-2mm px-4 py-2 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+            className="btn-2mm px-4 py-2.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Lead Magnet</span>
@@ -192,12 +193,12 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
         {student.shiftMagnets.map(mag => (
           <div
             key={mag.id}
-            className="glass-panel rounded-xl p-4 border border-white/10 flex flex-col justify-between space-y-3"
+            className="rounded-2xl bg-surface-card border border-white/[0.06] hover:border-brand-500/30 transition-all p-4 flex flex-col justify-between space-y-3"
           >
             <div className="space-y-2.5">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="px-2.5 py-0.5 rounded bg-[#09ADEF]/15 font-mono text-xs font-bold text-[#09ADEF] shrink-0">
+                  <span className="px-2.5 py-0.5 rounded-lg bg-brand-500/15 border border-brand-400/25 font-mono text-xs font-bold text-brand-400 shrink-0">
                     {mag.keywordTrigger}
                   </span>
                   <h2 className="text-sm font-bold text-white truncate">{mag.workingTitle}</h2>
@@ -207,7 +208,7 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => openEditModal(mag)}
-                    className="px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-xs text-neutral-200 inline-flex items-center gap-1 cursor-pointer"
+                    className="px-2.5 py-1 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-xs text-slate-200 inline-flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
                   >
                     <Edit3 className="w-3 h-3" />
                     <span>Edit</span>
@@ -216,7 +217,7 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
                     <button
                       type="button"
                       onClick={() => onDeleteShiftMagnet(mag.id)}
-                      className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-rose-500/15 text-neutral-400 hover:text-rose-300 cursor-pointer"
+                      className="p-1.5 rounded-xl bg-white/[0.04] hover:bg-rose-500/15 border border-white/10 text-slate-400 hover:text-rose-300 active:scale-95 transition-all cursor-pointer"
                       title="Delete Lead Magnet"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -226,14 +227,14 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
               </div>
 
               {/* Lead Magnet URL */}
-              <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-white/[0.03] text-xs">
+              <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-black/40 text-xs">
                 {mag.trackingLink && isSafeHttpUrl(mag.trackingLink) ? (
                   <>
                     <a
                       href={mag.trackingLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#09ADEF] hover:underline truncate inline-flex items-center gap-1.5"
+                      className="text-brand-400 hover:underline truncate inline-flex items-center gap-1.5"
                     >
                       <span className="truncate">{mag.trackingLink}</span>
                       <ExternalLink className="w-3 h-3 shrink-0" />
@@ -241,7 +242,7 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
                     <button
                       type="button"
                       onClick={() => handleCopy(`url-${mag.id}`, mag.trackingLink)}
-                      className="text-[11px] text-neutral-400 hover:text-white shrink-0 cursor-pointer"
+                      className="text-[11px] text-slate-400 hover:text-white shrink-0 cursor-pointer"
                     >
                       {copiedId === `url-${mag.id}` ? 'Copied' : 'Copy URL'}
                     </button>
@@ -259,15 +260,15 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
 
               {/* Auto-Reply DM Script Preview */}
               {mag.dmHandoffScript && (
-                <div className="p-3 rounded-lg bg-white/[0.03] space-y-1.5">
+                <div className="p-3 rounded-xl bg-black/40 space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       Auto-Reply DM Message
                     </span>
                     <button
                       type="button"
                       onClick={() => handleCopy(`dm-${mag.id}`, mag.dmHandoffScript)}
-                      className="text-[11px] text-neutral-300 hover:text-white inline-flex items-center gap-1 cursor-pointer"
+                      className="text-[11px] text-slate-300 hover:text-white inline-flex items-center gap-1 cursor-pointer"
                     >
                       {copiedId === `dm-${mag.id}` ? (
                         <Check className="w-3 h-3 text-emerald-400" />
@@ -277,7 +278,7 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
                       <span>{copiedId === `dm-${mag.id}` ? 'Copied' : 'Copy'}</span>
                     </button>
                   </div>
-                  <p className="text-xs text-neutral-300 whitespace-pre-wrap line-clamp-3 leading-relaxed">
+                  <p className="text-xs text-slate-300 whitespace-pre-wrap line-clamp-3 leading-relaxed">
                     {mag.dmHandoffScript}
                   </p>
                 </div>
@@ -297,7 +298,7 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
         <form onSubmit={handleSave} className="space-y-4 text-xs">
           {!editingMagnetId && (
             <div className="space-y-1.5">
-              <span className="text-[11px] font-medium text-neutral-400">
+              <span className="text-[11px] font-medium text-slate-400">
                 Optional Starter Templates:
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -310,7 +311,7 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
                       setWorkingTitle(p.workingTitle);
                       setDmHandoffScript(p.dmHandoffScript);
                     }}
-                    className="px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-[11px] text-neutral-200 cursor-pointer"
+                    className="px-2.5 py-1 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-[11px] text-slate-200 cursor-pointer"
                   >
                     {p.label} ({p.keywordTrigger})
                   </button>
@@ -321,52 +322,52 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block font-medium text-neutral-300 mb-1">Comment Keyword</label>
+              <label className="block font-medium text-slate-300 mb-1">Comment Keyword</label>
               <input
                 type="text"
                 value={keywordTrigger}
                 onChange={e => setKeywordTrigger(e.target.value.toUpperCase())}
                 placeholder="AUDIT"
                 required
-                className="w-full rounded-lg bg-[#0B0D14] border border-white/12 p-2.5 font-mono text-white focus:border-[#09ADEF] focus:outline-none"
+                className="w-full rounded-xl bg-[#080C14] border border-white/10 p-2.5 font-mono text-white focus:border-brand-400 focus:outline-none"
               />
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block font-medium text-neutral-300 mb-1">Lead Magnet Name</label>
+              <label className="block font-medium text-slate-300 mb-1">Lead Magnet Name</label>
               <input
                 type="text"
                 value={workingTitle}
                 onChange={e => setWorkingTitle(e.target.value)}
                 placeholder="The 7-Hour Pipeline Equity Audit"
                 required
-                className="w-full rounded-lg bg-[#0B0D14] border border-white/12 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                className="w-full rounded-xl bg-[#080C14] border border-white/10 p-2.5 text-white focus:border-brand-400 focus:outline-none"
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-medium text-neutral-300 mb-1">Lead Magnet URL</label>
+            <label className="block font-medium text-slate-300 mb-1">Lead Magnet URL</label>
             <input
               type="url"
               value={trackingLink}
               onChange={e => setTrackingLink(e.target.value)}
               placeholder="https://yourdomain.com/audit"
               required
-              className="w-full rounded-lg bg-[#0B0D14] border border-white/12 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+              className="w-full rounded-xl bg-[#080C14] border border-white/10 p-2.5 text-white focus:border-brand-400 focus:outline-none"
             />
           </div>
 
           {showCustomDm && (
             <div>
-              <label className="block font-medium text-neutral-300 mb-1">
+              <label className="block font-medium text-slate-300 mb-1">
                 Auto-Reply DM Message (sent when someone comments your keyword)
               </label>
               <textarea
                 rows={4}
                 value={dmHandoffScript}
                 onChange={e => setDmHandoffScript(e.target.value)}
-                className="w-full rounded-lg bg-[#0B0D14] border border-white/12 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none leading-relaxed"
+                className="w-full rounded-xl bg-[#080C14] border border-white/10 p-2.5 text-white focus:border-brand-400 focus:outline-none leading-relaxed"
               />
             </div>
           )}
@@ -375,7 +376,7 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
             <button
               type="button"
               onClick={() => setShowCustomDm(v => !v)}
-              className="text-xs text-neutral-400 hover:text-white cursor-pointer"
+              className="text-xs text-slate-400 hover:text-white cursor-pointer"
             >
               {showCustomDm ? 'Hide custom DM message' : '+ Customize message'}
             </button>
@@ -384,13 +385,13 @@ export const ShiftMagnetsView: React.FC<ShiftMagnetsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 rounded-lg border border-white/12 text-neutral-300 cursor-pointer"
+                className="px-4 py-2 rounded-xl border border-white/10 text-slate-300 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="btn-2mm px-5 py-2 rounded-lg font-bold cursor-pointer"
+                className="btn-2mm px-5 py-2 rounded-xl font-semibold cursor-pointer"
               >
                 Save
               </button>

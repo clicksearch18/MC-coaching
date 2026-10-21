@@ -2839,7 +2839,7 @@ export function App() {
     : allNavItems.filter(item => item.role === 'STUDENT');
 
   return (
-    <div className="min-h-dvh flex bg-black text-white">
+    <div className="min-h-dvh flex bg-[#080C14] text-slate-100">
       {/* Live Push Notification Toast Stack */}
       {pushBanners.length > 0 && (
         <div className="fixed bottom-20 md:bottom-5 right-3.5 md:right-5 z-50 w-[92vw] max-w-sm space-y-2.5">
@@ -2854,22 +2854,22 @@ export function App() {
                 }
               }}
               className={`rounded-2xl border p-3.5 sm:p-4 shadow-2xl backdrop-blur-xl flex items-start justify-between gap-3 ${
-                b.threadId ? 'cursor-pointer hover:border-[#09ADEF]' : ''
+                b.threadId ? 'cursor-pointer hover:border-brand-400' : ''
               } ${
                 b.type === 'MISSED_ALERT'
                   ? 'border-rose-500/40 bg-[#14070B]/95 text-white'
                   : b.type === 'COACH_NUDGE'
-                  ? 'border-[#09ADEF]/40 bg-[#050C14]/95 text-white'
+                  ? 'border-brand-500/40 bg-[#0F1626]/95 text-white glow-cyan'
                   : 'border-emerald-500/40 bg-[#06130E]/95 text-white'
               }`}
             >
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-xl bg-[#09ADEF]/15 text-[#09ADEF] flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-8 h-8 rounded-xl bg-brand-500/15 text-brand-400 flex items-center justify-center shrink-0 mt-0.5">
                   <Smartphone className="w-4 h-4" />
                 </div>
                 <div>
                   <div className="text-sm font-semibold text-white">{b.title}</div>
-                  <p className="text-xs text-neutral-300 mt-0.5 leading-relaxed">{b.body}</p>
+                  <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">{b.body}</p>
                 </div>
               </div>
               <button
@@ -2878,7 +2878,7 @@ export function App() {
                   e.stopPropagation();
                   setPushBanners(prev => prev.filter(x => x.id !== b.id));
                 }}
-                className="text-xs text-neutral-400 hover:text-white cursor-pointer"
+                className="text-xs text-slate-400 hover:text-white cursor-pointer"
               >
                 ✕
               </button>
@@ -2888,7 +2888,7 @@ export function App() {
       )}
 
       {/* Minimal Left Navigation Rail (Desktop) */}
-      <aside className="hidden md:flex w-60 shrink-0 flex-col justify-between border-r border-white/[0.07] bg-[#040507] p-5 sticky top-0 h-dvh">
+      <aside className="hidden md:flex w-60 shrink-0 flex-col justify-between border-r border-white/[0.08] bg-[#0A0F1D]/90 backdrop-blur-xl p-5 sticky top-0 h-dvh">
         <div className="space-y-7">
           {/* Official THE 2MM SHIFT Logo & JOSH BEECHRAFT Brand Header */}
           <div className="px-1 pt-1 space-y-2.5">
@@ -2898,8 +2898,8 @@ export function App() {
               className="h-12 w-auto object-contain select-none"
             />
             <div className="flex items-center gap-2 pl-0.5">
-              <span className="w-3.5 h-[1.5px] bg-[#09ADEF]" />
-              <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-neutral-400">
+              <span className="w-3.5 h-[1.5px] bg-brand-500" />
+              <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                 JOSH BEECHRAFT · ARCHITECT
               </span>
             </div>
@@ -2930,10 +2930,10 @@ export function App() {
                       // ignore
                     }
                   }}
-                  className={`w-full text-left px-3.5 py-2.5 rounded-lg transition-all flex items-center gap-2.5 text-xs font-bold uppercase tracking-[0.08em] cursor-pointer ${
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl transition-all flex items-center gap-2.5 text-xs font-bold tracking-wide cursor-pointer active:scale-[0.98] ${
                     isActive
-                      ? 'bg-[#09ADEF] text-white shadow-[0_6px_24px_rgba(9,173,239,0.35)]'
-                      : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
+                      ? 'bg-gradient-to-r from-brand-600 to-sky-500 text-white shadow-lg shadow-sky-500/20'
+                      : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.04]'
                   }`}
                 >
                   <Icon className="w-4 h-4 shrink-0" />
@@ -2945,17 +2945,17 @@ export function App() {
         </div>
 
         {/* Bottom Active Profile Switcher (Admin Preview Mode Only) + Logout */}
-        <div className="pt-4 border-t border-white/[0.07] space-y-2">
+        <div className="pt-4 border-t border-white/[0.08] space-y-2">
           {isAdminSession && activeTab !== 'COACH' && (
             <div className="space-y-1">
-              <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-500 px-1">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 px-1">
                 Previewing Operator
               </span>
               <select
                 value={activeStudentId}
                 onChange={e => setActiveStudentId(e.target.value)}
                 aria-label="Select active student profile"
-                className="w-full rounded-lg bg-[#080A0E] border border-white/10 text-xs font-medium text-white px-3 py-2 focus:outline-none focus:border-[#09ADEF]"
+                className="w-full rounded-xl bg-[#0F1626] border border-white/10 text-xs font-medium text-white px-3 py-2 focus:outline-none focus:border-brand-400"
               >
                 {students.map(s => (
                   <option key={s.id} value={s.id}>
@@ -2969,7 +2969,7 @@ export function App() {
           <button
             type="button"
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] hover:bg-rose-500/15 border border-white/[0.07] hover:border-rose-500/30 text-xs font-medium text-neutral-400 hover:text-rose-300 transition-colors cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] hover:bg-rose-500/15 border border-white/10 hover:border-rose-500/30 text-xs font-medium text-slate-400 hover:text-rose-300 active:scale-95 transition-all cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>
@@ -2979,153 +2979,179 @@ export function App() {
 
       {/* Right Main Column */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Admin Preview Banner when viewing Student Tabs */}
-        {isAdminSession && activeTab !== 'COACH' && (
-          <div className="bg-[#09ADEF]/12 border-b border-[#09ADEF]/25 px-3 sm:px-8 py-1.5 flex items-center justify-between gap-2 text-xs">
-            <span className="text-neutral-200 truncate">
-              Previewing <strong className="text-white">{currentStudent.name}</strong>
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('COACH');
-                try {
-                  window.history.pushState({}, '', '/admin');
-                } catch {
-                  // ignore
-                }
-              }}
-              className="px-2.5 py-1 rounded-full bg-[#09ADEF] text-white font-bold uppercase tracking-wider text-[10px] hover:bg-[#09B3F8] transition-colors cursor-pointer shrink-0"
-            >
-              ← Admin
-            </button>
-          </div>
-        )}
-
-        {/* Clean Single-Row Contextual Top Header */}
-        <header className="border-b border-white/[0.07] bg-black/90 backdrop-blur-md sticky top-0 z-20">
-          <div className="max-w-5xl mx-auto px-3 sm:px-8 py-2.5 flex items-center justify-between gap-2">
-            {activeTab === 'COACH' ? (
-              <div className="flex items-center gap-2.5 min-w-0">
-                <img
-                  src="/2mmshift-logo-wide.png"
-                  alt="The 2mm Shift"
-                  className="md:hidden h-7 w-auto object-contain shrink-0 select-none"
-                />
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="hidden sm:inline-block w-3.5 h-[1.5px] bg-[#09ADEF]" />
-                  <span className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.16em] text-white truncate">
-                    Coach Command Center
-                  </span>
-                  <span className="badge-2mm px-2 py-0.5 rounded-full text-[9px] shrink-0">
-                    {students.length} Operators
+        {/* Sticky TopBar with Integrated Admin Preview & Profile Chip */}
+        <header className="sticky top-0 z-40 bg-[#080C14]/90 backdrop-blur-xl border-b border-white/[0.06] px-4 sm:px-8 pt-3 pb-3">
+          <div className="max-w-5xl mx-auto">
+            {/* Admin Preview Bar */}
+            {isAdminSession && activeTab !== 'COACH' && (
+              <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-white/[0.04] text-[11px] font-medium text-slate-400">
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>
+                    Previewing <span className="text-white font-semibold">{currentStudent.name}</span>
                   </span>
                 </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-7 h-7 rounded-lg bg-[#09ADEF]/15 border border-[#09ADEF]/30 text-[#09ADEF] font-bold text-xs flex items-center justify-center shrink-0">
-                  {currentStudent.avatar}
-                </div>
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-xs sm:text-sm font-semibold text-white truncate">
-                    {currentStudent.name}
-                  </span>
-                  <span className="badge-2mm px-2 py-0.5 rounded-full text-[10px] shrink-0">
-                    L{String(currentStudent.currentWeek).padStart(2, '0')}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Right Minimal Actions */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span
-                className={`inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full border text-[10px] font-semibold ${
-                  dbSyncStatus === 'SYNCED'
-                    ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
-                    : dbSyncStatus === 'SYNCING' || dbSyncStatus === 'CONNECTING'
-                    ? 'bg-sky-500/10 border-sky-500/25 text-sky-300'
-                    : 'bg-white/[0.04] border-white/10 text-neutral-400'
-                }`}
-                title="Database synchronization status"
-              >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    dbSyncStatus === 'SYNCED'
-                      ? 'bg-emerald-400'
-                      : dbSyncStatus === 'SYNCING' || dbSyncStatus === 'CONNECTING'
-                      ? 'bg-sky-400 animate-pulse'
-                      : 'bg-neutral-500'
-                  }`}
-                />
-                <span className="hidden sm:inline">
-                  {dbSyncStatus === 'SYNCED'
-                    ? 'Synced'
-                    : dbSyncStatus === 'SYNCING'
-                    ? 'Saving...'
-                    : dbSyncStatus === 'CONNECTING'
-                    ? 'Connecting...'
-                    : 'Local'}
-                </span>
-              </span>
-
-              {isAdminSession && (
                 <button
                   type="button"
                   onClick={() => {
-                    const url = `${window.location.origin}/student?student=${currentStudent.id}`;
-                    navigator.clipboard?.writeText(url);
-                    triggerWebPushAndBanner(
-                      'Link Copied',
-                      `Copied direct link for ${currentStudent.name}.`,
-                      'DAILY_LESSON'
-                    );
+                    setActiveTab('COACH');
+                    try {
+                      window.history.pushState({}, '', '/admin');
+                    } catch {
+                      // ignore
+                    }
                   }}
-                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-[11px] font-medium text-neutral-300 transition-colors cursor-pointer"
+                  className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-500/15 border border-brand-400/30 text-brand-400 font-semibold text-[10px] uppercase tracking-wider hover:bg-brand-500/25 active:scale-95 transition-all cursor-pointer"
                 >
-                  <span>Copy Student Link</span>
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      d="M11 17l-5-5m0 0l5-5m-5 5h12"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                    />
+                  </svg>
+                  <span>Admin</span>
                 </button>
+              </div>
+            )}
+
+            {/* User & Quick Action Header */}
+            <div className="flex items-center justify-between gap-2">
+              {activeTab === 'COACH' ? (
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <img
+                    src="/2mmshift-logo-wide.png"
+                    alt="The 2mm Shift"
+                    className="md:hidden h-7 w-auto object-contain shrink-0 select-none"
+                  />
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="hidden sm:inline-block w-3.5 h-[1.5px] bg-brand-500" />
+                    <span className="text-xs sm:text-sm font-bold tracking-tight text-white truncate">
+                      Coach Command Center
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500/15 text-brand-400 border border-brand-400/30 shrink-0">
+                      {students.length} Operators
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="relative shrink-0">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-brand-600 to-sky-400 flex items-center justify-center font-bold text-xs tracking-wider text-white shadow-sm ring-2 ring-white/10">
+                      {currentStudent.avatar}
+                    </div>
+                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#080C14]" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-sm text-white tracking-tight truncate">
+                        {currentStudent.name}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-white/10 text-brand-400 border border-white/5 shrink-0">
+                        L{String(currentStudent.currentWeek).padStart(2, '0')}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 truncate">
+                      {currentStudent.company || 'Cohort Member'}
+                    </p>
+                  </div>
+                </div>
               )}
 
-              <button
-                type="button"
-                onClick={() => setShowStudentInboxModal(true)}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full border text-xs font-medium transition-colors cursor-pointer ${
-                  unreadMessagesForCurrentViewer > 0
-                    ? 'bg-[#09ADEF]/15 border-[#09ADEF] text-white shadow-[0_0_16px_rgba(9,173,239,0.25)]'
-                    : 'bg-[#0A0C10] hover:bg-white/[0.08] border-white/10 text-neutral-200'
-                }`}
-              >
-                <MessageSquare className="w-3.5 h-3.5 text-[#09ADEF]" />
-                <span className="hidden sm:inline">Messages</span>
-                {unreadMessagesForCurrentViewer > 0 ? (
-                  <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold">
-                    {unreadMessagesForCurrentViewer}
+              {/* Utility Buttons */}
+              <div className="flex items-center gap-2 shrink-0">
+                <span
+                  className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-semibold ${
+                    dbSyncStatus === 'SYNCED'
+                      ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
+                      : dbSyncStatus === 'SYNCING' || dbSyncStatus === 'CONNECTING'
+                      ? 'bg-sky-500/10 border-sky-500/25 text-sky-300'
+                      : 'bg-white/[0.04] border-white/10 text-slate-400'
+                  }`}
+                  title="Database synchronization status"
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      dbSyncStatus === 'SYNCED'
+                        ? 'bg-emerald-400'
+                        : dbSyncStatus === 'SYNCING' || dbSyncStatus === 'CONNECTING'
+                        ? 'bg-sky-400 animate-pulse'
+                        : 'bg-slate-500'
+                    }`}
+                  />
+                  <span>
+                    {dbSyncStatus === 'SYNCED'
+                      ? 'Synced'
+                      : dbSyncStatus === 'SYNCING'
+                      ? 'Saving...'
+                      : dbSyncStatus === 'CONNECTING'
+                      ? 'Connecting...'
+                      : 'Local'}
                   </span>
-                ) : (
-                  currentStudent.messages.length > 0 && (
-                    <span className="px-1.5 py-0.2 rounded-full bg-[#09ADEF]/20 text-[#09ADEF] text-[10px] font-bold">
-                      {currentStudent.messages.length}
-                    </span>
-                  )
-                )}
-              </button>
+                </span>
 
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="md:hidden flex items-center justify-center p-1.5 rounded-lg bg-[#0A0C10] border border-white/10 text-neutral-300 cursor-pointer"
-                title="Sign Out"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
+                {isAdminSession && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = `${window.location.origin}/student?student=${currentStudent.id}`;
+                      navigator.clipboard?.writeText(url);
+                      triggerWebPushAndBanner(
+                        'Link Copied',
+                        `Copied direct link for ${currentStudent.name}.`,
+                        'DAILY_LESSON'
+                      );
+                    }}
+                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-[11px] font-medium text-slate-300 hover:text-white active:scale-95 transition-all cursor-pointer"
+                  >
+                    <span>Copy Link</span>
+                  </button>
+                )}
+
+                {/* Messages / Notification Bell Button */}
+                <button
+                  type="button"
+                  aria-label="Messages and Notifications"
+                  onClick={() => setShowStudentInboxModal(true)}
+                  className={`relative p-2 sm:px-3 sm:py-2 rounded-xl border transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 ${
+                    unreadMessagesForCurrentViewer > 0
+                      ? 'bg-brand-500/15 border-brand-400/40 text-white glow-cyan'
+                      : 'bg-white/[0.04] border-white/10 text-slate-300 hover:text-white hover:bg-white/[0.08]'
+                  }`}
+                >
+                  <MessageSquare className="w-4 h-4 text-brand-400" />
+                  <span className="hidden sm:inline text-xs font-medium">Messages</span>
+                  {unreadMessagesForCurrentViewer > 0 ? (
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-sky-500 text-[9px] font-bold text-white shadow-md">
+                      {unreadMessagesForCurrentViewer}
+                    </span>
+                  ) : (
+                    currentStudent.messages.length > 0 && (
+                      <span className="hidden sm:inline-flex px-1.5 py-0.2 rounded-full bg-brand-500/20 text-brand-400 text-[10px] font-bold">
+                        {currentStudent.messages.length}
+                      </span>
+                    )
+                  )}
+                </button>
+
+                {/* Sign Out / Exit Icon */}
+                <button
+                  type="button"
+                  aria-label="Sign Out"
+                  onClick={handleLogout}
+                  className="md:hidden p-2 rounded-xl bg-white/[0.04] border border-white/10 text-slate-400 hover:text-white hover:bg-white/[0.08] active:scale-95 transition-all cursor-pointer"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </header>
 
         {/* Main Workspace Canvas (Generous Bottom Padding for Mobile Fixed Nav) */}
-        <main className="flex-1 max-w-6xl w-full mx-auto px-2.5 sm:px-8 py-3 sm:py-7 pb-24 md:pb-8">
+        <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-8 pt-4 pb-28 md:pb-10">
           {activeTab === 'CADENCE' && (
             <DailyCadenceView
               student={currentStudent}
@@ -3304,8 +3330,11 @@ export function App() {
         </main>
 
         {/* Native-Style Fixed Bottom Navigation Bar for Mobile (< md) */}
-        <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-[#040507]/95 backdrop-blur-xl border-t border-white/[0.08] px-2 pt-1.5 pb-safe">
-          <div className="grid grid-flow-col auto-cols-fr gap-1 max-w-md mx-auto">
+        <nav
+          aria-label="Bottom Navigation"
+          className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-[#0A0F1D]/90 backdrop-blur-xl border-t border-white/[0.08] px-3 py-2 pb-safe"
+        >
+          <div className="flex items-center justify-between max-w-md mx-auto text-slate-400">
             {navItems.map(item => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -3330,14 +3359,20 @@ export function App() {
                     }
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all cursor-pointer ${
+                  className={`flex flex-col items-center gap-1 py-1 transition-all cursor-pointer active:scale-95 ${
                     isActive
-                      ? 'text-[#09ADEF] bg-[#09ADEF]/12 font-semibold'
-                      : 'text-neutral-400 hover:text-neutral-200'
+                      ? 'px-3 rounded-xl bg-brand-500/15 border border-brand-400/30 text-brand-400 shadow-sm'
+                      : 'px-2 rounded-lg text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-[#09ADEF]' : 'text-neutral-400'}`} />
-                  <span className="text-[10px] mt-1 tracking-tight">{item.shortLabel}</span>
+                  <Icon className="w-4 h-4" />
+                  <span
+                    className={`text-[10px] tracking-tight ${
+                      isActive ? 'font-bold text-white' : 'font-medium'
+                    }`}
+                  >
+                    {item.shortLabel}
+                  </span>
                 </button>
               );
             })}
@@ -3353,11 +3388,11 @@ export function App() {
         subtitle="Spreadsheet Ingestion (.xlsx)"
       >
         <div className="space-y-4 text-xs">
-          <p className="text-neutral-300 leading-relaxed">
+          <p className="text-slate-300 leading-relaxed">
             Upload a student’s strategy spreadsheet (such as{' '}
-            <code className="text-[#09ADEF]">josh_content_tracking-v2.xlsx</code>) to automatically populate or update:
+            <code className="text-brand-400">josh_content_tracking-v2.xlsx</code>) to automatically populate or update:
           </p>
-          <ul className="space-y-1.5 text-neutral-300 list-disc pl-5">
+          <ul className="space-y-1.5 text-slate-300 list-disc pl-5">
             <li>
               <strong>Content Playbook:</strong> 15 Core Pillars, Old/New Beliefs, Must-Hit Beats, and 4 Teaching Angles.
             </li>
@@ -3366,12 +3401,12 @@ export function App() {
             </li>
           </ul>
 
-          <label className="mt-4 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#09ADEF]/40 hover:border-[#09ADEF] bg-[#05070A] p-8 cursor-pointer transition-colors">
-            <Upload className="w-8 h-8 text-[#09ADEF] mb-2" />
+          <label className="mt-4 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-brand-500/40 hover:border-brand-400 bg-[#080C14] p-8 cursor-pointer transition-colors">
+            <Upload className="w-8 h-8 text-brand-400 mb-2" />
             <span className="text-sm font-semibold text-white">
               Select Student .xlsx Spreadsheet
             </span>
-            <span className="text-neutral-400 mt-1">Supports .xlsx and .xls files</span>
+            <span className="text-slate-400 mt-1">Supports .xlsx and .xls files</span>
             <input type="file" accept=".xlsx,.xls" onChange={handleSpreadsheetUpload} className="hidden" />
           </label>
 
@@ -3385,7 +3420,7 @@ export function App() {
             <button
               type="button"
               onClick={() => setShowImportModal(false)}
-              className="rounded-lg btn-2mm px-5 py-2.5 text-xs cursor-pointer"
+              className="rounded-xl btn-2mm px-5 py-2.5 text-xs cursor-pointer"
             >
               Done
             </button>
@@ -3401,9 +3436,9 @@ export function App() {
         subtitle="Direct In-App Accountability & Action Links"
       >
         <div className="space-y-4">
-          <div className="rounded-2xl bg-[#05070A] border border-white/[0.07] p-4 space-y-3 max-h-80 overflow-y-auto">
+          <div className="rounded-2xl bg-[#080C14] border border-white/[0.08] p-4 space-y-3 max-h-80 overflow-y-auto">
             {currentStudent.messages.length === 0 ? (
-              <div className="py-6 text-center text-xs text-neutral-500">
+              <div className="py-6 text-center text-xs text-slate-500">
                 No messages yet.
               </div>
             ) : (
@@ -3419,12 +3454,12 @@ export function App() {
                       m.isAlert
                         ? 'border-rose-500/30 bg-rose-500/10 text-rose-200'
                         : isOwnMessage
-                        ? 'border-[#09ADEF]/35 bg-[#09ADEF]/12 text-white ml-6'
-                        : 'border-white/12 bg-white/[0.04] text-neutral-100 mr-6'
+                        ? 'border-brand-400/35 bg-brand-500/15 text-white ml-6'
+                        : 'border-white/10 bg-white/[0.04] text-slate-100 mr-6'
                     }`}
                   >
-                    <div className="flex items-center justify-between text-[11px] text-neutral-400 mb-1">
-                      <span className="text-[#09ADEF] font-semibold">{m.senderName}</span>
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+                      <span className="text-brand-400 font-semibold">{m.senderName}</span>
                       <span>{m.timestamp}</span>
                     </div>
                     <p className="leading-relaxed text-sm">{m.text}</p>
@@ -3433,7 +3468,7 @@ export function App() {
                         <button
                           type="button"
                           onClick={() => handleNavigateFromChatAction(currentStudent.id, m.actionTarget!)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#09ADEF]/20 hover:bg-[#09ADEF]/30 border border-[#09ADEF]/40 text-[11px] font-bold text-[#09ADEF] cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-500/20 hover:bg-brand-500/30 border border-brand-400/40 text-[11px] font-bold text-brand-400 cursor-pointer"
                         >
                           <span>{m.actionTarget.label}</span>
                           <ExternalLink className="w-3 h-3" />
@@ -3465,11 +3500,11 @@ export function App() {
                   ? `Message ${currentStudent.name} as Coach Josh...`
                   : 'Reply to Coach Josh...'
               }
-              className="flex-1 rounded-lg bg-[#05070A] border border-white/15 px-4 py-3 text-sm text-white focus:outline-none focus:border-[#09ADEF]"
+              className="flex-1 rounded-xl bg-[#080C14] border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-400"
             />
             <button
               type="submit"
-              className="rounded-lg btn-2mm text-xs px-5 py-3 flex items-center gap-1.5 cursor-pointer"
+              className="rounded-xl btn-2mm text-xs px-5 py-3 flex items-center gap-1.5 cursor-pointer"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Send</span>

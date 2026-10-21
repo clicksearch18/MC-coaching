@@ -68,23 +68,23 @@ export const ModalDialog: React.FC<ModalDialogProps> = ({
     <dialog
       ref={dialogRef}
       aria-labelledby={titleId}
-      className={`m-auto w-[92vw] ${maxWidthClass} rounded-2xl border border-white/10 bg-[#12141D] p-0 text-slate-100 shadow-2xl overflow-hidden`}
+      className={`m-auto w-[92vw] ${maxWidthClass} rounded-2xl border border-white/[0.08] bg-[#0F1626] p-0 text-slate-100 shadow-2xl overflow-hidden`}
     >
-      <div className="border-b border-white/8 bg-white/[0.02] px-6 py-4 flex items-center justify-between">
+      <div className="border-b border-white/[0.06] bg-[#080C14]/60 px-6 py-4 flex items-center justify-between">
         <div>
           {subtitle && (
-            <div className="text-[11px] font-medium uppercase tracking-wider text-sky-400 mb-0.5">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-brand-400 mb-0.5">
               {subtitle}
             </div>
           )}
-          <h2 id={titleId} className="text-lg font-semibold tracking-tight text-white">
+          <h2 id={titleId} className="text-lg font-bold tracking-tight text-white">
             {title}
           </h2>
         </div>
         <button
           type="button"
           onClick={() => dialogRef.current?.close()}
-          className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/8 transition-colors cursor-pointer"
+          className="p-2 rounded-xl bg-white/[0.04] border border-white/10 text-slate-400 hover:text-white hover:bg-white/[0.08] active:scale-95 transition-all cursor-pointer"
           aria-label="Close modal"
         >
           <X className="w-4 h-4" />

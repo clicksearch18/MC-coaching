@@ -614,10 +614,10 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
             setRosterFilter('ALL');
             setShowAddStudentModal(true);
           }}
-          className="glass-panel rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center justify-between text-left hover:border-[#09ADEF]/50 transition-all cursor-pointer"
+          className="glass-panel rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center justify-between text-left hover:border-[#0EA5E9]/50 transition-all cursor-pointer"
         >
           <div>
-            <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-[#09ADEF]">
+            <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-[#0EA5E9]">
               ACTIVE COHORT
             </div>
             <div className="font-display text-xl sm:text-3xl text-white mt-0.5">
@@ -636,10 +636,10 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
             setReviewScope('ALL');
             setReviewFilter(pendingReviewTotal > 0 ? 'PENDING' : 'ALL');
           }}
-          className="glass-panel rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center justify-between text-left hover:border-[#09ADEF]/50 transition-all cursor-pointer"
+          className="glass-panel rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center justify-between text-left hover:border-[#0EA5E9]/50 transition-all cursor-pointer"
         >
           <div>
-            <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-[#09ADEF]">
+            <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-[#0EA5E9]">
               REVIEW QUEUE
             </div>
             <div className="font-display text-xl sm:text-3xl text-white mt-0.5">
@@ -656,10 +656,10 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
         <button
           type="button"
           onClick={() => setRosterFilter(rosterFilter === 'GATE' ? 'ALL' : 'GATE')}
-          className="glass-panel rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center justify-between text-left hover:border-[#09ADEF]/50 transition-all cursor-pointer"
+          className="glass-panel rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center justify-between text-left hover:border-[#0EA5E9]/50 transition-all cursor-pointer"
         >
           <div>
-            <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400">
+            <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
               POSTED TODAY
             </div>
             <div className="font-display text-xl sm:text-3xl text-emerald-400 mt-0.5">
@@ -699,9 +699,9 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
       {/* Main Split: Left Student Roster + Right Focused 3-Tab Coaching Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left 4 Cols: Sticky Student Roster + Triage Filters */}
-        <div className="hidden lg:flex lg:flex-col lg:col-span-4 glass-panel rounded-2xl p-4 space-y-2.5 lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)]">
+        <div className="hidden lg:flex lg:flex-col lg:col-span-4 rounded-2xl bg-surface-card border border-white/[0.06] p-4 space-y-2.5 lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)]">
           <div className="px-1 py-0.5 flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
+            <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
               ROSTER ({filteredRosterStudents.length}/{students.length})
             </span>
             <button
@@ -715,13 +715,13 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
 
           <div className="space-y-2">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={rosterSearch}
                 onChange={e => setRosterSearch(e.target.value)}
                 placeholder="Search student or company..."
-                className="w-full rounded-xl bg-[#040507] border border-white/10 pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#09ADEF]"
+                className="w-full rounded-xl bg-[#080C14] border border-white/10 pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-brand-400"
               />
             </div>
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-0.5">
@@ -738,10 +738,10 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                   key={f.id}
                   type="button"
                   onClick={() => setRosterFilter(f.id)}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider shrink-0 cursor-pointer border transition-all ${
+                  className={`px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider shrink-0 cursor-pointer border transition-all ${
                     rosterFilter === f.id
-                      ? 'bg-[#09ADEF] text-white border-[#09ADEF]'
-                      : 'bg-[#040507] text-neutral-400 border-white/10 hover:text-white'
+                      ? 'bg-gradient-to-r from-brand-600 to-sky-500 text-white border-brand-400/40 shadow-sm'
+                      : 'bg-[#080C14] text-slate-400 border-white/10 hover:text-white'
                   }`}
                 >
                   {f.label}
@@ -752,7 +752,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
 
           <div className="space-y-2 overflow-y-auto pr-1 flex-1">
             {filteredRosterStudents.length === 0 ? (
-              <div className="p-4 rounded-xl bg-[#040507] border border-white/10 text-center text-xs text-neutral-400">
+              <div className="p-4 rounded-xl bg-[#080C14] border border-white/10 text-center text-xs text-slate-400">
                 No students match this filter.
               </div>
             ) : (
@@ -769,25 +769,25 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                     key={st.id}
                     type="button"
                     onClick={() => onSelectStudent(st.id)}
-                    className={`w-full text-left p-3.5 rounded-xl border transition-all cursor-pointer ${
+                    className={`w-full text-left p-3.5 rounded-2xl border transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-[#09ADEF]/10 border-[#09ADEF] text-white'
-                        : 'bg-[#040507] border-white/10 hover:border-white/20 text-neutral-200'
+                        ? 'bg-brand-500/15 border-brand-400/40 text-white shadow-sm'
+                        : 'bg-[#080C14]/80 border-white/[0.06] hover:border-brand-500/30 text-slate-200'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="relative w-9 h-9 rounded-xl bg-[#09ADEF]/15 border border-[#09ADEF]/30 flex items-center justify-center font-bold text-xs text-[#09ADEF] shrink-0">
+                        <div className="relative w-9 h-9 rounded-full bg-gradient-to-tr from-brand-600 to-sky-400 flex items-center justify-center font-bold text-xs text-white ring-2 ring-white/10 shrink-0">
                           {st.avatar}
                           {stUnread > 0 && (
-                            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#09ADEF] text-white text-[9px] font-bold flex items-center justify-center">
+                            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-sky-500 text-white text-[9px] font-bold flex items-center justify-center shadow-sm">
                               {stUnread}
                             </span>
                           )}
                         </div>
                         <div className="min-w-0">
                           <div className="text-sm font-semibold text-white truncate">{st.name}</div>
-                          <div className="text-xs text-neutral-400 truncate">{st.company}</div>
+                          <div className="text-xs text-slate-400 truncate">{st.company}</div>
                         </div>
                       </div>
 
@@ -795,14 +795,14 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                         className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${
                           st.todayVideoStatus === 'COMPLETED'
                             ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                            : 'bg-white/[0.04] text-neutral-400 border border-white/10'
+                            : 'bg-white/[0.04] text-slate-400 border border-white/10'
                         }`}
                       >
                         {st.todayVideoStatus === 'COMPLETED' ? '✓ Posted' : 'Due'}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] text-neutral-400 mt-2.5 pt-2 border-t border-white/10">
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2.5 pt-2 border-t border-white/[0.06]">
                       <span>
                         L{String(st.currentWeek).padStart(2, '0')} · P0{st.currentPhase}
                       </span>
@@ -810,7 +810,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                         {doneVideos}/{st.supportingVideos.length} Videos
                       </span>
                       {stPendingReviews > 0 ? (
-                        <span className="text-[#09ADEF] font-semibold">
+                        <span className="text-brand-400 font-semibold">
                           {stPendingReviews} To Review
                         </span>
                       ) : stSubmittedGate ? (
@@ -833,14 +833,14 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
         </div>
 
         {/* Right 8 Cols: Selected Student Workspace with 3 Streamlined Tabs */}
-        <div className="lg:col-span-8 glass-panel rounded-2xl p-4 sm:p-6 space-y-4 sm:space-y-5">
+        <div className="lg:col-span-8 rounded-2xl bg-surface-card border border-white/[0.06] p-4 sm:p-6 space-y-4 sm:space-y-5">
           {/* Student Header & Essential Quick Actions */}
-          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3 pb-4 border-b border-white/[0.06]">
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="w-4 h-[1.5px] bg-[#09ADEF] shrink-0" />
-                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF] truncate">
+                  <span className="w-4 h-[1.5px] bg-brand-500 shrink-0" />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-400 truncate">
                     LESSON {activeStudent.currentWeek} · PHASE 0{activeStudent.currentPhase} ·{' '}
                     {activeStudent.streakDays}D STREAK
                   </span>
@@ -848,7 +848,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowAddStudentModal(true)}
-                  className="lg:hidden px-2.5 py-1 rounded-lg btn-2mm text-[10px] shrink-0 cursor-pointer"
+                  className="lg:hidden px-2.5 py-1 rounded-xl btn-2mm text-[10px] shrink-0 cursor-pointer"
                 >
                   + Add Student
                 </button>
@@ -860,7 +860,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                   id="mobile-student-select"
                   value={activeStudent.id}
                   onChange={e => onSelectStudent(e.target.value)}
-                  className="w-full rounded-xl bg-[#040507] border border-white/15 px-3 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-[#09ADEF]"
+                  className="w-full rounded-xl bg-[#080C14] border border-white/10 px-3 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-brand-400"
                 >
                   {students.map(st => {
                     const unread = rosterSummariesById[st.id]?.unread || 0;
@@ -877,7 +877,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
               {/* Desktop Student Heading */}
               <h2 className="hidden lg:block font-display text-2xl sm:text-3xl text-white mt-1 tracking-wide">
                 {activeStudent.name}{' '}
-                <span className="text-[#09ADEF]">— {activeStudent.company}</span>
+                <span className="text-brand-400">— {activeStudent.company}</span>
               </h2>
             </div>
 
@@ -885,10 +885,10 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
               <button
                 type="button"
                 onClick={handleCopyStudentInvite}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#07090D] hover:bg-white/[0.08] border border-white/10 text-xs font-semibold text-white cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 active:scale-95 transition-all text-xs font-medium text-white cursor-pointer"
                 title="Copy magic login link and access code"
               >
-                <Copy className="w-3.5 h-3.5 text-[#09ADEF]" />
+                <Copy className="w-3.5 h-3.5 text-brand-400" />
                 <span>Copy Invite</span>
               </button>
 
@@ -896,9 +896,9 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                 <button
                   type="button"
                   onClick={() => onPreviewStudentDashboard(activeStudent.id)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#07090D] hover:bg-white/[0.08] border border-white/10 text-xs font-semibold text-white cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 active:scale-95 transition-all text-xs font-medium text-white cursor-pointer"
                 >
-                  <ExternalLink className="w-3.5 h-3.5 text-[#09ADEF]" />
+                  <ExternalLink className="w-3.5 h-3.5 text-brand-400" />
                   <span>Preview</span>
                 </button>
               )}
@@ -906,27 +906,27 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
               <button
                 type="button"
                 onClick={onOpenImportModal}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#07090D] hover:bg-white/[0.08] border border-white/10 text-xs font-semibold text-white cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 active:scale-95 transition-all text-xs font-medium text-white cursor-pointer"
                 title="Upload or update student .xlsx content plan"
               >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-[#09ADEF]" />
+                <FileSpreadsheet className="w-3.5 h-3.5 text-brand-400" />
                 <span>Upload .xlsx</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleExportCohortCsv}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#07090D] hover:bg-white/[0.08] border border-white/10 text-xs font-semibold text-neutral-300 cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 active:scale-95 transition-all text-xs font-medium text-slate-300 cursor-pointer"
                 title="Download CSV backup of all students"
               >
-                <Download className="w-3.5 h-3.5 text-[#09ADEF]" />
+                <Download className="w-3.5 h-3.5 text-brand-400" />
                 <span>CSV</span>
               </button>
             </div>
           </div>
 
-          {/* 3 Focused Workspace Tabs */}
-          <div className="flex overflow-x-auto no-scrollbar gap-1.5 p-1 rounded-xl bg-[#07090D] border border-white/10">
+          {/* 3 Focused Segmented Pill Workspace Tabs */}
+          <div className="flex overflow-x-auto no-scrollbar gap-1 p-1 rounded-2xl bg-white/[0.04] border border-white/[0.08] shadow-inner">
             {[
               {
                 id: 'LINKS' as const,
@@ -957,10 +957,10 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                   key={tab.id}
                   type="button"
                   onClick={() => setCoachSubTab(tab.id)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-[0.08em] whitespace-nowrap transition-all cursor-pointer ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
                     active
-                      ? 'bg-[#09ADEF] text-white'
-                      : 'text-neutral-400 hover:text-white'
+                      ? 'bg-gradient-to-r from-brand-600 to-sky-500 text-white font-semibold shadow-md'
+                      : 'text-slate-400 hover:text-slate-200 font-medium hover:bg-white/[0.03]'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -969,7 +969,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                   {tab.badge > 0 && (
                     <span
                       className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
-                        active ? 'bg-black/30 text-white' : 'bg-[#09ADEF]/20 text-[#09ADEF]'
+                        active ? 'bg-black/30 text-white' : 'bg-brand-500/20 text-brand-400'
                       }`}
                     >
                       {tab.badge}
@@ -986,7 +986,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => setSaveBanner(null)}
-                className="text-neutral-300 hover:text-white cursor-pointer"
+                className="text-slate-300 hover:text-white cursor-pointer"
               >
                 ✕
               </button>
@@ -997,10 +997,10 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
           {coachSubTab === 'LINKS' && (
             <div className="space-y-4">
               {/* Compact Phase Gate Progression & Sign-Off Bar */}
-              <div className="p-4 rounded-xl bg-[#07090D] border border-white/10 space-y-3">
+              <div className="p-4 rounded-xl bg-[#0F1626] border border-white/10 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <Award className="w-4 h-4 text-[#09ADEF]" />
+                    <Award className="w-4 h-4 text-[#0EA5E9]" />
                     <span className="text-xs font-bold uppercase tracking-wider text-white">
                       {activeStudent.name.split(' ')[0]}’s Phase Gates (01–05)
                     </span>
@@ -1030,7 +1030,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                             );
                             setTimeout(() => setSaveBanner(null), 3500);
                           }}
-                          className="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-neutral-300 font-semibold text-[10px] cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-slate-300 font-semibold text-[10px] cursor-pointer"
                         >
                           Request Revision
                         </button>
@@ -1069,8 +1069,8 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                           isApproved
                             ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
                             : isSubmitted
-                            ? 'bg-[#09ADEF]/15 border-[#09ADEF] text-white'
-                            : 'bg-black/40 border-white/10 text-neutral-400 hover:border-white/25'
+                            ? 'bg-[#0EA5E9]/15 border-[#0EA5E9] text-white'
+                            : 'bg-black/40 border-white/10 text-slate-400 hover:border-white/25'
                         }`}
                         title={
                           isApproved
@@ -1094,13 +1094,13 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
 
                 {latestCheckIn && (
                   <div className="pt-2.5 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                    <div className="text-neutral-300 truncate">
-                      <span className="font-semibold text-[#09ADEF]">
+                    <div className="text-slate-300 truncate">
+                      <span className="font-semibold text-[#0EA5E9]">
                         {latestCheckIn.weekLabel} Check-In:
                       </span>{' '}
                       “{latestCheckIn.bottleneckNote}”
                     </div>
-                    <div className="flex items-center gap-3 shrink-0 text-[11px] text-neutral-400">
+                    <div className="flex items-center gap-3 shrink-0 text-[11px] text-slate-400">
                       <span>
                         <strong className="text-white">{latestCheckIn.videosPosted}</strong> Videos
                       </span>
@@ -1151,8 +1151,8 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                       onClick={() => setReviewFilter(f.id)}
                       className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer border ${
                         reviewFilter === f.id
-                          ? 'bg-[#09ADEF] text-white border-[#09ADEF]'
-                          : 'bg-[#07090D] text-neutral-400 border-white/10 hover:text-white'
+                          ? 'bg-[#0EA5E9] text-white border-[#0EA5E9]'
+                          : 'bg-[#0F1626] text-slate-400 border-white/10 hover:text-white'
                       }`}
                     >
                       {f.label}
@@ -1167,7 +1167,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                     className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer border ${
                       reviewScope === 'ALL'
                         ? 'bg-white/10 text-white border-white/25'
-                        : 'bg-[#07090D] text-neutral-400 border-white/10 hover:text-white'
+                        : 'bg-[#0F1626] text-slate-400 border-white/10 hover:text-white'
                     }`}
                   >
                     All Students ({allCohortReviewItems.length})
@@ -1178,7 +1178,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                     className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer border ${
                       reviewScope === 'STUDENT'
                         ? 'bg-white/10 text-white border-white/25'
-                        : 'bg-[#07090D] text-neutral-400 border-white/10 hover:text-white'
+                        : 'bg-[#0F1626] text-slate-400 border-white/10 hover:text-white'
                     }`}
                   >
                     {activeStudent.name.split(' ')[0]} ({activeStudentReviewItems.length})
@@ -1188,9 +1188,9 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
 
               {/* Completed Videos List */}
               {filteredReviewItems.length === 0 ? (
-                <div className="p-6 rounded-xl bg-[#07090D] border border-white/10 text-center space-y-1">
+                <div className="p-6 rounded-xl bg-[#0F1626] border border-white/10 text-center space-y-1">
                   <div className="text-sm font-semibold text-white">No Videos Match Filter</div>
-                  <p className="text-xs text-neutral-400">
+                  <p className="text-xs text-slate-400">
                     Submitted student videos appear here automatically for 1-click approval or
                     feedback.
                   </p>
@@ -1213,9 +1213,9 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                     return (
                       <div
                         key={item.key}
-                        className={`rounded-xl border transition-all bg-[#07090D] ${
+                        className={`rounded-xl border transition-all bg-[#0F1626] ${
                           isExpanded
-                            ? 'border-[#09ADEF]'
+                            ? 'border-[#0EA5E9]'
                             : 'border-white/10 hover:border-white/20'
                         }`}
                       >
@@ -1237,7 +1237,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                                     ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                                     : item.reviewStatus === 'Needs Revision'
                                     ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
-                                    : 'bg-white/[0.06] text-neutral-300 border border-white/10'
+                                    : 'bg-white/[0.06] text-slate-300 border border-white/10'
                                 }`}
                               >
                                 {item.reviewStatus === 'Approved'
@@ -1251,7 +1251,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                               {item.title}
                             </div>
                             {item.coachFeedback && !isExpanded && (
-                              <div className="text-xs text-[#09ADEF] truncate">
+                              <div className="text-xs text-[#0EA5E9] truncate">
                                 Note: “{item.coachFeedback}”
                               </div>
                             )}
@@ -1269,7 +1269,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-xs font-semibold text-white"
                               >
                                 <span>Watch</span>
-                                <ExternalLink className="w-3.5 h-3.5 text-[#09ADEF]" />
+                                <ExternalLink className="w-3.5 h-3.5 text-[#0EA5E9]" />
                               </a>
                             )}
                             <button
@@ -1284,8 +1284,8 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
 
                         {isExpanded && (
                           <div className="px-4 pb-4 pt-3 border-t border-white/10 space-y-3">
-                            <div className="text-xs text-neutral-300">
-                              <span className="font-semibold text-[#09ADEF]">Hook:</span> “
+                            <div className="text-xs text-slate-300">
+                              <span className="font-semibold text-[#0EA5E9]">Hook:</span> “
                               {item.hookUsed}”
                             </div>
 
@@ -1305,7 +1305,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                                           ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
                                           : active && st === 'Needs Revision'
                                           ? 'bg-rose-500/20 border-rose-400 text-rose-300'
-                                          : 'bg-black/40 border-white/10 text-neutral-400 hover:text-white'
+                                          : 'bg-black/40 border-white/10 text-slate-400 hover:text-white'
                                       }`}
                                     >
                                       {st === 'Approved' ? '✓ Approve' : '↻ Revision'}
@@ -1314,7 +1314,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                                 })}
                               </div>
 
-                              <label className="flex items-center gap-2 text-xs text-neutral-300 cursor-pointer">
+                              <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
                                 <input
                                   type="checkbox"
                                   checked={reviewAppendToGroup[item.key] ?? true}
@@ -1324,7 +1324,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                                       [item.key]: e.target.checked
                                     }))
                                   }
-                                  className="rounded accent-[#09ADEF] w-3.5 h-3.5"
+                                  className="rounded accent-[#0EA5E9] w-3.5 h-3.5"
                                 />
                                 <span>Share review to Discussion</span>
                               </label>
@@ -1338,7 +1338,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                                   onClick={() =>
                                     setReviewDraftNotes(prev => ({ ...prev, [item.key]: preset }))
                                   }
-                                  className="px-2.5 py-1 rounded-lg bg-black/50 hover:bg-white/[0.06] border border-white/10 text-[11px] text-neutral-300 cursor-pointer"
+                                  className="px-2.5 py-1 rounded-lg bg-black/50 hover:bg-white/[0.06] border border-white/10 text-[11px] text-slate-300 cursor-pointer"
                                 >
                                   + “{preset}”
                                 </button>
@@ -1356,7 +1356,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                                   }))
                                 }
                                 placeholder={`Coach notes for ${item.studentName}...`}
-                                className="w-full rounded-xl bg-black/60 border border-white/15 px-3 py-2 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#09ADEF]"
+                                className="w-full rounded-xl bg-black/60 border border-white/15 px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#0EA5E9]"
                               />
                               <input
                                 type="url"
@@ -1368,7 +1368,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                                   }))
                                 }
                                 placeholder="Optional Vimeo feedback URL (https://vimeo.com/...)..."
-                                className="w-full rounded-xl bg-black/60 border border-white/15 px-3 py-2 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#09ADEF]"
+                                className="w-full rounded-xl bg-black/60 border border-white/15 px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#0EA5E9]"
                               />
                             </div>
 
@@ -1376,7 +1376,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setExpandedReviewKey(null)}
-                                className="px-3.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/10 text-xs font-semibold text-neutral-300 cursor-pointer"
+                                className="px-3.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/10 text-xs font-semibold text-slate-300 cursor-pointer"
                               >
                                 Cancel
                               </button>
@@ -1426,16 +1426,16 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                     key={idx}
                     type="button"
                     onClick={() => setMessageInput(tpl)}
-                    className="text-left p-2.5 rounded-xl bg-[#07090D] hover:bg-white/[0.06] border border-white/10 text-xs text-neutral-200 transition-colors cursor-pointer line-clamp-2"
+                    className="text-left p-2.5 rounded-xl bg-[#0F1626] hover:bg-white/[0.06] border border-white/10 text-xs text-slate-200 transition-colors cursor-pointer line-clamp-2"
                   >
                     “{tpl}”
                   </button>
                 ))}
               </div>
 
-              <div className="rounded-xl bg-[#07090D] border border-white/10 p-4 space-y-2.5 max-h-80 overflow-y-auto">
+              <div className="rounded-xl bg-[#0F1626] border border-white/10 p-4 space-y-2.5 max-h-80 overflow-y-auto">
                 {activeStudent.messages.length === 0 ? (
-                  <div className="py-6 text-center text-xs text-neutral-500">No messages yet.</div>
+                  <div className="py-6 text-center text-xs text-slate-500">No messages yet.</div>
                 ) : (
                   activeStudent.messages.map(m => (
                     <div
@@ -1444,12 +1444,12 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                         m.isAlert
                           ? 'border-rose-500/30 bg-rose-500/10 text-rose-200'
                           : m.senderRole === 'COACH'
-                          ? 'border-[#09ADEF]/30 bg-[#09ADEF]/10 text-white ml-8'
-                          : 'border-white/10 bg-white/[0.03] text-neutral-200 mr-8'
+                          ? 'border-[#0EA5E9]/30 bg-[#0EA5E9]/10 text-white ml-8'
+                          : 'border-white/10 bg-white/[0.03] text-slate-200 mr-8'
                       }`}
                     >
-                      <div className="flex items-center justify-between text-[11px] text-neutral-400 mb-1">
-                        <span className="font-semibold text-[#09ADEF]">{m.senderName}</span>
+                      <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+                        <span className="font-semibold text-[#0EA5E9]">{m.senderName}</span>
                         <span>{m.timestamp}</span>
                       </div>
                       <p className="leading-relaxed text-sm">{m.text}</p>
@@ -1458,7 +1458,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                           <button
                             type="button"
                             onClick={() => handleChatActionClick(m.actionTarget!)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#09ADEF]/20 hover:bg-[#09ADEF]/30 border border-[#09ADEF]/40 text-[11px] font-bold text-[#09ADEF] cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#0EA5E9]/20 hover:bg-[#0EA5E9]/30 border border-[#0EA5E9]/40 text-[11px] font-bold text-[#0EA5E9] cursor-pointer"
                           >
                             <span>{m.actionTarget.label}</span>
                             <ExternalLink className="w-3 h-3" />
@@ -1477,7 +1477,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                   value={messageInput}
                   onChange={e => setMessageInput(e.target.value)}
                   placeholder={`Message ${activeStudent.name}...`}
-                  className="flex-1 rounded-xl bg-[#07090D] border border-white/15 px-4 py-2.5 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#09ADEF]"
+                  className="flex-1 rounded-xl bg-[#0F1626] border border-white/15 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-[#0EA5E9]"
                 />
                 <button
                   type="submit"
@@ -1494,9 +1494,9 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
           {coachSubTab === 'SETUP' && (
             <div className="space-y-4">
               {/* Card 1: Essential Student Profile & Lesson Placement (4 Inputs) */}
-              <div className="p-4 sm:p-5 rounded-xl bg-[#07090D] border border-white/10 space-y-4 text-xs">
+              <div className="p-4 sm:p-5 rounded-xl bg-[#0F1626] border border-white/10 space-y-4 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#09ADEF]">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#0EA5E9]">
                     1. Member Profile & Lesson Placement
                   </span>
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 text-[10px] font-semibold">
@@ -1506,18 +1506,18 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <div>
-                    <label className="block font-semibold text-neutral-300 mb-1">Full Name</label>
+                    <label className="block font-semibold text-slate-300 mb-1">Full Name</label>
                     <input
                       type="text"
                       value={activeStudent.name}
                       onChange={e =>
                         onUpdateStudentSpecifics(activeStudent.id, { name: e.target.value })
                       }
-                      className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                      className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#0EA5E9] focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block font-semibold text-neutral-300 mb-1">
+                    <label className="block font-semibold text-slate-300 mb-1">
                       Company / Niche
                     </label>
                     <input
@@ -1529,11 +1529,11 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                           niche: e.target.value
                         })
                       }
-                      className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                      className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#0EA5E9] focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block font-semibold text-neutral-300 mb-1">Login Email</label>
+                    <label className="block font-semibold text-slate-300 mb-1">Login Email</label>
                     <input
                       type="email"
                       value={activeStudent.email || ''}
@@ -1541,11 +1541,11 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                         onUpdateStudentSpecifics(activeStudent.id, { email: e.target.value })
                       }
                       placeholder="student@company.com"
-                      className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                      className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#0EA5E9] focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block font-semibold text-neutral-300 mb-1">
+                    <label className="block font-semibold text-slate-300 mb-1">
                       Assigned Lesson
                     </label>
                     <select
@@ -1558,7 +1558,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                           currentPhase: ph
                         });
                       }}
-                      className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                      className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#0EA5E9] focus:outline-none"
                     >
                       {Array.from({ length: 26 }, (_, i) => i + 1).map(num => (
                         <option key={num} value={num}>
@@ -1576,7 +1576,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                       onClick={handleCopyStudentInvite}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-xs font-semibold text-white cursor-pointer"
                     >
-                      <Copy className="w-3.5 h-3.5 text-[#09ADEF]" />
+                      <Copy className="w-3.5 h-3.5 text-[#0EA5E9]" />
                       <span>Copy Invite ({activeStudent.accessCode || 'SHIFT-01'})</span>
                     </button>
                     <button
@@ -1584,7 +1584,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                       onClick={onOpenImportModal}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-xs font-semibold text-white cursor-pointer"
                     >
-                      <Upload className="w-3.5 h-3.5 text-[#09ADEF]" />
+                      <Upload className="w-3.5 h-3.5 text-[#0EA5E9]" />
                       <span>
                         Upload .xlsx ({activeStudent.supportingVideos.length} Videos)
                       </span>
@@ -1615,7 +1615,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                         <button
                           type="button"
                           onClick={() => setConfirmDeleteStudent(false)}
-                          className="px-2 py-1 rounded-lg bg-white/10 text-neutral-300 font-semibold text-[10px] cursor-pointer"
+                          className="px-2 py-1 rounded-lg bg-white/10 text-slate-300 font-semibold text-[10px] cursor-pointer"
                         >
                           Cancel
                         </button>
@@ -1627,16 +1627,16 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
               {/* Card 2: Student Video Queue Editor (4 Visible Controls + Optional Hooks Toggle) */}
               <form
                 onSubmit={handleAddOrUpdateCustomVideo}
-                className="p-4 sm:p-5 rounded-xl bg-[#07090D] border border-white/10 space-y-3.5 text-xs"
+                className="p-4 sm:p-5 rounded-xl bg-[#0F1626] border border-white/10 space-y-3.5 text-xs"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#09ADEF]">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#0EA5E9]">
                     2. Update {activeStudent.name.split(' ')[0]}’s Video Queue
                   </span>
                   <button
                     type="button"
                     onClick={() => setShowAlternateHooks(prev => !prev)}
-                    className="text-[11px] font-semibold text-neutral-400 hover:text-white cursor-pointer"
+                    className="text-[11px] font-semibold text-slate-400 hover:text-white cursor-pointer"
                   >
                     {showAlternateHooks ? 'Hide Hooks 2 & 3' : '+ Customize Hooks 2 & 3'}
                   </button>
@@ -1644,13 +1644,13 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-semibold text-neutral-300 mb-1">
+                    <label className="block font-semibold text-slate-300 mb-1">
                       Video Slot
                     </label>
                     <select
                       value={editingVideoId}
                       onChange={e => handleSelectVideoToEdit(e.target.value)}
-                      className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                      className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#0EA5E9] focus:outline-none"
                     >
                       <option value="NEW">+ Add New Video to Queue</option>
                       {activeStudent.supportingVideos.map(v => (
@@ -1662,7 +1662,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-neutral-300 mb-1">
+                    <label className="block font-semibold text-slate-300 mb-1">
                       Playbook Pillar
                     </label>
                     <select
@@ -1675,7 +1675,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                           setCustomVideoStage(`${found.stage} (${found.pillar})`);
                         }
                       }}
-                      className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                      className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#0EA5E9] focus:outline-none"
                     >
                       {activeStudent.playbook.map((p, idx) => (
                         <option key={p.id} value={p.id}>
@@ -1688,7 +1688,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-semibold text-neutral-300 mb-1">
+                    <label className="block font-semibold text-slate-300 mb-1">
                       Video Title *
                     </label>
                     <input
@@ -1697,11 +1697,11 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                       value={customVideoTitle}
                       onChange={e => setCustomVideoTitle(e.target.value)}
                       placeholder="Video topic..."
-                      className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                      className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#0EA5E9] focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block font-semibold text-neutral-300 mb-1">
+                    <label className="block font-semibold text-slate-300 mb-1">
                       Primary Hook *
                     </label>
                     <input
@@ -1710,7 +1710,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                       value={customHook1}
                       onChange={e => setCustomHook1(e.target.value)}
                       placeholder="Opening hook..."
-                      className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                      className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#0EA5E9] focus:outline-none"
                     />
                   </div>
                 </div>
@@ -1718,7 +1718,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                 {showAlternateHooks && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block font-semibold text-neutral-300 mb-1">
+                      <label className="block font-semibold text-slate-300 mb-1">
                         Hook Option 2
                       </label>
                       <input
@@ -1726,11 +1726,11 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                         value={customHook2}
                         onChange={e => setCustomHook2(e.target.value)}
                         placeholder="Direct call-out hook..."
-                        className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                        className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#0EA5E9] focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block font-semibold text-neutral-300 mb-1">
+                      <label className="block font-semibold text-slate-300 mb-1">
                         Hook Option 3
                       </label>
                       <input
@@ -1738,7 +1738,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                         value={customHook3}
                         onChange={e => setCustomHook3(e.target.value)}
                         placeholder="Story / proof hook..."
-                        className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+                        className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-white focus:border-[#0EA5E9] focus:outline-none"
                       />
                     </div>
                   </div>
@@ -1774,7 +1774,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                         <button
                           type="button"
                           onClick={() => setConfirmDeleteVideo(false)}
-                          className="px-2 py-1 rounded-lg bg-white/10 text-neutral-300 font-semibold text-[10px] cursor-pointer"
+                          className="px-2 py-1 rounded-lg bg-white/10 text-slate-300 font-semibold text-[10px] cursor-pointer"
                         >
                           Cancel
                         </button>
@@ -1795,8 +1795,8 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
               </form>
 
               {/* Collapsible Authorized Admin Coach Emails */}
-              <details className="rounded-xl bg-[#07090D] border border-white/10 p-4 text-xs">
-                <summary className="cursor-pointer font-bold uppercase tracking-wider text-neutral-400 select-none">
+              <details className="rounded-xl bg-[#0F1626] border border-white/10 p-4 text-xs">
+                <summary className="cursor-pointer font-bold uppercase tracking-wider text-slate-400 select-none">
                   Authorized Coach Emails ({appSettings.adminEmails.length})
                 </summary>
                 <div className="mt-3 space-y-2.5">
@@ -1804,7 +1804,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                     {appSettings.adminEmails.map(email => (
                       <span
                         key={email}
-                        className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-black border border-white/10 text-xs text-neutral-200"
+                        className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-black border border-white/10 text-xs text-slate-200"
                       >
                         <span>{email}</span>
                         {appSettings.adminEmails.length > 1 && (
@@ -1830,7 +1830,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                       value={newAdminEmailInput}
                       onChange={e => setNewAdminEmailInput(e.target.value)}
                       placeholder="coach@company.com"
-                      className="flex-1 rounded-lg bg-black border border-white/15 p-2 text-white focus:border-[#09ADEF] focus:outline-none"
+                      className="flex-1 rounded-lg bg-black border border-white/15 p-2 text-white focus:border-[#0EA5E9] focus:outline-none"
                     />
                     <button
                       type="button"
@@ -1867,19 +1867,19 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
       >
         <form onSubmit={handleCreateStudentSubmit} className="space-y-3.5 text-xs">
           <div>
-            <label className="block font-semibold text-neutral-300 mb-1">Full Name *</label>
+            <label className="block font-semibold text-slate-300 mb-1">Full Name *</label>
             <input
               type="text"
               required
               value={newName}
               onChange={e => setNewName(e.target.value)}
               placeholder="Student Full Name"
-              className="w-full rounded-xl bg-[#07090D] border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+              className="w-full rounded-xl bg-[#0F1626] border border-white/15 p-2.5 text-white focus:border-[#0EA5E9] focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block font-semibold text-neutral-300 mb-1">
+            <label className="block font-semibold text-slate-300 mb-1">
               Company / Brand Name *
             </label>
             <input
@@ -1888,27 +1888,27 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
               value={newCompany}
               onChange={e => setNewCompany(e.target.value)}
               placeholder="Company Name"
-              className="w-full rounded-xl bg-[#07090D] border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+              className="w-full rounded-xl bg-[#0F1626] border border-white/15 p-2.5 text-white focus:border-[#0EA5E9] focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block font-semibold text-neutral-300 mb-1">Login Email</label>
+            <label className="block font-semibold text-slate-300 mb-1">Login Email</label>
             <input
               type="email"
               value={newEmail}
               onChange={e => setNewEmail(e.target.value)}
               placeholder="student@company.com"
-              className="w-full rounded-xl bg-[#07090D] border border-white/15 p-2.5 text-white focus:border-[#09ADEF] focus:outline-none"
+              className="w-full rounded-xl bg-[#0F1626] border border-white/15 p-2.5 text-white focus:border-[#0EA5E9] focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block font-semibold text-neutral-300 mb-1">
+            <label className="block font-semibold text-slate-300 mb-1">
               Content Plan Spreadsheet (Optional)
             </label>
-            <label className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[#09ADEF]/40 hover:border-[#09ADEF] bg-[#07090D] p-4 cursor-pointer transition-colors">
-              <Upload className="w-4 h-4 text-[#09ADEF]" />
+            <label className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[#0EA5E9]/40 hover:border-[#0EA5E9] bg-[#0F1626] p-4 cursor-pointer transition-colors">
+              <Upload className="w-4 h-4 text-[#0EA5E9]" />
               <span className="text-xs font-semibold text-white">
                 Upload .xlsx Plan (or leave blank for default 50-video plan)
               </span>
@@ -1930,7 +1930,7 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
             <button
               type="button"
               onClick={() => setShowAddStudentModal(false)}
-              className="rounded-lg border border-white/12 px-4 py-2 font-medium text-neutral-300 cursor-pointer"
+              className="rounded-lg border border-white/12 px-4 py-2 font-medium text-slate-300 cursor-pointer"
             >
               Cancel
             </button>

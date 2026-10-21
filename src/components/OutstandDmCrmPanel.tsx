@@ -113,7 +113,7 @@ export const STAGE_METADATA: Record<
   STAGE_S: {
     short: 'Sent Link',
     label: 'S · Sent Link (Awaiting Reply)',
-    badgeClass: 'bg-[#09ADEF]/15 text-[#09ADEF] border-[#09ADEF]/35'
+    badgeClass: 'bg-[#0EA5E9]/15 text-[#0EA5E9] border-[#0EA5E9]/35'
   },
   STAGE_H: {
     short: 'Replied',
@@ -138,22 +138,22 @@ export const STAGE_METADATA: Record<
   LOOP_DAY2: {
     short: 'Follow-Up · D2',
     label: 'Follow-Up · Day 2',
-    badgeClass: 'bg-white/10 text-neutral-300 border-white/15'
+    badgeClass: 'bg-white/10 text-slate-300 border-white/15'
   },
   LOOP_DAY5: {
     short: 'Follow-Up · D5',
     label: 'Follow-Up · Day 5',
-    badgeClass: 'bg-white/10 text-neutral-300 border-white/15'
+    badgeClass: 'bg-white/10 text-slate-300 border-white/15'
   },
   LOOP_DAY12: {
     short: 'Follow-Up · D12',
     label: 'Follow-Up · Day 12',
-    badgeClass: 'bg-white/10 text-neutral-300 border-white/15'
+    badgeClass: 'bg-white/10 text-slate-300 border-white/15'
   },
   LOOP_DAY30: {
     short: 'Follow-Up · D30',
     label: 'Follow-Up · Day 30',
-    badgeClass: 'bg-white/10 text-neutral-300 border-white/15'
+    badgeClass: 'bg-white/10 text-slate-300 border-white/15'
   },
   CLOSED_WON: {
     short: 'Won',
@@ -1554,46 +1554,47 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Bar: Clean Mode Switcher + Connection Summary */}
-      <div className="glass-panel rounded-xl px-4 py-3 border border-white/10 flex flex-wrap items-center justify-between gap-3">
+      <div className="relative rounded-2xl bg-[#0F1626]/90 border border-brand-500/30 glow-cyan px-4 py-3 flex flex-wrap items-center justify-between gap-3 overflow-hidden">
+        <div className="absolute -top-12 -right-12 w-36 h-36 bg-brand-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="flex flex-wrap items-center gap-2.5">
-          <h1 className="font-display text-xl text-white tracking-wide uppercase">DM CRM</h1>
+          <h1 className="text-lg font-bold text-white tracking-tight">DM CRM</h1>
 
           <span
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
               isIgConnected
                 ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
-                : 'bg-white/[0.04] text-neutral-400 border-white/10'
+                : 'bg-white/[0.04] text-slate-400 border-white/10'
             }`}
           >
             <span
               className={`w-1.5 h-1.5 rounded-full ${
-                isIgConnected ? 'bg-emerald-400 animate-pulse' : 'bg-neutral-500'
+                isIgConnected ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
               }`}
             />
             {isIgConnected ? `IG: @${outstandConfig.instagramHandle} · Live` : 'IG Not Connected'}
           </span>
 
           {isFbConnected && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border bg-emerald-500/10 text-emerald-300 border-emerald-500/30">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-emerald-500/10 text-emerald-300 border-emerald-500/30">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               {`FB: ${outstandConfig.facebookPageName}`}
             </span>
           )}
 
-          <span className="text-xs text-neutral-400">
+          <span className="text-xs text-slate-400">
             · {activeMagnetsWithLinksCount} Active{' '}
             {activeMagnetsWithLinksCount === 1 ? 'Trigger' : 'Triggers'}
           </span>
         </div>
 
-        <div className="inline-flex rounded-lg bg-[#07090D] p-1 border border-white/10">
+        <div className="inline-flex rounded-2xl bg-white/[0.04] p-1 border border-white/[0.08] shadow-inner">
           <button
             type="button"
             onClick={() => handleSwitchView('INBOX')}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs inline-flex items-center gap-1.5 cursor-pointer transition-all ${
               activeView === 'INBOX'
-                ? 'bg-[#09ADEF] text-white'
-                : 'text-neutral-400 hover:text-white'
+                ? 'bg-gradient-to-r from-brand-600 to-sky-500 text-white font-semibold shadow-md'
+                : 'text-slate-400 hover:text-slate-200 font-medium hover:bg-white/[0.03]'
             }`}
           >
             <span>Conversations ({threads.length})</span>
@@ -1606,10 +1607,10 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           <button
             type="button"
             onClick={() => handleSwitchView('SETUP')}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs inline-flex items-center gap-1.5 cursor-pointer transition-all ${
               activeView === 'SETUP'
-                ? 'bg-[#09ADEF] text-white'
-                : 'text-neutral-400 hover:text-white'
+                ? 'bg-gradient-to-r from-brand-600 to-sky-500 text-white font-semibold shadow-md'
+                : 'text-slate-400 hover:text-slate-200 font-medium hover:bg-white/[0.03]'
             }`}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -1624,7 +1625,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
           <button
             type="button"
             onClick={() => setStatusBanner(null)}
-            className="text-[10px] font-bold uppercase text-neutral-400 hover:text-white cursor-pointer"
+            className="text-[10px] font-bold uppercase text-slate-400 hover:text-white cursor-pointer"
           >
             Dismiss
           </button>
@@ -1642,7 +1643,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                   className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
                     hasAnyConnectedAccount
                       ? 'bg-emerald-500 text-slate-950'
-                      : 'bg-[#09ADEF] text-white'
+                      : 'bg-[#0EA5E9] text-white'
                   }`}
                 >
                   {hasAnyConnectedAccount ? '✓' : '1'}
@@ -1651,7 +1652,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                   <h2 className="text-sm font-bold text-white">
                     Connect Your Instagram &amp; Facebook Accounts
                   </h2>
-                  <p className="text-xs text-neutral-400">
+                  <p className="text-xs text-slate-400">
                     Link the accounts where viewers will comment your keyword triggers.
                   </p>
                 </div>
@@ -1697,14 +1698,14 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
 
                 {isIgConnected ? (
                   <div className="flex items-center justify-between pt-1">
-                    <span className="text-xs font-mono text-[#09ADEF]">
+                    <span className="text-xs font-mono text-[#0EA5E9]">
                       @{outstandConfig.instagramHandle || 'Connected'}
                     </span>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => handleConnectAccount('instagram')}
-                        className="text-[11px] text-neutral-400 hover:text-white cursor-pointer"
+                        className="text-[11px] text-slate-400 hover:text-white cursor-pointer"
                       >
                         Reconnect
                       </button>
@@ -1751,7 +1752,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                       <button
                         type="button"
                         onClick={() => handleConnectAccount('facebook')}
-                        className="text-[11px] text-neutral-400 hover:text-white cursor-pointer"
+                        className="text-[11px] text-slate-400 hover:text-white cursor-pointer"
                       >
                         Reconnect
                       </button>
@@ -1788,7 +1789,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                   className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
                     hasMagnetsWithLinks
                       ? 'bg-emerald-500 text-slate-950'
-                      : 'bg-[#09ADEF] text-white'
+                      : 'bg-[#0EA5E9] text-white'
                   }`}
                 >
                   {hasMagnetsWithLinks ? '✓' : '2'}
@@ -1797,7 +1798,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                   <h2 className="text-sm font-bold text-white">
                     Add Lead Magnet URLs &amp; Comment Keywords
                   </h2>
-                  <p className="text-xs text-neutral-400">
+                  <p className="text-xs text-slate-400">
                     When someone comments a keyword on your post, we automatically DM them the
                     matching Lead Magnet URL.
                   </p>
@@ -1820,14 +1821,14 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                   >
                     <div className="min-w-0 space-y-0.5">
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded bg-[#09ADEF]/15 text-[#09ADEF] font-mono text-xs font-bold">
+                        <span className="px-2 py-0.5 rounded bg-[#0EA5E9]/15 text-[#0EA5E9] font-mono text-xs font-bold">
                           {mag.keywordTrigger}
                         </span>
                         <span className="text-xs font-semibold text-white truncate">
                           {mag.workingTitle}
                         </span>
                       </div>
-                      <div className="text-[11px] text-neutral-400 truncate pl-0.5">
+                      <div className="text-[11px] text-slate-400 truncate pl-0.5">
                         {mag.trackingLink || 'No Lead Magnet URL set — click Edit to add URL'}
                       </div>
                     </div>
@@ -1836,7 +1837,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                       <button
                         type="button"
                         onClick={() => handleStartEditMagnet(mag)}
-                        className="px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-xs text-neutral-200 inline-flex items-center gap-1 cursor-pointer"
+                        className="px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-xs text-slate-200 inline-flex items-center gap-1 cursor-pointer"
                       >
                         <Edit3 className="w-3 h-3" />
                         <span>Edit</span>
@@ -1845,7 +1846,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                         <button
                           type="button"
                           onClick={() => onDeleteShiftMagnet(mag.id)}
-                          className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-rose-500/15 text-neutral-400 hover:text-rose-300 cursor-pointer"
+                          className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-rose-500/15 text-slate-400 hover:text-rose-300 cursor-pointer"
                           title="Delete keyword trigger"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1861,7 +1862,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
             <form onSubmit={handleSaveKeywordTrigger} className="space-y-3 pt-1">
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
                 <div className="sm:col-span-3">
-                  <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">
                     Comment Keyword
                   </label>
                   <input
@@ -1870,12 +1871,12 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                     onChange={e => setKwInput(e.target.value.toUpperCase())}
                     placeholder="e.g. AUDIT"
                     required
-                    className="w-full rounded-lg bg-[#0B0E15] border border-white/12 px-3 py-2 text-xs font-mono text-white focus:border-[#09ADEF] focus:outline-none"
+                    className="w-full rounded-lg bg-[#080C14] border border-white/12 px-3 py-2 text-xs font-mono text-white focus:border-[#0EA5E9] focus:outline-none"
                   />
                 </div>
 
                 <div className="sm:col-span-4">
-                  <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">
                     Lead Magnet Name
                   </label>
                   <input
@@ -1884,12 +1885,12 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                     onChange={e => setTitleInput(e.target.value)}
                     placeholder="7-Hour Pipeline Audit"
                     required
-                    className="w-full rounded-lg bg-[#0B0E15] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
+                    className="w-full rounded-lg bg-[#080C14] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#0EA5E9] focus:outline-none"
                   />
                 </div>
 
                 <div className="sm:col-span-5">
-                  <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">
                     Lead Magnet URL
                   </label>
                   <input
@@ -1898,14 +1899,14 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                     onChange={e => setUrlInput(e.target.value)}
                     placeholder="https://yourdomain.com/audit"
                     required
-                    className="w-full rounded-lg bg-[#0B0E15] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
+                    className="w-full rounded-lg bg-[#080C14] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#0EA5E9] focus:outline-none"
                   />
                 </div>
               </div>
 
               {showCustomDmBox && (
                 <div>
-                  <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">
                     Auto-Reply DM Message
                   </label>
                   <textarea
@@ -1913,7 +1914,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                     value={customDmInput}
                     onChange={e => setCustomDmInput(e.target.value)}
                     placeholder="Hey [First Name]! Here is your link: [Link]..."
-                    className="w-full rounded-lg bg-[#0B0E15] border border-white/12 p-2.5 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
+                    className="w-full rounded-lg bg-[#080C14] border border-white/12 p-2.5 text-xs text-white focus:border-[#0EA5E9] focus:outline-none"
                   />
                 </div>
               )}
@@ -1922,7 +1923,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowCustomDmBox(v => !v)}
-                  className="text-xs text-neutral-400 hover:text-white cursor-pointer"
+                  className="text-xs text-slate-400 hover:text-white cursor-pointer"
                 >
                   {showCustomDmBox ? 'Hide custom DM message' : '+ Customize auto-reply DM text'}
                 </button>
@@ -1939,7 +1940,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                         setCustomDmInput('');
                         setShowCustomDmBox(false);
                       }}
-                      className="px-3 py-2 rounded-lg border border-white/10 text-xs text-neutral-300 cursor-pointer"
+                      className="px-3 py-2 rounded-lg border border-white/10 text-xs text-slate-300 cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -1964,14 +1965,14 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                   className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
                     outstandConfig.triggerTestedAt
                       ? 'bg-emerald-500 text-slate-950'
-                      : 'bg-[#09ADEF] text-white'
+                      : 'bg-[#0EA5E9] text-white'
                   }`}
                 >
                   {outstandConfig.triggerTestedAt ? '✓' : '3'}
                 </span>
                 <div>
                   <h2 className="text-sm font-bold text-white">Test Your Keyword Trigger</h2>
-                  <p className="text-xs text-neutral-400">
+                  <p className="text-xs text-slate-400">
                     Fire a test comment to confirm your Lead Magnet URL is sent and appears in your
                     DM Inbox.
                   </p>
@@ -1987,13 +1988,13 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
               className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2.5 pt-1"
             >
               <div className="sm:w-36">
-                <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                <label className="block text-[11px] font-medium text-slate-400 mb-1">
                   Account
                 </label>
                 <select
                   value={testPlatform}
                   onChange={e => setTestPlatform(e.target.value as 'instagram' | 'facebook')}
-                  className="w-full rounded-lg bg-[#0B0E15] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
+                  className="w-full rounded-lg bg-[#080C14] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#0EA5E9] focus:outline-none"
                 >
                   <option value="instagram">Instagram</option>
                   <option value="facebook">Facebook</option>
@@ -2001,13 +2002,13 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
               </div>
 
               <div className="sm:w-44">
-                <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                <label className="block text-[11px] font-medium text-slate-400 mb-1">
                   Keyword to Test
                 </label>
                 <select
                   value={testKeyword}
                   onChange={e => setTestKeyword(e.target.value)}
-                  className="w-full rounded-lg bg-[#0B0E15] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
+                  className="w-full rounded-lg bg-[#080C14] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#0EA5E9] focus:outline-none"
                 >
                   {student.shiftMagnets.map(m => (
                     <option key={m.id} value={m.keywordTrigger}>
@@ -2018,7 +2019,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
               </div>
 
               <div className="flex-1">
-                <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                <label className="block text-[11px] font-medium text-slate-400 mb-1">
                   Test Prospect @Handle
                 </label>
                 <input
@@ -2026,7 +2027,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                   value={testHandle}
                   onChange={e => setTestHandle(e.target.value)}
                   placeholder="alex_founder"
-                  className="w-full rounded-lg bg-[#0B0E15] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
+                  className="w-full rounded-lg bg-[#080C14] border border-white/12 px-3 py-2 text-xs text-white focus:border-[#0EA5E9] focus:outline-none"
                 />
               </div>
 
@@ -2103,8 +2104,8 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                   onClick={() => setStageFilter(pill.id)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap border cursor-pointer transition ${
                     stageFilter === pill.id
-                      ? 'bg-[#09ADEF] text-white border-[#09ADEF]'
-                      : 'bg-[#07090D] text-neutral-400 border-white/10 hover:text-white'
+                      ? 'bg-[#0EA5E9] text-white border-[#0EA5E9]'
+                      : 'bg-[#0F1626] text-slate-400 border-white/10 hover:text-white'
                   }`}
                 >
                   {pill.label}
@@ -2113,13 +2114,13 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
             </div>
 
             <div className="relative w-full sm:w-52">
-              <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search @handle..."
-                className="w-full rounded-lg bg-[#07090D] border border-white/10 pl-8 pr-2.5 py-1.5 text-xs text-white focus:border-[#09ADEF] focus:outline-none"
+                className="w-full rounded-lg bg-[#0F1626] border border-white/10 pl-8 pr-2.5 py-1.5 text-xs text-white focus:border-[#0EA5E9] focus:outline-none"
               />
             </div>
           </div>
@@ -2130,7 +2131,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
             <div className="lg:col-span-4 glass-panel rounded-xl border border-white/10 overflow-hidden divide-y divide-white/[0.06]">
               <div className="max-h-[600px] overflow-y-auto divide-y divide-white/[0.06]">
                 {filteredThreads.length === 0 ? (
-                  <div className="p-6 text-center text-xs text-neutral-400">
+                  <div className="p-6 text-center text-xs text-slate-400">
                     No conversations match this filter.
                   </div>
                 ) : (
@@ -2154,13 +2155,13 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                         }}
                         className={`p-3 cursor-pointer transition ${
                           isSelected
-                            ? 'bg-[#09ADEF]/[0.12] border-l-2 border-l-[#09ADEF]'
+                            ? 'bg-[#0EA5E9]/[0.12] border-l-2 border-l-[#0EA5E9]'
                             : 'hover:bg-white/[0.03]'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="px-1.5 py-0.5 rounded bg-white/[0.07] text-[9px] font-bold uppercase text-neutral-300 shrink-0">
+                            <span className="px-1.5 py-0.5 rounded bg-white/[0.07] text-[9px] font-bold uppercase text-slate-300 shrink-0">
                               {thread.platform === 'facebook' ? 'FB' : 'IG'}
                             </span>
                             <span className="text-xs font-bold text-white truncate">
@@ -2181,13 +2182,13 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                         </div>
 
                         <div className="flex items-center justify-between gap-2 mt-1">
-                          <span className="text-[11px] text-neutral-400 font-mono truncate">
+                          <span className="text-[11px] text-slate-400 font-mono truncate">
                             @{thread.prospectHandle} · {thread.matchedKeyword}
                           </span>
                         </div>
 
                         {lastMsg && (
-                          <p className="text-[11px] text-neutral-400 truncate mt-1">
+                          <p className="text-[11px] text-slate-400 truncate mt-1">
                             {lastMsg.direction === 'inbound_comment'
                               ? `Commented: "${lastMsg.text}"`
                               : lastMsg.direction === 'inbound_dm'
@@ -2205,7 +2206,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
             {/* Right: Active Chat & Stage Tracker */}
             <div className="lg:col-span-8 glass-panel rounded-xl border border-white/10 overflow-hidden flex flex-col">
               {!activeThread ? (
-                <div className="p-10 text-center text-sm text-neutral-400">
+                <div className="p-10 text-center text-sm text-slate-400">
                   Select a conversation on the left.
                 </div>
               ) : (
@@ -2216,10 +2217,10 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                       <span className="text-sm font-bold text-white">
                         {activeThread.prospectName}
                       </span>
-                      <span className="text-xs font-mono text-[#09ADEF]">
+                      <span className="text-xs font-mono text-[#0EA5E9]">
                         @{activeThread.prospectHandle}
                       </span>
-                      <span className="px-2 py-0.5 rounded bg-white/[0.06] text-[10px] font-mono text-neutral-300">
+                      <span className="px-2 py-0.5 rounded bg-white/[0.06] text-[10px] font-mono text-slate-300">
                         {activeThread.matchedKeyword}
                       </span>
                     </div>
@@ -2230,7 +2231,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                         onChange={e =>
                           handleStageChange(activeThread.id, e.target.value as ShiftCrmStage)
                         }
-                        className="rounded-lg bg-[#0B0E15] border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-white focus:border-[#09ADEF] focus:outline-none"
+                        className="rounded-lg bg-[#080C14] border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-white focus:border-[#0EA5E9] focus:outline-none"
                       >
                         {Object.entries(STAGE_METADATA).map(([key, meta]) => (
                           <option key={key} value={key}>
@@ -2242,7 +2243,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                       <button
                         type="button"
                         onClick={() => handleDeleteThread(activeThread.id)}
-                        className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-rose-500/15 border border-white/10 text-neutral-400 hover:text-rose-300 cursor-pointer"
+                        className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-rose-500/15 border border-white/10 text-slate-400 hover:text-rose-300 cursor-pointer"
                         title="Delete conversation"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -2270,23 +2271,23 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                           <div
                             className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed whitespace-pre-wrap ${
                               isComment
-                                ? 'bg-white/[0.06] border border-white/15 text-neutral-200'
+                                ? 'bg-white/[0.06] border border-white/15 text-slate-200'
                                 : isInbound
                                 ? 'bg-[#0E131D] border border-white/12 text-white'
                                 : isScheduled
-                                ? 'bg-[#09ADEF]/10 border border-[#09ADEF]/30 text-neutral-200'
-                                : 'bg-[#09ADEF]/20 border border-[#09ADEF]/40 text-white'
+                                ? 'bg-[#0EA5E9]/10 border border-[#0EA5E9]/30 text-slate-200'
+                                : 'bg-[#0EA5E9]/20 border border-[#0EA5E9]/40 text-white'
                             }`}
                           >
                             {isComment && (
-                              <div className="text-[10px] font-semibold text-[#09ADEF] mb-1">
+                              <div className="text-[10px] font-semibold text-[#0EA5E9] mb-1">
                                 Commented Keyword: {activeThread.matchedKeyword}
                               </div>
                             )}
                             {msg.text}
                           </div>
 
-                          <div className="text-[10px] text-neutral-500 mt-1 px-1">
+                          <div className="text-[10px] text-slate-500 mt-1 px-1">
                             {isScheduled && msg.scheduledFor
                               ? `Scheduled for ${new Date(msg.scheduledFor).toLocaleDateString()}`
                               : new Date(msg.createdAt).toLocaleTimeString([], {
@@ -2299,7 +2300,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                     })}
 
                     {activeThread.scheduledFollowup && (
-                      <div className="px-3 py-2 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-between gap-2 text-xs text-neutral-300">
+                      <div className="px-3 py-2 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-between gap-2 text-xs text-slate-300">
                         <span>
                           Follow-up scheduled for{' '}
                           {new Date(
@@ -2334,7 +2335,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                           key={chip.key}
                           type="button"
                           onClick={() => handleInsertPlaybookScript(chip.key)}
-                          className="px-2.5 py-1 rounded-md bg-white/[0.05] hover:bg-[#09ADEF]/20 border border-white/10 hover:border-[#09ADEF]/40 text-[11px] font-medium text-neutral-200 whitespace-nowrap cursor-pointer transition"
+                          className="px-2.5 py-1 rounded-md bg-white/[0.05] hover:bg-[#0EA5E9]/20 border border-white/10 hover:border-[#0EA5E9]/40 text-[11px] font-medium text-slate-200 whitespace-nowrap cursor-pointer transition"
                         >
                           {chip.label}
                         </button>
@@ -2355,7 +2356,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                           }
                         }}
                         placeholder={`Reply to @${activeThread.prospectHandle}... (Press Enter to send)`}
-                        className="w-full rounded-xl bg-[#0B0E17] border border-white/15 p-2.5 text-xs text-white focus:border-[#09ADEF] focus:outline-none leading-relaxed"
+                        className="w-full rounded-xl bg-[#0B0E17] border border-white/15 p-2.5 text-xs text-white focus:border-[#0EA5E9] focus:outline-none leading-relaxed"
                       />
 
                       <div className="flex items-center justify-between gap-2">
@@ -2366,7 +2367,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                               e.target.value as 'NOW' | 'DAY_2' | 'DAY_5' | 'DAY_12' | 'DAY_30'
                             )
                           }
-                          className="rounded-lg bg-[#0B0E17] border border-white/15 px-2.5 py-1.5 text-xs text-neutral-200 focus:border-[#09ADEF] focus:outline-none"
+                          className="rounded-lg bg-[#0B0E17] border border-white/15 px-2.5 py-1.5 text-xs text-slate-200 focus:border-[#0EA5E9] focus:outline-none"
                         >
                           <option value="NOW">Send Now</option>
                           <option value="DAY_2">Schedule · Day 2</option>
@@ -2380,7 +2381,7 @@ export const OutstandDmCrmPanel: React.FC<OutstandDmCrmPanelProps> = ({
                             <button
                               type="button"
                               onClick={() => handleCopy('composer-copy', composerText)}
-                              className="px-2.5 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-xs text-neutral-300 inline-flex items-center gap-1 cursor-pointer"
+                              className="px-2.5 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-xs text-slate-300 inline-flex items-center gap-1 cursor-pointer"
                             >
                               {copiedId === 'composer-copy' ? (
                                 <Check className="w-3.5 h-3.5 text-emerald-400" />

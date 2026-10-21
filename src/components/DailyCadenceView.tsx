@@ -322,9 +322,9 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
     <div className="space-y-4 sm:space-y-6">
       {/* First 48 Hours Quick-Start Bar (Auto-hides once all 4 steps are done or dismissed) */}
       {!student.onboardingDismissed && onboardingDoneCount < 4 && (
-        <div className="rounded-2xl bg-[#07090D] border border-white/10 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="rounded-2xl bg-[#0F1626] border border-white/10 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#09ADEF] mr-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#0EA5E9] mr-1">
               Quick Start ({onboardingDoneCount}/4):
             </span>
             {onboardingTasks.map(task => (
@@ -335,7 +335,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                 className={`px-2.5 py-1 rounded-lg text-xs font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer ${
                   task.done
                     ? 'bg-emerald-500/15 text-emerald-300'
-                    : 'bg-white/[0.04] hover:bg-white/[0.08] text-neutral-200'
+                    : 'bg-white/[0.04] hover:bg-white/[0.08] text-slate-200'
                 }`}
               >
                 {task.done && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
@@ -347,7 +347,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
             <button
               type="button"
               onClick={onDismissOnboarding}
-              className="text-[11px] text-neutral-400 hover:text-white self-end sm:self-center shrink-0 cursor-pointer"
+              className="text-[11px] text-slate-400 hover:text-white self-end sm:self-center shrink-0 cursor-pointer"
             >
               Hide
             </button>
@@ -364,7 +364,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
               <div className="text-xs font-bold uppercase tracking-wider text-rose-300">
                 Coach Action Required · {revisionSupportingVideos.length + revisionCoreVideos.length} Video Revision Requested
               </div>
-              <p className="text-xs text-neutral-200 mt-0.5">
+              <p className="text-xs text-slate-200 mt-0.5">
                 {revisionSupportingVideos[0]
                   ? `Day #${String(revisionSupportingVideos[0].dayNumber).padStart(2, '0')}: "${revisionSupportingVideos[0].title}" — ${revisionSupportingVideos[0].coachFeedback || 'Please review Coach notes and submit an updated link.'}`
                   : `${revisionCoreVideos[0]?.code}: "${revisionCoreVideos[0]?.name}" — ${revisionCoreVideos[0]?.coachFeedback || 'Please review Coach notes and submit an updated link.'}`}
@@ -398,7 +398,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
 
       {/* Single-Row Sub-Navigation Bar (No redundant 2nd row on mobile) */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex overflow-x-auto no-scrollbar p-1 rounded-xl bg-[#07090D] border border-white/[0.08] w-full sm:w-auto">
+        <div className="flex overflow-x-auto no-scrollbar p-1 rounded-2xl bg-white/[0.04] border border-white/[0.08] gap-1 shadow-inner w-full sm:w-auto">
           {[
             { id: 'STUDIO' as const, label: 'Studio', shortLabel: 'Studio', icon: Sparkles },
             { id: 'QUEUE' as const, label: `50 Videos (${completedSupportingCount})`, shortLabel: `50 Queue (${completedSupportingCount})`, icon: ListVideo },
@@ -412,10 +412,10 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                 key={tab.id}
                 type="button"
                 onClick={() => setSubTab(tab.id)}
-                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-lg text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.06em] whitespace-nowrap transition-all cursor-pointer ${
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
                   active
-                    ? 'bg-[#09ADEF] text-white shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
-                    : 'text-neutral-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-brand-600 to-sky-500 text-white font-semibold shadow-md'
+                    : 'text-slate-400 hover:text-slate-200 font-medium hover:bg-white/[0.03]'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -428,14 +428,14 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
 
         <div className="hidden sm:flex items-center gap-2 shrink-0">
           <div className="badge-2mm flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px]">
-            <Flame className="w-3.5 h-3.5 fill-[#09ADEF] text-[#09ADEF] shrink-0" />
+            <Flame className="w-3.5 h-3.5 fill-brand-400 text-brand-400 shrink-0" />
             <span>{student.streakDays}D STREAK</span>
           </div>
 
           <button
             type="button"
             onClick={() => setShowQueueDrawer(true)}
-            className="eyebrow-pill px-3.5 py-1.5 rounded-full text-[10px] hover:border-[#09ADEF]/50 transition-colors cursor-pointer"
+            className="eyebrow-pill px-3.5 py-1.5 rounded-full text-[10px] hover:border-brand-400/50 transition-colors cursor-pointer"
           >
             Day #{currentVideo?.dayNumber} ▾
           </button>
@@ -446,12 +446,13 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
       {subTab === 'STUDIO' && currentVideo && (
         <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4">
           {/* Unified Current Day Header + 4-Step Segmented Bar */}
-          <div className="glass-panel rounded-2xl p-4 sm:p-7">
+          <div className="relative rounded-2xl bg-[#0F1626]/90 border border-brand-500/30 p-4 sm:p-7 glow-cyan overflow-hidden">
+            <div className="absolute -top-12 -right-12 w-40 h-40 bg-brand-500/10 rounded-full blur-3xl pointer-events-none" />
             <div className="flex items-center justify-between gap-2 mb-2.5">
               <button
                 type="button"
                 onClick={() => setShowQueueDrawer(true)}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#09ADEF]/12 border border-[#09ADEF]/30 text-[10px] font-bold uppercase tracking-[0.14em] text-[#09ADEF] hover:bg-[#09ADEF]/20 transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-500/15 border border-brand-400/25 text-[11px] font-semibold uppercase tracking-wider text-brand-300 hover:bg-brand-500/25 transition cursor-pointer"
                 title="Tap to jump to any of the 50 daily videos"
               >
                 <span>DAY #{currentVideo.dayNumber} · {shiftDay.day} · {shiftDay.stage}</span>
@@ -459,8 +460,8 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
               </button>
 
               <div className="flex items-center gap-1.5">
-                <span className="sm:hidden inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/[0.04] border border-white/10 text-[10px] font-bold text-[#09ADEF]">
-                  <Flame className="w-3 h-3 fill-[#09ADEF] text-[#09ADEF]" />
+                <span className="sm:hidden inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/[0.04] border border-white/10 text-[10px] font-bold text-brand-400">
+                  <Flame className="w-3 h-3 fill-brand-400 text-brand-400" />
                   {student.streakDays}d
                 </span>
                 <button
@@ -470,7 +471,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     setSelectedIndex(i => Math.max(0, i - 1));
                     setActiveStep(1);
                   }}
-                  className="p-1.5 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-neutral-300 disabled:opacity-30 cursor-pointer"
+                  className="p-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-slate-300 disabled:opacity-30 active:scale-95 transition-all cursor-pointer"
                   title="Previous Day"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -482,7 +483,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     setSelectedIndex(i => Math.min(student.supportingVideos.length - 1, i + 1));
                     setActiveStep(1);
                   }}
-                  className="p-1.5 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-neutral-300 disabled:opacity-30 cursor-pointer"
+                  className="p-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-slate-300 disabled:opacity-30 active:scale-95 transition-all cursor-pointer"
                   title="Next Day"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -494,8 +495,8 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
               “{currentVideo.title}”
             </h1>
             {matchingPillar && (
-              <p className="text-[11px] text-neutral-400 mt-1 truncate">
-                {matchingPillar.stage} · <span className="text-neutral-300">{matchingPillar.pillar}</span>
+              <p className="text-[11px] text-slate-400 mt-1 truncate">
+                {matchingPillar.stage} · <span className="text-slate-300">{matchingPillar.pillar}</span>
               </p>
             )}
 
@@ -507,7 +508,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     ? 'bg-emerald-500/10 border-emerald-500/30'
                     : currentVideo.coachReviewStatus === 'Needs Revision'
                     ? 'bg-rose-500/10 border-rose-500/30'
-                    : 'bg-[#09ADEF]/10 border-[#09ADEF]/30'
+                    : 'bg-brand-500/10 border-brand-400/30'
                 }`}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -517,7 +518,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         ? 'text-emerald-300'
                         : currentVideo.coachReviewStatus === 'Needs Revision'
                         ? 'text-rose-300'
-                        : 'text-[#09ADEF]'
+                        : 'text-brand-400'
                     }`}
                   >
                     {currentVideo.coachReviewStatus === 'Approved'
@@ -527,7 +528,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                       : '⏳ IN COACH REVIEW QUEUE'}
                   </span>
                   {currentVideo.coachReviewedAt && (
-                    <span className="text-[10px] text-zinc-400">{currentVideo.coachReviewedAt}</span>
+                    <span className="text-[10px] text-slate-400">{currentVideo.coachReviewedAt}</span>
                   )}
                 </div>
                 {currentVideo.coachFeedback && (
@@ -540,7 +541,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowCoachVideoPlayer(prev => !prev)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#09ADEF] text-white text-xs font-bold hover:bg-[#09B3F8] transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl btn-2mm text-xs cursor-pointer"
                     >
                       <Play className="w-3.5 h-3.5" />
                       <span>
@@ -587,12 +588,12 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     key={s.num}
                     type="button"
                     onClick={() => setActiveStep(s.num)}
-                    className={`py-2 px-2 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.06em] ${
+                    className={`py-2 px-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1 text-[10px] sm:text-[11px] font-semibold tracking-wide ${
                       isCurrent
-                        ? 'bg-[#09ADEF] text-white border-[#09ADEF] shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
+                        ? 'bg-gradient-to-r from-brand-600 to-sky-500 text-white border-brand-400/40 shadow-md'
                         : isPassed
-                        ? 'bg-[#09ADEF]/12 border-[#09ADEF]/30 text-[#09ADEF]'
-                        : 'bg-[#07090D] border-white/[0.07] text-neutral-400 hover:text-white'
+                        ? 'bg-brand-500/15 border-brand-400/30 text-brand-400'
+                        : 'bg-white/[0.04] border-white/[0.08] text-slate-400 hover:text-white'
                     }`}
                   >
                     {isPassed && !isCurrent ? (
@@ -611,16 +612,16 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
           </div>
 
           {/* SEQUENTIAL PANEL CONTENT */}
-          <div className="glass-panel rounded-2xl p-4 sm:p-7 transition-all">
+          <div className="rounded-2xl bg-surface-card border border-white/[0.06] p-4 sm:p-7 transition-all">
             {/* PANEL 1: CHOOSE YOUR HOOK */}
             {activeStep === 1 && (
               <div className="space-y-3.5">
                 <div className="flex items-center justify-between">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9]">
                     STEP 1 · TAP YOUR OPENING HOOK
                   </div>
                   {currentVideo.customHook?.trim() && (
-                    <span className="px-2 py-0.5 rounded bg-[#09ADEF]/15 text-[#09ADEF] text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded bg-[#0EA5E9]/15 text-[#0EA5E9] text-[10px] font-bold">
                       Custom Hook Active
                     </span>
                   )}
@@ -640,18 +641,18 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         onClick={() => updateStudioVideo(currentVideo.id, { selectedHook: h.num, customHook: undefined })}
                         className={`w-full text-left p-3.5 sm:p-5 rounded-xl border transition-all cursor-pointer ${
                           isSelected
-                            ? 'bg-[#09ADEF]/10 border-[#09ADEF] shadow-[0_8px_30px_rgba(9,173,239,0.12)]'
-                            : 'bg-[#040507] border-white/[0.07] hover:border-white/20'
+                            ? 'bg-[#0EA5E9]/10 border-[#0EA5E9] shadow-[0_8px_30px_rgba(9,173,239,0.12)]'
+                            : 'bg-[#080C14] border-white/[0.07] hover:border-white/20'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">
                             {h.badge}
                           </span>
                           <span
                             className={`w-5 h-5 rounded-full flex items-center justify-center border shrink-0 ${
                               isSelected
-                                ? 'bg-[#09ADEF] border-[#09ADEF] text-white'
+                                ? 'bg-[#0EA5E9] border-[#0EA5E9] text-white'
                                 : 'border-white/20'
                             }`}
                           >
@@ -669,31 +670,31 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                 {/* Progressive Disclosure: Custom Hook, Personal Story Beat & Story Bank Reference */}
                 <details
                   open={Boolean(currentVideo.customHook?.trim() || currentVideo.notes?.trim())}
-                  className="group rounded-xl bg-[#040507] border border-white/[0.08] p-3.5"
+                  className="group rounded-xl bg-[#080C14] border border-white/[0.08] p-3.5"
                 >
-                  <summary className="text-xs font-semibold text-neutral-300 cursor-pointer flex items-center justify-between list-none">
+                  <summary className="text-xs font-semibold text-slate-300 cursor-pointer flex items-center justify-between list-none">
                     <span className="flex items-center gap-2">
-                      <SlidersHorizontal className="w-3.5 h-3.5 text-[#09ADEF]" />
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-[#0EA5E9]" />
                       <span>
                         Customize Hook or Add Story Beat Note
                         {(currentVideo.customHook?.trim() || currentVideo.notes?.trim()) ? ' (Saved)' : ' (Optional)'}
                       </span>
                     </span>
-                    <span className="text-[#09ADEF] text-[11px] group-open:rotate-90 transition-transform">▸</span>
+                    <span className="text-[#0EA5E9] text-[11px] group-open:rotate-90 transition-transform">▸</span>
                   </summary>
 
                   <div className="mt-3.5 pt-3.5 border-t border-white/[0.07] space-y-3.5 text-xs">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <label className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                          <label className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">
                             Custom / Tweaked Hook
                           </label>
                           {currentVideo.customHook?.trim() && (
                             <button
                               type="button"
                               onClick={() => updateStudioVideo(currentVideo.id, { customHook: undefined })}
-                              className="text-[10px] text-neutral-400 hover:text-white cursor-pointer"
+                              className="text-[10px] text-slate-400 hover:text-white cursor-pointer"
                             >
                               Reset to Preset
                             </button>
@@ -704,12 +705,12 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                           value={currentVideo.customHook || ''}
                           onChange={e => updateStudioVideo(currentVideo.id, { customHook: e.target.value })}
                           placeholder="Or write your own opening hook..."
-                          className="w-full rounded-lg bg-black border border-white/12 px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-[#09ADEF]"
+                          className="w-full rounded-lg bg-black border border-white/12 px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-[#0EA5E9]"
                         />
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
+                        <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
                           Personal Example / Story Beat Note
                         </label>
                         <input
@@ -717,13 +718,13 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                           value={currentVideo.notes || ''}
                           onChange={e => updateStudioVideo(currentVideo.id, { notes: e.target.value })}
                           placeholder="Jot down a client story or stat for Take 3..."
-                          className="w-full rounded-lg bg-black border border-white/12 px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-[#09ADEF]"
+                          className="w-full rounded-lg bg-black border border-white/12 px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-[#0EA5E9]"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                         Tap a Story Bank Item (Lesson 6) to Insert into Take 3:
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -754,8 +755,8 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                               }}
                               className={`text-left p-2.5 rounded-lg border transition ${
                                 hasContent
-                                  ? 'bg-black border-white/12 hover:border-[#09ADEF] text-neutral-200 cursor-pointer'
-                                  : 'bg-black/40 border-white/5 text-neutral-600 cursor-not-allowed'
+                                  ? 'bg-black border-white/12 hover:border-[#0EA5E9] text-slate-200 cursor-pointer'
+                                  : 'bg-black/40 border-white/5 text-slate-600 cursor-not-allowed'
                               }`}
                             >
                               <div className="flex items-center justify-between gap-2">
@@ -763,7 +764,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                                   #{story.num}: {label}
                                 </span>
                                 {hasContent && (
-                                  <span className="text-[9px] font-bold uppercase tracking-wider text-[#09ADEF] shrink-0">
+                                  <span className="text-[9px] font-bold uppercase tracking-wider text-[#0EA5E9] shrink-0">
                                     + Use
                                   </span>
                                 )}
@@ -793,7 +794,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
             {activeStep === 2 && (
               <div className="space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9]">
                     STEP 2 · THE 2MM BELIEF SHIFT & CTA
                   </div>
                   {matchingPillar && (
@@ -804,19 +805,19 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                 </div>
 
                 {matchingPillar && (
-                  <div className="p-5 rounded-xl bg-[#040507] border border-white/[0.07] space-y-4">
+                  <div className="p-5 rounded-xl bg-[#080C14] border border-white/[0.07] space-y-4">
                     <div>
-                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-500 mb-1">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500 mb-1">
                         WHAT WAS STUCK (OLD BELIEF):
                       </div>
-                      <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+                      <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                         {matchingPillar.breaksBelief}
                       </p>
                     </div>
 
                     {/* Signature vertical left-border THE SHIFT block from joshbeechraft.com */}
-                    <div className="border-l-2 border-[#09ADEF]/60 pl-4 py-0.5">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400 mb-1">
+                    <div className="border-l-2 border-[#0EA5E9]/60 pl-4 py-0.5">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-1">
                         THE SHIFT (NEW BELIEF):
                       </div>
                       <p className="text-xs sm:text-sm text-white font-medium leading-relaxed">
@@ -825,7 +826,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     </div>
 
                     <div className="pt-2 border-t border-white/[0.06]">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-500 mb-1">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500 mb-1">
                         MUST-HIT TALKING BEATS:
                       </div>
                       <p className="text-xs sm:text-sm text-white font-semibold leading-relaxed">
@@ -835,16 +836,16 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   </div>
                 )}
 
-                <div className="p-4 sm:p-5 rounded-xl bg-[#040507] border border-[#09ADEF]/25 space-y-3">
+                <div className="p-4 sm:p-5 rounded-xl bg-[#080C14] border border-[#0EA5E9]/25 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF] flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9] flex items-center gap-1.5">
                       <Magnet className="w-3.5 h-3.5" />
                       ATTACHED SHIFT MAGNET CTA
                     </label>
                     <select
                       value={currentVideo.attachedMagnetId || attachedMagnet?.id || ''}
                       onChange={e => updateStudioVideo(currentVideo.id, { attachedMagnetId: e.target.value })}
-                      className="rounded-lg bg-black border border-white/15 text-xs text-white px-3 py-2 focus:outline-none focus:border-[#09ADEF]"
+                      className="rounded-lg bg-black border border-white/15 text-xs text-white px-3 py-2 focus:outline-none focus:border-[#0EA5E9]"
                     >
                       {student.shiftMagnets.map(m => (
                         <option key={m.id} value={m.id}>
@@ -855,9 +856,9 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   </div>
 
                   {attachedMagnet && (
-                    <div className="border-l-2 border-white/15 pl-3.5 py-1 text-xs sm:text-sm text-neutral-200">
+                    <div className="border-l-2 border-white/15 pl-3.5 py-1 text-xs sm:text-sm text-slate-200">
                       “Comment <strong className="text-white">‘{attachedMagnet.keywordTrigger}’</strong> below and I’ll DM you{' '}
-                      <span className="text-[#09ADEF] font-semibold">{attachedMagnet.workingTitle}</span> — it takes{' '}
+                      <span className="text-[#0EA5E9] font-semibold">{attachedMagnet.workingTitle}</span> — it takes{' '}
                       {attachedMagnet.completionTime} and shows you how to {attachedMagnet.promiseOneSentence.toLowerCase()}”
                     </div>
                   )}
@@ -867,7 +868,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveStep(1)}
-                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-neutral-300 cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#151F34] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-slate-300 cursor-pointer"
                   >
                     <ChevronLeft className="w-4 h-4" /> Back
                   </button>
@@ -891,7 +892,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
             {activeStep === 3 && (
               <div className="space-y-4 sm:space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-2.5">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9]">
                     STEP 3 · TELEPROMPTER & 5-TAKE SHOOT
                   </div>
 
@@ -903,7 +904,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         setFullscreenPrompter(true);
                         setTimerRunning(true);
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#09ADEF] text-white text-[10px] font-bold uppercase tracking-wider shadow-[0_4px_16px_rgba(9,173,239,0.35)] cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0EA5E9] text-white text-[10px] font-bold uppercase tracking-wider shadow-[0_4px_16px_rgba(9,173,239,0.35)] cursor-pointer"
                     >
                       <Maximize2 className="w-3 h-3" />
                       <span>Full-Screen Camera Mode</span>
@@ -915,23 +916,23 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                       onClick={() => setTeleprompterLargeText(v => !v)}
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
                         teleprompterLargeText
-                          ? 'bg-[#09ADEF]/20 border-[#09ADEF] text-white'
-                          : 'bg-[#040507] border-white/12 text-neutral-300 hover:text-white'
+                          ? 'bg-[#0EA5E9]/20 border-[#0EA5E9] text-white'
+                          : 'bg-[#080C14] border-white/12 text-slate-300 hover:text-white'
                       }`}
                     >
                       <span>{teleprompterLargeText ? 'A- Standard' : 'A+ Large Text'}</span>
                     </button>
 
                     {/* Sleek Pill Timer */}
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#040507] border border-white/12">
-                      <Clock className="w-3.5 h-3.5 text-[#09ADEF]" />
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#080C14] border border-white/12">
+                      <Clock className="w-3.5 h-3.5 text-[#0EA5E9]" />
                       <span className="font-mono-tech text-xs font-semibold text-white">
                         {formatTimer(timerSeconds)}
                       </span>
                       <button
                         type="button"
                         onClick={() => setTimerRunning(r => !r)}
-                        className="text-[11px] font-bold uppercase tracking-wider text-[#09ADEF] cursor-pointer"
+                        className="text-[11px] font-bold uppercase tracking-wider text-[#0EA5E9] cursor-pointer"
                       >
                         {timerRunning ? 'Pause' : 'Start'}
                       </button>
@@ -941,7 +942,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                           setTimerRunning(false);
                           setTimerSeconds(0);
                         }}
-                        className="text-neutral-400 hover:text-white cursor-pointer"
+                        className="text-slate-400 hover:text-white cursor-pointer"
                         title="Reset timer"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
@@ -960,7 +961,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         <span className="font-mono-tech text-xs font-bold text-white">
                           {formatTimer(timerSeconds)}
                         </span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF] ml-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#0EA5E9] ml-1">
                           LOOK HERE ↑ AT CAMERA
                         </span>
                       </div>
@@ -975,7 +976,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         <button
                           type="button"
                           onClick={() => setFullscreenPrompter(false)}
-                          className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-neutral-200 cursor-pointer"
+                          className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-slate-200 cursor-pointer"
                         >
                           ✕ Exit
                         </button>
@@ -984,8 +985,8 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
 
                     {/* Upper-Screen Eye-Line Script Reader */}
                     <div className="flex-1 overflow-y-auto py-4 space-y-5 max-w-2xl mx-auto w-full">
-                      <div className="p-4 rounded-2xl bg-[#070A0F] border border-[#09ADEF]/40">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF] mb-1">
+                      <div className="p-4 rounded-2xl bg-[#070A0F] border border-[#0EA5E9]/40">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9] mb-1">
                           TAKE 1 · OPENING HOOK (0:00–0:15)
                         </div>
                         <p
@@ -998,13 +999,13 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                       </div>
 
                       <div className="p-4 rounded-2xl bg-[#05070B] border border-white/10">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF] mb-1">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9] mb-1">
                           TAKE 2 · HUMANIZE & KEYWORD (0:15–0:30)
                         </div>
                         <p
                           className={`${
                             teleprompterLargeText ? 'text-xl sm:text-2xl' : 'text-base sm:text-xl'
-                          } text-neutral-100 leading-relaxed font-medium`}
+                          } text-slate-100 leading-relaxed font-medium`}
                         >
                           {buildTake2Pitch(false)}
                         </p>
@@ -1013,13 +1014,13 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                       {matchingPillar && (
                         <>
                           <div className="p-4 rounded-2xl bg-[#05070B] border border-white/10 space-y-2">
-                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">
+                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
                               TAKE 3 · BREAK OLD BELIEF (0:30–1:45)
                             </div>
                             <p
                               className={`${
                                 teleprompterLargeText ? 'text-xl sm:text-2xl' : 'text-base sm:text-xl'
-                              } text-neutral-200 leading-relaxed`}
+                              } text-slate-200 leading-relaxed`}
                             >
                               {matchingPillar.breaksBelief}
                             </p>
@@ -1030,8 +1031,8 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                             )}
                           </div>
 
-                          <div className="p-4 rounded-2xl bg-[#070A0F] border-l-4 border-[#09ADEF] space-y-2">
-                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                          <div className="p-4 rounded-2xl bg-[#070A0F] border-l-4 border-[#0EA5E9] space-y-2">
+                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9]">
                               TAKE 4 · INSTALL THE 2MM SHIFT (1:45–3:00)
                             </div>
                             <p
@@ -1042,7 +1043,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                               {matchingPillar.installsBelief}
                             </p>
                             {matchingPillar.mustHitBeats && (
-                              <p className="text-sm text-[#09ADEF] font-semibold">
+                              <p className="text-sm text-[#0EA5E9] font-semibold">
                                 Beats: {matchingPillar.mustHitBeats}
                               </p>
                             )}
@@ -1051,8 +1052,8 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                       )}
 
                       {attachedMagnet && (
-                        <div className="p-4 rounded-2xl bg-[#070A0F] border border-[#09ADEF]/40">
-                          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF] mb-1">
+                        <div className="p-4 rounded-2xl bg-[#070A0F] border border-[#0EA5E9]/40">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9] mb-1">
                             TAKE 5 · DIRECT CTA (3:00–3:10)
                           </div>
                           <p
@@ -1060,7 +1061,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                               teleprompterLargeText ? 'text-xl sm:text-3xl' : 'text-lg sm:text-2xl'
                             } font-bold text-white leading-snug`}
                           >
-                            “Comment <span className="text-[#09ADEF]">‘{attachedMagnet.keywordTrigger}’</span> below and I’ll DM you the {attachedMagnet.workingTitle}!”
+                            “Comment <span className="text-[#0EA5E9]">‘{attachedMagnet.keywordTrigger}’</span> below and I’ll DM you the {attachedMagnet.workingTitle}!”
                           </p>
                         </div>
                       )}
@@ -1090,14 +1091,14 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                 )}
 
                 {/* Large Readable 5-Take Teleprompter Card */}
-                <div className="p-4 sm:p-6 rounded-2xl bg-[#040507] border border-[#09ADEF]/30 space-y-4 sm:space-y-5">
+                <div className="p-4 sm:p-6 rounded-2xl bg-[#080C14] border border-[#0EA5E9]/30 space-y-4 sm:space-y-5">
                   {/* TAKE 1: SIGNAL */}
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">
                         TAKE 1 · SIGNAL HOOK (0:00–0:15)
                       </span>
-                      <span className="text-[10px] text-neutral-500">Tight & direct close-up</span>
+                      <span className="text-[10px] text-slate-500">Tight & direct close-up</span>
                     </div>
                     <p
                       className={`${
@@ -1111,15 +1112,15 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   {/* TAKE 2: HUMANIZE */}
                   <div className="pt-4 border-t border-white/[0.07]">
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">
                         TAKE 2 · HUMANIZE & KEYWORD SETUP (0:15–0:30)
                       </span>
-                      <span className="text-[10px] text-neutral-500">Shift camera 30° / medium shot</span>
+                      <span className="text-[10px] text-slate-500">Shift camera 30° / medium shot</span>
                     </div>
                     <p
                       className={`${
                         teleprompterLargeText ? 'text-base sm:text-xl' : 'text-xs sm:text-sm'
-                      } text-neutral-200 leading-relaxed`}
+                      } text-slate-200 leading-relaxed`}
                     >
                       {buildTake2Pitch(true)}
                     </p>
@@ -1130,14 +1131,14 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-white/[0.07]">
                       <div>
                         <div className="flex items-center justify-between gap-1 mb-1">
-                          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
+                          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
                             TAKE 3 · ILLUMINATE OLD BELIEF (0:30–1:45)
                           </span>
                         </div>
                         <p
                           className={`${
                             teleprompterLargeText ? 'text-base sm:text-xl' : 'text-xs sm:text-sm'
-                          } text-neutral-300 leading-relaxed`}
+                          } text-slate-300 leading-relaxed`}
                         >
                           {matchingPillar.breaksBelief}
                         </p>
@@ -1157,9 +1158,9 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         )}
                       </div>
 
-                      <div className="border-l-2 border-[#09ADEF]/50 pl-3.5 space-y-2.5">
+                      <div className="border-l-2 border-[#0EA5E9]/50 pl-3.5 space-y-2.5">
                         <div>
-                          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF] block mb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9] block mb-1">
                             TAKE 4 · FORMULATE THE 2MM SHIFT (1:45–3:00)
                           </span>
                           <p
@@ -1172,8 +1173,8 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         </div>
 
                         {matchingPillar.mustHitBeats && (
-                          <div className="p-2.5 rounded-lg bg-[#09ADEF]/10 border border-[#09ADEF]/25">
-                            <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#09ADEF] block mb-0.5">
+                          <div className="p-2.5 rounded-lg bg-[#0EA5E9]/10 border border-[#0EA5E9]/25">
+                            <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9] block mb-0.5">
                               MUST-HIT TEACHING BEATS:
                             </span>
                             <p
@@ -1193,34 +1194,34 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   {attachedMagnet && (
                     <div className="pt-4 border-t border-white/[0.07]">
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">
                           TAKE 5 · TRANSFER CTA (3:00–3:10)
                         </span>
-                        <span className="text-[10px] text-neutral-500">Urgent punch-in close-up</span>
+                        <span className="text-[10px] text-slate-500">Urgent punch-in close-up</span>
                       </div>
                       <p
                         className={`${
                           teleprompterLargeText ? 'text-lg sm:text-2xl' : 'text-sm sm:text-base'
                         } font-medium text-white leading-relaxed`}
                       >
-                        “Comment <span className="text-[#09ADEF] font-bold">‘{attachedMagnet.keywordTrigger}’</span> below and I’ll DM you the {attachedMagnet.workingTitle} ({attachedMagnet.completionTime}).”
+                        “Comment <span className="text-[#0EA5E9] font-bold">‘{attachedMagnet.keywordTrigger}’</span> below and I’ll DM you the {attachedMagnet.workingTitle} ({attachedMagnet.completionTime}).”
                       </p>
                     </div>
                   )}
                 </div>
 
                 {/* Collapsible 5-Take Camera Angles Guide */}
-                <details className="group rounded-xl bg-[#040507] border border-white/[0.07] p-3.5">
-                  <summary className="text-xs font-semibold text-neutral-300 cursor-pointer flex items-center justify-between list-none">
+                <details className="group rounded-xl bg-[#080C14] border border-white/[0.07] p-3.5">
+                  <summary className="text-xs font-semibold text-slate-300 cursor-pointer flex items-center justify-between list-none">
                     <span>5-Take Camera Framing Guide</span>
-                    <span className="text-[#09ADEF] text-[11px] group-open:rotate-90 transition-transform">▸</span>
+                    <span className="text-[#0EA5E9] text-[11px] group-open:rotate-90 transition-transform">▸</span>
                   </summary>
                   <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5 mt-3 pt-3 border-t border-white/[0.07]">
                     {FIVE_TAKES_GUIDE.map(row => (
                       <div key={row.take} className="p-2.5 rounded-xl bg-black border border-white/[0.07] text-xs">
-                        <div className="font-bold text-[#09ADEF]">{row.take}</div>
-                        <div className="text-[10px] text-neutral-500 mb-1">{row.time}</div>
-                        <p className="text-neutral-300 text-[11px] leading-relaxed">{row.camera}</p>
+                        <div className="font-bold text-[#0EA5E9]">{row.take}</div>
+                        <div className="text-[10px] text-slate-500 mb-1">{row.time}</div>
+                        <p className="text-slate-300 text-[11px] leading-relaxed">{row.camera}</p>
                       </div>
                     ))}
                   </div>
@@ -1230,7 +1231,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveStep(2)}
-                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-neutral-300 cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#151F34] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-slate-300 cursor-pointer"
                   >
                     <ChevronLeft className="w-4 h-4" /> Back
                   </button>
@@ -1250,7 +1251,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
             {activeStep === 4 && (
               <div className="space-y-5">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9]">
                     STEP 4 · PROOF OF EXECUTION
                   </span>
                   <h2 className="font-display text-2xl sm:text-3xl text-white mt-1">
@@ -1262,7 +1263,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
 
                 <div className="space-y-3">
                   <div className="relative">
-                    <Link2 className="w-4 h-4 sm:w-5 sm:h-5 text-[#09ADEF] absolute left-3.5 sm:left-4 top-3.5" />
+                    <Link2 className="w-4 h-4 sm:w-5 sm:h-5 text-[#0EA5E9] absolute left-3.5 sm:left-4 top-3.5" />
                     <input
                       id="social-proof-url"
                       type="url"
@@ -1272,7 +1273,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         if (linkError) setLinkError(null);
                       }}
                       placeholder="https://www.instagram.com/reel/..."
-                      className="w-full rounded-lg bg-[#040507] border border-white/15 pl-10 sm:pl-12 pr-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-[#09ADEF]"
+                      className="w-full rounded-lg bg-[#080C14] border border-white/15 pl-10 sm:pl-12 pr-4 py-3 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#0EA5E9]"
                     />
                   </div>
 
@@ -1284,20 +1285,20 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   )}
 
                   {/* Option to Post Video Link to Discussion & Notify All Students */}
-                  <div className="p-3.5 sm:p-4 rounded-xl bg-[#040507] border border-[#09ADEF]/30 space-y-3">
+                  <div className="p-3.5 sm:p-4 rounded-xl bg-[#080C14] border border-[#0EA5E9]/30 space-y-3">
                     <label className="flex items-start gap-3 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={shareToGroupOnVerify}
                         onChange={e => setShareToGroupOnVerify(e.target.checked)}
-                        className="mt-0.5 rounded accent-[#09ADEF] w-4 h-4 shrink-0"
+                        className="mt-0.5 rounded accent-[#0EA5E9] w-4 h-4 shrink-0"
                       />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                          <Users className="w-3.5 h-3.5 text-[#09ADEF]" />
+                          <Users className="w-3.5 h-3.5 text-[#0EA5E9]" />
                           <span>Post Link to Discussion & Notify All Students</span>
                         </div>
-                        <p className="text-[11px] text-neutral-400 mt-0.5 leading-relaxed">
+                        <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
                           Notifies all students that you posted a new video so they can learn from your output. When Coach Josh reviews this video, his feedback will automatically append to the discussion thread.
                         </p>
                       </div>
@@ -1309,7 +1310,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         value={groupShareNote}
                         onChange={e => setGroupShareNote(e.target.value)}
                         placeholder="Add a takeaway or question for the discussion thread (optional)..."
-                        className="w-full rounded-lg bg-black border border-white/12 px-3 py-2 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#09ADEF]"
+                        className="w-full rounded-lg bg-black border border-white/12 px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#0EA5E9]"
                       />
                     )}
                   </div>
@@ -1317,18 +1318,18 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
 
                 {currentVideo.status === 'Completed' && currentVideo.coachReviewStatus !== 'Needs Revision' ? (
                   <div className="space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-xl bg-[#040507] border border-[#09ADEF]/30 p-4 sm:p-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-xl bg-[#080C14] border border-[#0EA5E9]/30 p-4 sm:p-5">
                       <div className="flex items-center gap-3 min-w-0">
-                        <CheckCircle2 className="w-6 h-6 text-[#09ADEF] shrink-0" />
+                        <CheckCircle2 className="w-6 h-6 text-[#0EA5E9] shrink-0" />
                         <div className="min-w-0">
-                          <div className="text-xs font-bold uppercase tracking-wider text-[#09ADEF]">
+                          <div className="text-xs font-bold uppercase tracking-wider text-[#0EA5E9]">
                             Day #{currentVideo.dayNumber} Verified · {currentVideo.coachReviewStatus || 'Pending Coach Review'}
                           </div>
                           <a
                             href={currentVideo.videoUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-xs text-[#09ADEF] hover:underline flex items-center gap-1 truncate mt-0.5"
+                            className="text-xs text-[#0EA5E9] hover:underline flex items-center gap-1 truncate mt-0.5"
                           >
                             <span className="truncate">{currentVideo.videoUrl}</span>
                             <ExternalLink className="w-3 h-3 shrink-0" />
@@ -1352,7 +1353,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onOpenGroupThread(currentVideo.groupPostId)}
-                            className="px-3.5 py-2.5 rounded-lg bg-[#09ADEF]/15 hover:bg-[#09ADEF]/25 border border-[#09ADEF]/40 text-[#09ADEF] text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
+                            className="px-3.5 py-2.5 rounded-lg bg-[#0EA5E9]/15 hover:bg-[#0EA5E9]/25 border border-[#0EA5E9]/40 text-[#0EA5E9] text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
                           >
                             <Users className="w-3.5 h-3.5" />
                             <span>Open Discussion Thread →</span>
@@ -1371,7 +1372,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                                 });
                                 setGroupShareNote('');
                               }}
-                              className="px-3.5 py-2.5 rounded-lg bg-[#09ADEF]/15 hover:bg-[#09ADEF]/25 border border-[#09ADEF]/40 text-[#09ADEF] text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
+                              className="px-3.5 py-2.5 rounded-lg bg-[#0EA5E9]/15 hover:bg-[#0EA5E9]/25 border border-[#0EA5E9]/40 text-[#0EA5E9] text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
                             >
                               <Share2 className="w-3.5 h-3.5" />
                               <span>Post to Discussion & Notify</span>
@@ -1405,7 +1406,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setActiveStep(3)}
-                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-neutral-300 cursor-pointer"
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#151F34] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-slate-300 cursor-pointer"
                     >
                       <ChevronLeft className="w-4 h-4" /> Back
                     </button>
@@ -1450,7 +1451,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
               <select
                 value={stageFilter}
                 onChange={e => setStageFilter(e.target.value)}
-                className="rounded-xl bg-[#0B0D14] border border-white/12 text-xs text-slate-200 px-3 py-2 focus:outline-none focus:border-sky-400"
+                className="rounded-xl bg-[#080C14] border border-white/12 text-xs text-slate-200 px-3 py-2 focus:outline-none focus:border-sky-400"
               >
                 <option value="ALL">All Funnel Stages ({student.supportingVideos.length})</option>
                 {uniqueStages.map(st => (
@@ -1489,7 +1490,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     </div>
                     <div className="text-sm font-medium text-white truncate">{item.title}</div>
                     {item.coachFeedback ? (
-                      <div className="text-xs text-[#09ADEF] truncate">
+                      <div className="text-xs text-[#0EA5E9] truncate">
                         Coach Note: “{item.coachFeedback}”
                       </div>
                     ) : item.videoUrl ? (
@@ -1518,7 +1519,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                             ? 'bg-emerald-500/20 text-emerald-300'
                             : item.coachReviewStatus === 'Needs Revision'
                             ? 'bg-rose-500/20 text-rose-300'
-                            : 'bg-[#09ADEF]/20 text-[#09ADEF]'
+                            : 'bg-[#0EA5E9]/20 text-[#0EA5E9]'
                         }`}
                       >
                         {item.coachReviewStatus === 'Approved'
@@ -1569,7 +1570,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
               <div className="p-4 rounded-xl bg-[#000000] border border-white/[0.08] space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9]">
                       CORE VIDEO {safeCoreIdx + 1} OF {totalCore} · {core.code} ({core.week})
                     </div>
                     <h2 className="font-display text-2xl uppercase text-white tracking-wide mt-0.5">
@@ -1596,7 +1597,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         setCoreSlideIdx(i => Math.min(totalCore - 1, i + 1));
                         setCoreUrlError(null);
                       }}
-                      className="p-2 rounded-lg bg-[#09ADEF]/15 border border-[#09ADEF]/40 text-[#09ADEF] hover:bg-[#09ADEF]/25 disabled:opacity-30 cursor-pointer"
+                      className="p-2 rounded-lg bg-[#0EA5E9]/15 border border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[#0EA5E9]/25 disabled:opacity-30 cursor-pointer"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
@@ -1613,7 +1614,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     setCoreSlideIdx(Number(e.target.value));
                     setCoreUrlError(null);
                   }}
-                  className="w-full accent-[#09ADEF] h-1.5 bg-white/10 rounded-lg cursor-pointer"
+                  className="w-full accent-[#0EA5E9] h-1.5 bg-white/10 rounded-lg cursor-pointer"
                 />
 
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
@@ -1631,7 +1632,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         }}
                         className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-[0.14em] transition-all cursor-pointer shrink-0 ${
                           isCurrent
-                            ? 'bg-[#09ADEF] text-white'
+                            ? 'bg-[#0EA5E9] text-white'
                             : needsRev
                             ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                             : isDone
@@ -1655,7 +1656,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         {core.code} · {core.week}
                       </span>
                       <span className="text-xs text-zinc-400">Target Runtime: {core.runtimeTarget}</span>
-                      <span className="px-2 py-0.5 rounded bg-[#09ADEF]/10 border border-[#09ADEF]/30 text-[10px] font-semibold text-[#09ADEF]">
+                      <span className="px-2 py-0.5 rounded bg-[#0EA5E9]/10 border border-[#0EA5E9]/30 text-[10px] font-semibold text-[#0EA5E9]">
                         {core.code === 'B1'
                           ? '⇄ Two-Way Synced with Lesson 10'
                           : core.code === 'B2'
@@ -1680,7 +1681,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         setCoreUrlDrafts(prev => ({ ...prev, [core.id]: e.target.value }));
                         if (coreUrlError) setCoreUrlError(null);
                       }}
-                      className="rounded-xl bg-[#040507] border border-white/12 px-3 py-2 text-xs text-white w-60 sm:w-64 focus:outline-none focus:border-[#09ADEF]"
+                      className="rounded-xl bg-[#080C14] border border-white/12 px-3 py-2 text-xs text-white w-60 sm:w-64 focus:outline-none focus:border-[#0EA5E9]"
                     />
                     <button
                       type="button"
@@ -1711,8 +1712,8 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         core.status === 'Completed'
                           ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300'
                           : core.status === 'In Progress'
-                          ? 'border-[#09ADEF]/40 bg-[#09ADEF]/15 text-[#09ADEF]'
-                          : 'border-white/12 bg-[#040507] text-zinc-300'
+                          ? 'border-[#0EA5E9]/40 bg-[#0EA5E9]/15 text-[#0EA5E9]'
+                          : 'border-white/12 bg-[#080C14] text-zinc-300'
                       }`}
                     >
                       <option value="Not Started">Not Started</option>
@@ -1723,13 +1724,13 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                 </div>
 
                 {/* Core Video Discussion Share Bar */}
-                <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-[#040507] border border-[#09ADEF]/25">
-                  <label className="flex items-center gap-2 text-xs text-neutral-200 cursor-pointer">
+                <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-[#080C14] border border-[#0EA5E9]/25">
+                  <label className="flex items-center gap-2 text-xs text-slate-200 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={shareCoreToGroup}
                       onChange={e => setShareCoreToGroup(e.target.checked)}
-                      className="rounded accent-[#09ADEF] w-3.5 h-3.5"
+                      className="rounded accent-[#0EA5E9] w-3.5 h-3.5"
                     />
                     <span>Post Core Video link to Discussion & notify all students when verified</span>
                   </label>
@@ -1739,7 +1740,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                       <button
                         type="button"
                         onClick={() => onOpenGroupThread(core.groupPostId)}
-                        className="px-3 py-1 rounded-lg bg-[#09ADEF]/15 hover:bg-[#09ADEF]/25 border border-[#09ADEF]/40 text-[10px] font-bold uppercase tracking-wider text-[#09ADEF] inline-flex items-center gap-1 cursor-pointer"
+                        className="px-3 py-1 rounded-lg bg-[#0EA5E9]/15 hover:bg-[#0EA5E9]/25 border border-[#0EA5E9]/40 text-[10px] font-bold uppercase tracking-wider text-[#0EA5E9] inline-flex items-center gap-1 cursor-pointer"
                       >
                         <Users className="w-3 h-3" />
                         <span>Open Discussion Thread →</span>
@@ -1756,7 +1757,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                               notifyCohort: true
                             })
                           }
-                          className="px-3 py-1 rounded-lg bg-[#09ADEF]/15 hover:bg-[#09ADEF]/25 border border-[#09ADEF]/40 text-[10px] font-bold uppercase tracking-wider text-[#09ADEF] inline-flex items-center gap-1 cursor-pointer"
+                          className="px-3 py-1 rounded-lg bg-[#0EA5E9]/15 hover:bg-[#0EA5E9]/25 border border-[#0EA5E9]/40 text-[10px] font-bold uppercase tracking-wider text-[#0EA5E9] inline-flex items-center gap-1 cursor-pointer"
                         >
                           <Share2 className="w-3 h-3" />
                           <span>Post to Discussion Now</span>
@@ -1780,11 +1781,11 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         ? 'bg-emerald-500/10 border-emerald-500/30'
                         : core.coachReviewStatus === 'Needs Revision'
                         ? 'bg-rose-500/10 border-rose-500/30'
-                        : 'bg-[#09ADEF]/10 border-[#09ADEF]/30'
+                        : 'bg-[#0EA5E9]/10 border-[#0EA5E9]/30'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">
                         COACH REVIEW · {core.coachReviewStatus || 'Pending Review'}
                       </span>
                       {core.coachReviewedAt && (
@@ -1799,27 +1800,27 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
 
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-2.5">
                   {(['S', 'H', 'I', 'F', 'T'] as const).map(letter => (
-                    <div key={letter} className="p-3.5 rounded-xl bg-[#040507] border border-white/[0.07] space-y-1.5">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">{letter} Stage</div>
+                    <div key={letter} className="p-3.5 rounded-xl bg-[#080C14] border border-white/[0.07] space-y-1.5">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">{letter} Stage</div>
                       <p className="text-xs text-zinc-200 leading-relaxed">{core.shiftStages[letter]}</p>
                     </div>
                   ))}
                 </div>
 
-                <details className="group rounded-xl bg-[#040507] border border-white/[0.08] p-3.5">
-                  <summary className="text-xs font-semibold text-neutral-300 cursor-pointer flex items-center justify-between list-none">
+                <details className="group rounded-xl bg-[#080C14] border border-white/[0.08] p-3.5">
+                  <summary className="text-xs font-semibold text-slate-300 cursor-pointer flex items-center justify-between list-none">
                     <span className="flex items-center gap-2">
-                      <SlidersHorizontal className="w-3.5 h-3.5 text-[#09ADEF]" />
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-[#0EA5E9]" />
                       <span>Customize S.H.I.F.T. Script Beats (Two-Way Synced with Workbook)</span>
                     </span>
-                    <span className="text-[#09ADEF] text-[11px] group-open:rotate-90 transition-transform">▸</span>
+                    <span className="text-[#0EA5E9] text-[11px] group-open:rotate-90 transition-transform">▸</span>
                   </summary>
                   <div className="mt-3 pt-3 border-t border-white/[0.07] grid grid-cols-1 md:grid-cols-5 gap-2.5">
                     {(['S', 'H', 'I', 'F', 'T'] as const).map(letter => {
                       const draftObj = core.scriptDraft || { S: '', H: '', I: '', F: '', T: '' };
                       return (
                         <div key={letter} className="space-y-1">
-                          <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                          <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">
                             {letter} Beat Draft
                           </label>
                           <textarea
@@ -1832,7 +1833,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                               })
                             }
                             placeholder={`Draft your ${letter} stage script beat...`}
-                            className="w-full rounded-lg bg-black border border-white/10 p-2 text-[11px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#09ADEF]"
+                            className="w-full rounded-lg bg-black border border-white/10 p-2 text-[11px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#0EA5E9]"
                           />
                         </div>
                       );
@@ -1855,17 +1856,17 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   const scriptedCount = demoItems.filter(d => d.hasScript).length;
 
                   return (
-                    <div className="p-4 rounded-xl bg-[#040507] border border-white/[0.08] space-y-3">
+                    <div className="p-4 rounded-xl bg-[#080C14] border border-white/[0.08] space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
-                          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">
                             B5 · 20 EXPERT DEMO VIDEOS MATRIX (LESSONS 7 & 14–17)
                           </div>
                           <p className="text-[11px] text-zinc-400 mt-0.5">
                             Working titles pull from Lesson 7 (5×4 Matrix) and script outlines pull from Lessons 14–17 (Batches 1–4).
                           </p>
                         </div>
-                        <span className="px-2.5 py-1 rounded-full bg-[#09ADEF]/15 border border-[#09ADEF]/30 text-[10px] font-bold text-[#09ADEF]">
+                        <span className="px-2.5 py-1 rounded-full bg-[#0EA5E9]/15 border border-[#0EA5E9]/30 text-[10px] font-bold text-[#0EA5E9]">
                           {scriptedCount} / 20 Scripted in Workbook
                         </span>
                       </div>
@@ -1881,7 +1882,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                             }`}
                           >
                             <div className="flex items-center justify-between gap-1">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF]">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-[#0EA5E9]">
                                 #{item.padded} · L{item.batchLesson}
                               </span>
                               <span
@@ -1948,7 +1949,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
               <div className="p-4 rounded-xl bg-[#000000] border border-white/[0.08] space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9]">
                       PILLAR PANEL {safePillarIdx + 1} OF {totalPillars} · {pillar.stage}
                     </div>
                     <h2 className="font-display text-2xl uppercase text-white tracking-wide mt-0.5">
@@ -1969,7 +1970,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                       type="button"
                       disabled={safePillarIdx >= totalPillars - 1}
                       onClick={() => setPillarSlideIdx(i => Math.min(totalPillars - 1, i + 1))}
-                      className="p-2 rounded-lg bg-[#09ADEF]/15 border border-[#09ADEF]/40 text-[#09ADEF] hover:bg-[#09ADEF]/25 disabled:opacity-30 cursor-pointer"
+                      className="p-2 rounded-lg bg-[#0EA5E9]/15 border border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[#0EA5E9]/25 disabled:opacity-30 cursor-pointer"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
@@ -1982,7 +1983,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                   max={totalPillars - 1}
                   value={safePillarIdx}
                   onChange={e => setPillarSlideIdx(Number(e.target.value))}
-                  className="w-full accent-[#09ADEF] h-1.5 bg-white/10 rounded-lg cursor-pointer"
+                  className="w-full accent-[#0EA5E9] h-1.5 bg-white/10 rounded-lg cursor-pointer"
                 />
 
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
@@ -1996,7 +1997,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                         onClick={() => setPillarSlideIdx(idx)}
                         className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-[0.14em] transition-all cursor-pointer shrink-0 ${
                           isCurrent
-                            ? 'bg-[#09ADEF] text-white'
+                            ? 'bg-[#0EA5E9] text-white'
                             : isDone
                             ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                             : 'bg-white/[0.03] text-zinc-400 border border-white/[0.06] hover:text-white'
@@ -2013,7 +2014,7 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
               <div key={pillar.id} className="p-5 sm:p-6 rounded-xl bg-[#000000] border border-white/[0.08] space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9]">
                       PILLAR #{safePillarIdx + 1} · {pillar.stage}
                     </span>
                     <h3 className="font-display text-2xl sm:text-3xl uppercase text-white tracking-wide mt-1">
@@ -2028,8 +2029,8 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                       pillar.status === 'Completed'
                         ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300'
                         : pillar.status === 'In Progress'
-                        ? 'border-[#09ADEF]/40 bg-[#09ADEF]/15 text-[#09ADEF]'
-                        : 'border-white/12 bg-[#040507] text-zinc-300'
+                        ? 'border-[#0EA5E9]/40 bg-[#0EA5E9]/15 text-[#0EA5E9]'
+                        : 'border-white/12 bg-[#080C14] text-zinc-300'
                     }`}
                   >
                     <option value="Not Started">Not Started</option>
@@ -2045,13 +2046,13 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                     </span>
                     <span className="text-zinc-100 leading-relaxed">{pillar.breaksBelief}</span>
                   </div>
-                  <div className="p-4 rounded-xl bg-[#09ADEF]/[0.07] border border-[#09ADEF]/25">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF] block mb-1.5">
+                  <div className="p-4 rounded-xl bg-[#0EA5E9]/[0.07] border border-[#0EA5E9]/25">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9] block mb-1.5">
                       Installs (New Belief)
                     </span>
                     <span className="text-zinc-100 leading-relaxed">{pillar.installsBelief}</span>
                   </div>
-                  <div className="p-4 rounded-xl bg-[#040507] border border-white/[0.08]">
+                  <div className="p-4 rounded-xl bg-[#080C14] border border-white/[0.08]">
                     <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400 block mb-1.5">
                       Must-Hit Beats
                     </span>
@@ -2060,20 +2061,20 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div className="p-4 rounded-xl bg-[#040507] border border-white/[0.07]">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">1. Actionable (How-To)</div>
+                  <div className="p-4 rounded-xl bg-[#080C14] border border-white/[0.07]">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">1. Actionable (How-To)</div>
                     <div className="text-xs text-white mt-1.5 leading-relaxed">“{pillar.angles.actionable}”</div>
                   </div>
-                  <div className="p-4 rounded-xl bg-[#040507] border border-white/[0.07]">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">2. Analytical (Data)</div>
+                  <div className="p-4 rounded-xl bg-[#080C14] border border-white/[0.07]">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">2. Analytical (Data)</div>
                     <div className="text-xs text-white mt-1.5 leading-relaxed">“{pillar.angles.analytical}”</div>
                   </div>
-                  <div className="p-4 rounded-xl bg-[#040507] border border-white/[0.07]">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">3. Psychological</div>
+                  <div className="p-4 rounded-xl bg-[#080C14] border border-white/[0.07]">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">3. Psychological</div>
                     <div className="text-xs text-white mt-1.5 leading-relaxed">“{pillar.angles.psychological}”</div>
                   </div>
-                  <div className="p-4 rounded-xl bg-[#040507] border border-white/[0.07]">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">4. Aspirational (Story)</div>
+                  <div className="p-4 rounded-xl bg-[#080C14] border border-white/[0.07]">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">4. Aspirational (Story)</div>
                     <div className="text-xs text-white mt-1.5 leading-relaxed">“{pillar.angles.aspirational}”</div>
                   </div>
                 </div>

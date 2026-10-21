@@ -63,7 +63,7 @@ interface GroupDiscussionViewProps {
 const CATEGORY_LABELS: Record<GroupDiscussionCategory, { label: string; color: string }> = {
   VIDEO_BREAKDOWN: {
     label: '🎬 Video Breakdown',
-    color: 'bg-[#09ADEF]/15 text-[#09ADEF] border-[#09ADEF]/35'
+    color: 'bg-[#0EA5E9]/15 text-[#0EA5E9] border-[#0EA5E9]/35'
   },
   HOOK_FEEDBACK: {
     label: '⚡ Hook Brainstorm',
@@ -79,7 +79,7 @@ const CATEGORY_LABELS: Record<GroupDiscussionCategory, { label: string; color: s
   },
   GENERAL: {
     label: '💬 General Discussion',
-    color: 'bg-white/[0.06] text-neutral-300 border-white/15'
+    color: 'bg-white/[0.06] text-slate-300 border-white/15'
   }
 };
 
@@ -327,17 +327,18 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Top Hero Banner + KPI Strip */}
-      <div className="glass-panel rounded-2xl p-4 sm:p-6 space-y-4">
+      <div className="relative rounded-2xl bg-[#0F1626]/90 border border-brand-500/30 p-4 sm:p-6 glow-cyan space-y-4 overflow-hidden">
+        <div className="absolute -top-12 -right-12 w-40 h-40 bg-brand-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#09ADEF]/12 border border-[#09ADEF]/30 text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-500/15 border border-brand-400/25 text-[11px] font-semibold uppercase tracking-wider text-brand-300">
               <Users className="w-3.5 h-3.5" />
-              <span>DISCUSSION · VIDEO OUTPUTS, COACH FEEDBACK & THREADS</span>
+              <span>Community · Video Outputs &amp; Coach Feedback</span>
             </div>
-            <h1 className="font-display text-2xl sm:text-4xl text-white tracking-wide uppercase mt-2">
-              DISCUSSION
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight mt-2">
+              Community Discussion &amp; Video Reviews
             </h1>
-            <p className="text-xs sm:text-sm text-neutral-300 mt-1 max-w-2xl leading-relaxed">
+            <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
               Share your verified videos so all students get notified to watch and learn, see Coach Josh’s official feedback automatically appended to each video thread, and jump into open discussions.
             </p>
           </div>
@@ -349,10 +350,10 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                 setShowShareVideoDrawer(v => !v);
                 setShowNewThreadForm(false);
               }}
-              className="px-3.5 py-2.5 rounded-xl bg-[#09ADEF]/15 hover:bg-[#09ADEF]/25 border border-[#09ADEF]/40 text-xs font-bold uppercase tracking-wider text-[#09ADEF] inline-flex items-center gap-1.5 cursor-pointer transition"
+              className="px-3.5 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 active:scale-[0.98] text-xs font-medium text-slate-200 inline-flex items-center gap-1.5 cursor-pointer transition-all"
             >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>Share Video to Discussion</span>
+              <Share2 className="w-3.5 h-3.5 text-brand-400" />
+              <span>Share Video</span>
             </button>
 
             <button
@@ -361,33 +362,33 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                 setShowNewThreadForm(v => !v);
                 setShowShareVideoDrawer(false);
               }}
-              className="btn-2mm px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
+              className="btn-2mm px-4 py-2.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>New Discussion Thread</span>
+              <span>New Thread</span>
             </button>
           </div>
         </div>
 
         {/* 4-Metric Discussion Activity Row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3 border-t border-white/[0.07]">
-          <div className="p-3 rounded-xl bg-[#040507] border border-white/[0.06]">
-            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400">
+          <div className="p-3 rounded-xl bg-black/40 border border-white/[0.06]">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
               ACTIVE STUDENTS
             </div>
             <div className="font-display text-xl sm:text-2xl text-white mt-0.5">
               {students.length} MEMBERS
             </div>
           </div>
-          <div className="p-3 rounded-xl bg-[#040507] border border-white/[0.06]">
-            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#09ADEF]">
+          <div className="p-3 rounded-xl bg-black/40 border border-white/[0.06]">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-400">
               SHARED VIDEOS
             </div>
-            <div className="font-display text-xl sm:text-2xl text-[#09ADEF] mt-0.5">
+            <div className="font-display text-xl sm:text-2xl text-brand-400 mt-0.5">
               {videoBreakdownCount} POSTED
             </div>
           </div>
-          <div className="p-3 rounded-xl bg-[#040507] border border-white/[0.06]">
+          <div className="p-3 rounded-xl bg-black/40 border border-white/[0.06]">
             <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-400">
               COACH BREAKDOWNS
             </div>
@@ -395,8 +396,8 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
               {coachReviewedThreadCount} APPENDED
             </div>
           </div>
-          <div className="p-3 rounded-xl bg-[#040507] border border-white/[0.06]">
-            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400">
+          <div className="p-3 rounded-xl bg-black/40 border border-white/[0.06]">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
               DISCUSSION REPLIES
             </div>
             <div className="font-display text-xl sm:text-2xl text-white mt-0.5">
@@ -410,11 +411,11 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
       {showShareVideoDrawer && (
         <form
           onSubmit={handleShareSelectedVideoSubmit}
-          className="glass-panel rounded-2xl p-4 sm:p-6 border border-[#09ADEF]/40 space-y-4"
+          className="glass-panel rounded-2xl p-4 sm:p-6 border border-[#0EA5E9]/40 space-y-4"
         >
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9]">
                 POST COMPLETED VIDEO OUTPUT TO DISCUSSION
               </div>
               <h2 className="font-display text-xl sm:text-2xl text-white mt-0.5">
@@ -424,26 +425,26 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
             <button
               type="button"
               onClick={() => setShowShareVideoDrawer(false)}
-              className="text-xs text-neutral-400 hover:text-white cursor-pointer"
+              className="text-xs text-slate-400 hover:text-white cursor-pointer"
             >
               ✕ Close
             </button>
           </div>
 
           {shareableVideos.length === 0 ? (
-            <div className="p-4 rounded-xl bg-[#040507] border border-white/10 text-xs text-neutral-300">
+            <div className="p-4 rounded-xl bg-[#080C14] border border-white/10 text-xs text-slate-300">
               You don’t have any verified video links yet. Head to <strong>Studio → Step 4 (Verify Link)</strong> and check <em>"Post Link to Discussion"</em> when verifying your next video!
             </div>
           ) : (
             <>
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
+                <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
                   SELECT VERIFIED VIDEO TO SHARE IN DISCUSSION
                 </label>
                 <select
                   value={selectedShareVideoKey || shareableVideos[0]?.key || ''}
                   onChange={e => setSelectedShareVideoKey(e.target.value)}
-                  className="w-full rounded-xl bg-[#040507] border border-white/15 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#09ADEF]"
+                  className="w-full rounded-xl bg-[#080C14] border border-white/15 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#0EA5E9]"
                 >
                   {shareableVideos.map(v => (
                     <option key={v.key} value={v.key}>
@@ -454,7 +455,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
+                <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
                   TAKEAWAY OR QUESTION FOR DISCUSSION (OPTIONAL)
                 </label>
                 <textarea
@@ -462,16 +463,16 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                   value={shareVideoNote}
                   onChange={e => setShareVideoNote(e.target.value)}
                   placeholder="E.g., Tested Hook #2 today and tried a faster camera shift on Take 2. Would love feedback on the pacing!"
-                  className="w-full rounded-xl bg-[#040507] border border-white/15 p-3 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#09ADEF]"
+                  className="w-full rounded-xl bg-[#080C14] border border-white/15 p-3 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#0EA5E9]"
                 />
               </div>
 
-              <label className="flex items-center gap-2.5 p-3 rounded-xl bg-[#09ADEF]/10 border border-[#09ADEF]/30 cursor-pointer">
+              <label className="flex items-center gap-2.5 p-3 rounded-xl bg-[#0EA5E9]/10 border border-[#0EA5E9]/30 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={notifyOnVideoShare}
                   onChange={e => setNotifyOnVideoShare(e.target.checked)}
-                  className="rounded accent-[#09ADEF] w-4 h-4"
+                  className="rounded accent-[#0EA5E9] w-4 h-4"
                 />
                 <span className="text-xs text-white font-medium">
                   Notify all students that a new video output was posted so they can watch & discuss
@@ -482,7 +483,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowShareVideoDrawer(false)}
-                  className="px-4 py-2 rounded-lg bg-white/[0.05] text-xs text-neutral-300 cursor-pointer"
+                  className="px-4 py-2 rounded-lg bg-white/[0.05] text-xs text-slate-300 cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -503,11 +504,11 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
       {showNewThreadForm && (
         <form
           onSubmit={handleCreateGeneralSubmit}
-          className="glass-panel rounded-2xl p-4 sm:p-6 border border-[#09ADEF]/40 space-y-4"
+          className="glass-panel rounded-2xl p-4 sm:p-6 border border-[#0EA5E9]/40 space-y-4"
         >
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9]">
                 START A DISCUSSION THREAD
               </div>
               <h2 className="font-display text-xl sm:text-2xl text-white mt-0.5">
@@ -517,7 +518,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
             <button
               type="button"
               onClick={() => setShowNewThreadForm(false)}
-              className="text-xs text-neutral-400 hover:text-white cursor-pointer"
+              className="text-xs text-slate-400 hover:text-white cursor-pointer"
             >
               ✕ Close
             </button>
@@ -525,7 +526,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2 space-y-1.5">
-              <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
+              <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
                 DISCUSSION TOPIC / HEADLINE
               </label>
               <input
@@ -534,18 +535,18 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                 value={newThreadTitle}
                 onChange={e => setNewThreadTitle(e.target.value)}
                 placeholder="E.g., How are you all framing Take 3 when telling a client story?"
-                className="w-full rounded-xl bg-[#040507] border border-white/15 px-3.5 py-2.5 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#09ADEF]"
+                className="w-full rounded-xl bg-[#080C14] border border-white/15 px-3.5 py-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#0EA5E9]"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
+              <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
                 TOPIC TAG
               </label>
               <select
                 value={newThreadCategory}
                 onChange={e => setNewThreadCategory(e.target.value as GroupDiscussionCategory)}
-                className="w-full rounded-xl bg-[#040507] border border-white/15 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#09ADEF]"
+                className="w-full rounded-xl bg-[#080C14] border border-white/15 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#0EA5E9]"
               >
                 <option value="GENERAL">💬 General Discussion</option>
                 <option value="HOOK_FEEDBACK">⚡ Hook Brainstorm</option>
@@ -557,7 +558,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
+            <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
               DETAILS / QUESTION
             </label>
             <textarea
@@ -566,12 +567,12 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
               value={newThreadBody}
               onChange={e => setNewThreadBody(e.target.value)}
               placeholder="Share your question, hook draft, or takeaway so Coach Josh and other students can jump in..."
-              className="w-full rounded-xl bg-[#040507] border border-white/15 p-3 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#09ADEF]"
+              className="w-full rounded-xl bg-[#080C14] border border-white/15 p-3 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#0EA5E9]"
             />
           </div>
 
-          <details className="group rounded-xl bg-[#040507] border border-white/10 p-3">
-            <summary className="text-[11px] font-semibold text-[#09ADEF] cursor-pointer list-none flex items-center justify-between">
+          <details className="group rounded-xl bg-[#080C14] border border-white/10 p-3">
+            <summary className="text-[11px] font-semibold text-[#0EA5E9] cursor-pointer list-none flex items-center justify-between">
               <span>+ Attach Optional Link (Video or Resource)</span>
               <span className="group-open:rotate-90 transition-transform">▸</span>
             </summary>
@@ -581,14 +582,14 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                 value={newThreadUrl}
                 onChange={e => setNewThreadUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full rounded-xl bg-black border border-white/15 px-3.5 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-[#09ADEF]"
+                className="w-full rounded-xl bg-black border border-white/15 px-3.5 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-[#0EA5E9]"
               />
-              <label className="flex items-center gap-2 text-xs text-neutral-300 cursor-pointer">
+              <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={notifyOnNewThread}
                   onChange={e => setNotifyOnNewThread(e.target.checked)}
-                  className="rounded accent-[#09ADEF] w-3.5 h-3.5"
+                  className="rounded accent-[#0EA5E9] w-3.5 h-3.5"
                 />
                 <span>Notify all students about this new discussion thread</span>
               </label>
@@ -599,7 +600,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
             <button
               type="button"
               onClick={() => setShowNewThreadForm(false)}
-              className="px-4 py-2 rounded-lg bg-white/[0.05] text-xs text-neutral-300 cursor-pointer"
+              className="px-4 py-2 rounded-lg bg-white/[0.05] text-xs text-slate-300 cursor-pointer"
             >
               Cancel
             </button>
@@ -616,26 +617,26 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
 
       {/* Filter & Search Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar p-1 rounded-xl bg-[#07090D] border border-white/[0.08]">
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar p-1 rounded-2xl bg-white/[0.04] border border-white/[0.08] shadow-inner">
           {[
             { id: 'ALL' as const, label: `All Threads (${enrichedPosts.length})` },
             {
               id: 'VIDEOS' as const,
-              label: `🎬 Video Outputs & Feedback (${videoBreakdownCount})`
+              label: `🎬 Video Outputs (${videoBreakdownCount})`
             },
             {
               id: 'GENERAL' as const,
-              label: `💬 General Discussion (${enrichedPosts.length - videoBreakdownCount})`
+              label: `💬 General (${enrichedPosts.length - videoBreakdownCount})`
             }
           ].map(tab => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setFeedMode(tab.id)}
-              className={`px-3 py-2 rounded-lg text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.06em] whitespace-nowrap transition-all cursor-pointer ${
+              className={`px-3 py-2 rounded-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
                 feedMode === tab.id
-                  ? 'bg-[#09ADEF] text-white shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
-                  : 'text-neutral-400 hover:text-white'
+                  ? 'bg-gradient-to-r from-brand-600 to-sky-500 text-white font-semibold shadow-md'
+                  : 'text-slate-400 hover:text-slate-200 font-medium hover:bg-white/[0.03]'
               }`}
             >
               {tab.label}
@@ -644,13 +645,13 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
         </div>
 
         <div className="relative w-full md:w-64">
-          <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search videos, hooks, feedback..."
-            className="w-full rounded-xl bg-[#07090D] border border-white/10 pl-8 pr-3 py-2 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#09ADEF]"
+            className="w-full rounded-xl bg-surface-card border border-white/10 pl-8 pr-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-brand-400"
           />
         </div>
       </div>
@@ -658,11 +659,11 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
       {/* Feed List */}
       {filteredPosts.length === 0 ? (
         <div className="glass-panel rounded-2xl p-8 text-center space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-[#09ADEF]/15 border border-[#09ADEF]/30 text-[#09ADEF] flex items-center justify-center mx-auto">
+          <div className="w-12 h-12 rounded-2xl bg-[#0EA5E9]/15 border border-[#0EA5E9]/30 text-[#0EA5E9] flex items-center justify-center mx-auto">
             <Users className="w-6 h-6" />
           </div>
           <div className="text-base font-semibold text-white">No Discussion Threads Match This Filter</div>
-          <p className="text-xs text-neutral-400 max-w-md mx-auto leading-relaxed">
+          <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
             Share a completed video from your Studio or start a new discussion thread above so everyone can collaborate and review outputs together.
           </p>
         </div>
@@ -685,9 +686,9 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                 }}
                 className={`glass-panel rounded-2xl p-4 sm:p-6 space-y-4 transition-all ${
                   isHighlighted
-                    ? 'border-[#09ADEF] shadow-[0_0_35px_rgba(9,173,239,0.28)]'
+                    ? 'border-[#0EA5E9] shadow-[0_0_35px_rgba(9,173,239,0.28)]'
                     : post.pinned
-                    ? 'border-[#09ADEF]/35'
+                    ? 'border-[#0EA5E9]/35'
                     : ''
                 }`}
               >
@@ -697,8 +698,8 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                     <div
                       className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 border ${
                         post.authorRole === 'COACH'
-                          ? 'bg-[#09ADEF] text-white border-[#09ADEF] shadow-[0_0_16px_rgba(9,173,239,0.35)]'
-                          : 'bg-[#09ADEF]/15 text-[#09ADEF] border-[#09ADEF]/30'
+                          ? 'bg-[#0EA5E9] text-white border-[#0EA5E9] shadow-[0_0_16px_rgba(9,173,239,0.35)]'
+                          : 'bg-[#0EA5E9]/15 text-[#0EA5E9] border-[#0EA5E9]/30'
                       }`}
                     >
                       {post.authorAvatar}
@@ -707,11 +708,11 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-bold text-white">{post.authorName}</span>
                         {post.authorRole === 'COACH' ? (
-                          <span className="px-2 py-0.5 rounded bg-[#09ADEF]/20 border border-[#09ADEF]/40 text-[9px] font-bold uppercase tracking-wider text-[#09ADEF]">
+                          <span className="px-2 py-0.5 rounded bg-[#0EA5E9]/20 border border-[#0EA5E9]/40 text-[9px] font-bold uppercase tracking-wider text-[#0EA5E9]">
                             COACH · ARCHITECT
                           </span>
                         ) : (
-                          <span className="text-xs text-neutral-400 truncate">
+                          <span className="text-xs text-slate-400 truncate">
                             {post.authorCompany}
                             {post.authorNiche ? ` · ${post.authorNiche}` : ''}
                           </span>
@@ -728,7 +729,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                         >
                           {catMeta.label}
                         </span>
-                        <span className="text-[11px] text-neutral-500">{post.timestamp}</span>
+                        <span className="text-[11px] text-slate-500">{post.timestamp}</span>
                       </div>
                     </div>
                   </div>
@@ -743,7 +744,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                           className={`p-1.5 rounded-lg border text-xs cursor-pointer transition ${
                             post.pinned
                               ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                              : 'bg-[#040507] border-white/10 text-neutral-400 hover:text-white'
+                              : 'bg-[#080C14] border-white/10 text-slate-400 hover:text-white'
                           }`}
                           title={post.pinned ? 'Unpin thread' : 'Pin thread to top'}
                         >
@@ -754,7 +755,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                         <button
                           type="button"
                           onClick={() => onDeletePost(post.id)}
-                          className="p-1.5 rounded-lg bg-[#040507] hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/40 text-neutral-400 hover:text-rose-300 text-xs cursor-pointer transition"
+                          className="p-1.5 rounded-lg bg-[#080C14] hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/40 text-slate-400 hover:text-rose-300 text-xs cursor-pointer transition"
                           title="Delete thread"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -770,7 +771,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                     {post.title}
                   </h3>
                   {post.body && (
-                    <p className="text-xs sm:text-sm text-neutral-200 leading-relaxed whitespace-pre-line">
+                    <p className="text-xs sm:text-sm text-slate-200 leading-relaxed whitespace-pre-line">
                       {post.body}
                     </p>
                   )}
@@ -778,7 +779,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
 
                 {/* Shared Video Card + Auto-Appended Coach Feedback (For VIDEO_SHARE Posts) */}
                 {post.type === 'VIDEO_SHARE' && (
-                  <div className="rounded-xl bg-[#040507] border border-white/10 overflow-hidden">
+                  <div className="rounded-xl bg-[#080C14] border border-white/10 overflow-hidden">
                     <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="space-y-1.5 min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
@@ -786,12 +787,12 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                             {post.videoBadge || 'DAILY VIDEO'}
                           </span>
                           {post.videoStage && (
-                            <span className="text-[11px] text-neutral-400">{post.videoStage}</span>
+                            <span className="text-[11px] text-slate-400">{post.videoStage}</span>
                           )}
                         </div>
                         {post.hookUsed && (
-                          <div className="text-xs text-neutral-300">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF] mr-1.5">
+                          <div className="text-xs text-slate-300">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#0EA5E9] mr-1.5">
                               Opening Hook Used:
                             </span>
                             “{post.hookUsed}”
@@ -846,7 +847,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                           </div>
                           <div className="flex items-center gap-2">
                             {post.coachReviewedAt && (
-                              <span className="text-[10px] text-neutral-400">
+                              <span className="text-[10px] text-slate-400">
                                 {post.coachReviewedAt}
                               </span>
                             )}
@@ -866,21 +867,21 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                                     [post.id]: post.coachFeedback || ''
                                   }));
                                 }}
-                                className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF] hover:underline cursor-pointer"
+                                className="text-[10px] font-bold uppercase tracking-wider text-[#0EA5E9] hover:underline cursor-pointer"
                               >
                                 {isReviewingInline ? 'Close Editor' : 'Edit Breakdown'}
                               </button>
                             )}
                           </div>
                         </div>
-                        <p className="text-xs sm:text-sm text-white font-medium leading-relaxed border-l-2 border-[#09ADEF] pl-3 py-0.5">
+                        <p className="text-xs sm:text-sm text-white font-medium leading-relaxed border-l-2 border-[#0EA5E9] pl-3 py-0.5">
                           “{post.coachFeedback || `Marked as ${post.coachReviewStatus} by Coach Josh.`}”
                         </p>
                       </div>
                     ) : (
                       <div className="px-4 py-3 border-t border-white/[0.06] bg-black/40 flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 text-xs text-neutral-400">
-                          <Clock className="w-3.5 h-3.5 text-[#09ADEF]" />
+                        <div className="flex items-center gap-2 text-xs text-slate-400">
+                          <Clock className="w-3.5 h-3.5 text-[#0EA5E9]" />
                           <span>
                             Awaiting Coach Josh’s review — official coaching feedback will automatically append here once reviewed.
                           </span>
@@ -899,7 +900,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                                 [post.id]: ''
                               }));
                             }}
-                            className="px-3 py-1.5 rounded-lg bg-[#09ADEF]/20 hover:bg-[#09ADEF]/30 border border-[#09ADEF]/40 text-[10px] font-bold uppercase tracking-wider text-[#09ADEF] cursor-pointer"
+                            className="px-3 py-1.5 rounded-lg bg-[#0EA5E9]/20 hover:bg-[#0EA5E9]/30 border border-[#0EA5E9]/40 text-[10px] font-bold uppercase tracking-wider text-[#0EA5E9] cursor-pointer"
                           >
                             + Append Coach Feedback Now
                           </button>
@@ -913,8 +914,8 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                       post.studentId &&
                       post.videoId &&
                       onReviewStudentVideo && (
-                        <div className="p-4 border-t border-[#09ADEF]/30 bg-[#070B12] space-y-3">
-                          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                        <div className="p-4 border-t border-[#0EA5E9]/30 bg-[#070B12] space-y-3">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">
                             COACH REVIEW & BREAKDOWN (UPDATES STUDIO & DISCUSSION THREAD)
                           </div>
                           <div className="flex flex-wrap gap-2">
@@ -937,7 +938,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                                       ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
                                       : active && st === 'Needs Revision'
                                       ? 'bg-rose-500/20 border-rose-400 text-rose-300'
-                                      : 'bg-black border-white/10 text-neutral-400'
+                                      : 'bg-black border-white/10 text-slate-400'
                                   }`}
                                 >
                                   {st === 'Approved' ? '✓ Approve Video' : '↻ Needs Revision'}
@@ -957,7 +958,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                                     [post.id]: preset
                                   }))
                                 }
-                                className="px-2.5 py-1 rounded-lg bg-black hover:bg-white/[0.06] border border-white/10 text-[11px] text-neutral-300 cursor-pointer"
+                                className="px-2.5 py-1 rounded-lg bg-black hover:bg-white/[0.06] border border-white/10 text-[11px] text-slate-300 cursor-pointer"
                               >
                                 + “{preset.slice(0, 48)}...”
                               </button>
@@ -974,14 +975,14 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                               }))
                             }
                             placeholder="Write your Coach Breakdown — this appends directly to this thread and notifies all students..."
-                            className="w-full rounded-xl bg-black border border-white/15 p-3 text-xs text-white focus:outline-none focus:border-[#09ADEF]"
+                            className="w-full rounded-xl bg-black border border-white/15 p-3 text-xs text-white focus:outline-none focus:border-[#0EA5E9]"
                           />
 
                           <div className="flex justify-end gap-2">
                             <button
                               type="button"
                               onClick={() => setActiveCoachReviewPostId(null)}
-                              className="px-3.5 py-1.5 rounded-lg bg-white/5 text-xs text-neutral-300 cursor-pointer"
+                              className="px-3.5 py-1.5 rounded-lg bg-white/5 text-xs text-slate-300 cursor-pointer"
                             >
                               Cancel
                             </button>
@@ -1045,7 +1046,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                             onClick={() =>
                               setActiveVimeoPostId(isPlayingVimeo ? null : post.id)
                             }
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#09ADEF] hover:bg-[#09B3F8] text-white text-xs font-bold cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#0EA5E9] hover:bg-[#38BDF8] text-white text-xs font-bold cursor-pointer"
                           >
                             {isPlayingVimeo ? (
                               <>
@@ -1066,7 +1067,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                             href={rawUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-[#040507] hover:bg-white/[0.06] border border-white/10 text-xs font-semibold text-neutral-300 hover:text-white"
+                            className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-[#080C14] hover:bg-white/[0.06] border border-white/10 text-xs font-semibold text-slate-300 hover:text-white"
                           >
                             <span>Open on Vimeo</span>
                             <ExternalLink className="w-3 h-3" />
@@ -1094,7 +1095,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                         href={post.videoUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#040507] hover:bg-white/[0.06] border border-[#09ADEF]/35 text-xs font-semibold text-[#09ADEF]"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#080C14] hover:bg-white/[0.06] border border-[#0EA5E9]/35 text-xs font-semibold text-[#0EA5E9]"
                       >
                         <span>Open Attached Link</span>
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -1112,7 +1113,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
                         hasVotedFire
                           ? 'bg-amber-500/20 border-amber-400/50 text-amber-200'
-                          : 'bg-[#040507] border-white/10 text-neutral-300 hover:border-white/25'
+                          : 'bg-[#080C14] border-white/10 text-slate-300 hover:border-white/25'
                       }`}
                     >
                       <Flame className="w-3.5 h-3.5 text-amber-400" />
@@ -1127,11 +1128,11 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                       onClick={() => onToggleReaction(post.id, 'shift')}
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
                         hasVotedShift
-                          ? 'bg-[#09ADEF]/20 border-[#09ADEF] text-white'
-                          : 'bg-[#040507] border-white/10 text-neutral-300 hover:border-white/25'
+                          ? 'bg-[#0EA5E9]/20 border-[#0EA5E9] text-white'
+                          : 'bg-[#080C14] border-white/10 text-slate-300 hover:border-white/25'
                       }`}
                     >
-                      <Lightbulb className="w-3.5 h-3.5 text-[#09ADEF]" />
+                      <Lightbulb className="w-3.5 h-3.5 text-[#0EA5E9]" />
                       <span>2mm Shift</span>
                       {post.reactions.shift.length > 0 && (
                         <span className="font-bold">{post.reactions.shift.length}</span>
@@ -1144,7 +1145,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
                         hasVotedProps
                           ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200'
-                          : 'bg-[#040507] border-white/10 text-neutral-300 hover:border-white/25'
+                          : 'bg-[#080C14] border-white/10 text-slate-300 hover:border-white/25'
                       }`}
                     >
                       <ThumbsUp className="w-3.5 h-3.5 text-emerald-400" />
@@ -1155,8 +1156,8 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-xs text-neutral-400">
-                    <MessageSquare className="w-3.5 h-3.5 text-[#09ADEF]" />
+                  <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                    <MessageSquare className="w-3.5 h-3.5 text-[#0EA5E9]" />
                     <span>
                       {post.comments.length}{' '}
                       {post.comments.length === 1 ? 'Discussion Reply' : 'Discussion Replies'}
@@ -1165,7 +1166,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                 </div>
 
                 {/* Open Discussion Thread (Comments + Reply Input) */}
-                <div className="rounded-xl bg-[#040507] border border-white/[0.07] p-3.5 sm:p-4 space-y-3">
+                <div className="rounded-xl bg-[#080C14] border border-white/[0.07] p-3.5 sm:p-4 space-y-3">
                   {post.comments.length > 0 && (
                     <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
                       {post.comments.map(comment => (
@@ -1173,30 +1174,30 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                           key={comment.id}
                           className={`p-3 rounded-xl border text-xs ${
                             comment.isOfficialCoachReview
-                              ? 'bg-[#09ADEF]/12 border-[#09ADEF]/40 text-white'
+                              ? 'bg-[#0EA5E9]/12 border-[#0EA5E9]/40 text-white'
                               : comment.authorRole === 'COACH'
-                              ? 'bg-[#09ADEF]/[0.07] border-[#09ADEF]/30 text-white'
-                              : 'bg-black/60 border-white/[0.07] text-neutral-200'
+                              ? 'bg-[#0EA5E9]/[0.07] border-[#0EA5E9]/30 text-white'
+                              : 'bg-black/60 border-white/[0.07] text-slate-200'
                           }`}
                         >
                           <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                             <div className="flex items-center gap-2">
-                              <span className="w-5 h-5 rounded-md bg-[#09ADEF]/20 text-[#09ADEF] font-bold text-[10px] flex items-center justify-center">
+                              <span className="w-5 h-5 rounded-md bg-[#0EA5E9]/20 text-[#0EA5E9] font-bold text-[10px] flex items-center justify-center">
                                 {comment.authorAvatar}
                               </span>
                               <span className="font-bold text-white">{comment.authorName}</span>
                               {comment.authorRole === 'COACH' && (
-                                <span className="px-1.5 py-0.5 rounded bg-[#09ADEF] text-white text-[9px] font-bold uppercase tracking-wider">
+                                <span className="px-1.5 py-0.5 rounded bg-[#0EA5E9] text-white text-[9px] font-bold uppercase tracking-wider">
                                   {comment.isOfficialCoachReview ? 'COACH REVIEW' : 'COACH'}
                                 </span>
                               )}
                               {comment.authorCompany && comment.authorRole !== 'COACH' && (
-                                <span className="text-[11px] text-neutral-500">
+                                <span className="text-[11px] text-slate-500">
                                   · {comment.authorCompany}
                                 </span>
                               )}
                             </div>
-                            <span className="text-[10px] text-neutral-500">{comment.timestamp}</span>
+                            <span className="text-[10px] text-slate-500">{comment.timestamp}</span>
                           </div>
                           <p className="text-xs sm:text-sm leading-relaxed pl-7">{comment.text}</p>
                         </div>
@@ -1225,7 +1226,7 @@ export const GroupDiscussionView: React.FC<GroupDiscussionViewProps> = ({
                           ? 'Add Coach feedback or reply to this discussion thread...'
                           : `Reply as ${currentStudent.name} — share feedback, ask a question, or discuss...`
                       }
-                      className="flex-1 rounded-xl bg-black border border-white/12 px-3.5 py-2.5 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#09ADEF]"
+                      className="flex-1 rounded-xl bg-black border border-white/12 px-3.5 py-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#0EA5E9]"
                     />
                     <button
                       type="submit"

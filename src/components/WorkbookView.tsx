@@ -176,7 +176,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
     <div className="space-y-3 sm:space-y-5">
       {/* Desktop Top Phase Strip + Optional Admin Edit Button (Hidden on Mobile to prevent 5-layer toolbar stacking) */}
       <div className="hidden lg:flex items-center justify-between gap-2">
-        <div className="flex overflow-x-auto no-scrollbar gap-1.5 pb-0.5">
+        <div className="flex overflow-x-auto no-scrollbar p-1 rounded-2xl bg-white/[0.04] border border-white/[0.08] gap-1 shadow-inner">
           {PHASES.map(p => {
             const isSelectedPhase = activeLesson.phase === p.num;
             const firstLesson = lessons.find(w => w.phase === p.num)?.weekNumber || 1;
@@ -186,10 +186,10 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 key={p.num}
                 type="button"
                 onClick={() => selectLesson(firstLesson)}
-                className={`px-3.5 py-2 rounded-lg border text-left transition-all cursor-pointer flex items-center gap-2 shrink-0 text-[11px] font-bold uppercase tracking-[0.08em] ${
+                className={`px-3.5 py-2 rounded-xl text-left transition-all cursor-pointer flex items-center gap-2 shrink-0 text-xs ${
                   isSelectedPhase
-                    ? 'bg-[#09ADEF] text-white border-[#09ADEF] shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
-                    : 'bg-[#07090D] border-white/[0.08] text-neutral-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-brand-600 to-sky-500 text-white font-semibold shadow-md'
+                    : 'text-slate-400 hover:text-slate-200 font-medium hover:bg-white/[0.03]'
                 }`}
               >
                 <span>Phase {p.num}: {p.name}</span>
@@ -212,7 +212,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
           <button
             type="button"
             onClick={openEditor}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-[11px] font-bold uppercase tracking-wider text-[#09ADEF] transition-colors cursor-pointer shrink-0"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-xs font-semibold text-brand-400 transition-colors cursor-pointer shrink-0"
           >
             <Pencil className="w-3.5 h-3.5" />
             <span>Edit Lesson</span>
@@ -223,7 +223,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
       {/* Main Split Layout: Left Lessons Menu (Desktop) + Right Lesson Canvas */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Left 3 Columns: Clean Lesson Menu for Active Phase (Desktop Only) */}
-        <div className="hidden lg:block lg:col-span-3 glass-panel rounded-2xl p-3.5 space-y-2.5">
+        <div className="hidden lg:block lg:col-span-3 rounded-2xl bg-surface-card border border-white/[0.06] p-3.5 space-y-2.5">
           <div className="space-y-1">
             {lessonsInCurrentPhase.map(lesson => {
               const isSelected = lesson.weekNumber === selectedLessonNum;
@@ -235,13 +235,13 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                   onClick={() => selectLesson(lesson.weekNumber)}
                   className={`w-full text-left p-2.5 rounded-xl border transition-all cursor-pointer flex items-start justify-between gap-2 ${
                     isSelected
-                      ? 'bg-[#09ADEF]/12 border-[#09ADEF] text-white'
-                      : 'bg-[#040507] border-transparent hover:bg-white/[0.04] text-neutral-300'
+                      ? 'bg-brand-500/15 border-brand-400/40 text-white shadow-sm'
+                      : 'bg-black/30 border-transparent hover:bg-white/[0.04] text-slate-300'
                   }`}
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#09ADEF]">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-400">
                         LESSON {String(lesson.weekNumber).padStart(2, '0')}
                       </span>
                       {lesson.isPhaseGate && (
@@ -255,7 +255,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                     </div>
                   </div>
                   {allDone && (
-                    <span className="w-4 h-4 rounded-full bg-[#09ADEF]/20 text-[#09ADEF] flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="w-4 h-4 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center shrink-0 mt-0.5">
                       <Check className="w-2.5 h-2.5 stroke-[3]" />
                     </span>
                   )}
@@ -270,7 +270,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               value={selectedLessonNum}
               onChange={e => selectLesson(Number(e.target.value))}
               aria-label="Jump to lesson"
-              className="w-full rounded-lg bg-[#040507] border border-white/12 px-2.5 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#09ADEF]"
+              className="w-full rounded-xl bg-[#080C14] border border-white/10 px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-400"
             >
               {lessons.map(l => (
                 <option key={l.weekNumber} value={l.weekNumber}>
@@ -284,31 +284,32 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
         {/* Right 9 Columns: Active Lesson */}
         <div className="lg:col-span-9 space-y-3 sm:space-y-4">
           {/* Unified Lesson Header & 3-Tab Switcher */}
-          <div className="glass-panel rounded-2xl p-4 sm:p-7">
+          <div className="relative rounded-2xl bg-[#0F1626]/90 border border-brand-500/30 p-4 sm:p-7 glow-cyan overflow-hidden">
+            <div className="absolute -top-12 -right-12 w-40 h-40 bg-brand-500/10 rounded-full blur-3xl pointer-events-none" />
             <div className="flex items-center justify-between gap-2 mb-2.5">
               <button
                 type="button"
                 onClick={() => setShowLessonDrawer(true)}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#09ADEF]/12 border border-[#09ADEF]/30 text-[10px] font-bold uppercase tracking-[0.14em] text-[#09ADEF] hover:bg-[#09ADEF]/20 transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-500/15 border border-brand-400/25 text-[11px] font-semibold uppercase tracking-wider text-brand-300 hover:bg-brand-500/25 transition cursor-pointer"
                 title="Tap to view all 5 Phases & 26 Lessons"
               >
                 <span>
                   LESSON {String(activeLesson.weekNumber).padStart(2, '0')}/26 · PHASE 0{activeLesson.phase}
                 </span>
                 {activeLesson.isPhaseGate && (
-                  <span className="px-1.5 py-0.2 rounded bg-[#09ADEF] text-white text-[8px]">
+                  <span className="px-1.5 py-0.2 rounded bg-brand-500 text-white text-[8px]">
                     GATE
                   </span>
                 )}
                 <span>▾</span>
               </button>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 {isCoachMode && (
                   <button
                     type="button"
                     onClick={openEditor}
-                    className="lg:hidden p-1.5 rounded-lg bg-[#0A0C10] border border-white/10 text-[#09ADEF] cursor-pointer"
+                    className="lg:hidden p-1.5 rounded-xl bg-white/[0.06] border border-white/10 text-brand-400 cursor-pointer"
                     title="Edit Lesson"
                   >
                     <Pencil className="w-3.5 h-3.5" />
@@ -318,7 +319,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                   type="button"
                   disabled={selectedLessonNum <= 1}
                   onClick={() => selectLesson(Math.max(1, selectedLessonNum - 1))}
-                  className="p-1.5 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-neutral-300 disabled:opacity-30 cursor-pointer"
+                  className="p-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-slate-300 disabled:opacity-30 active:scale-95 transition-all cursor-pointer"
                   title="Previous Lesson"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -327,7 +328,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                   type="button"
                   disabled={selectedLessonNum >= 26}
                   onClick={() => selectLesson(Math.min(26, selectedLessonNum + 1))}
-                  className="p-1.5 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-neutral-300 disabled:opacity-30 cursor-pointer"
+                  className="p-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-slate-300 disabled:opacity-30 active:scale-95 transition-all cursor-pointer"
                   title="Next Lesson"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -338,17 +339,17 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
             <h1 className="font-display text-2xl sm:text-4xl text-white tracking-wide leading-tight">
               {activeLesson.title}
             </h1>
-            <p className="text-xs sm:text-sm text-neutral-400 mt-1 leading-relaxed">{activeLesson.subtitle}</p>
+            <p className="text-xs sm:text-sm text-slate-300 mt-1 leading-relaxed">{activeLesson.subtitle}</p>
 
-            {/* Clean Single-Row 3-Tab Switcher */}
-            <div className="grid grid-cols-3 gap-1.5 mt-4 pt-3.5 border-t border-white/[0.07]">
+            {/* Segmented Pill 3-Tab Switcher */}
+            <div className="p-1 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-between gap-1 shadow-inner mt-4">
               <button
                 type="button"
                 onClick={() => setActivePanel('LESSON')}
-                className={`py-2 px-2 sm:px-3 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.06em] ${
+                className={`flex-1 py-2 px-2 sm:px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs ${
                   activePanel === 'LESSON'
-                    ? 'bg-[#09ADEF] text-white border-[#09ADEF] shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
-                    : 'bg-[#07090D] border-white/[0.07] text-neutral-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-brand-600 to-sky-500 text-white font-semibold shadow-md'
+                    : 'text-slate-400 hover:text-slate-200 font-medium hover:bg-white/[0.03]'
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5 shrink-0" />
@@ -358,10 +359,10 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               <button
                 type="button"
                 onClick={() => setActivePanel('WORKSHEET')}
-                className={`py-2 px-2 sm:px-3 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.06em] ${
+                className={`flex-1 py-2 px-2 sm:px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs ${
                   activePanel === 'WORKSHEET'
-                    ? 'bg-[#09ADEF] text-white border-[#09ADEF] shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
-                    : 'bg-[#07090D] border-white/[0.07] text-neutral-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-brand-600 to-sky-500 text-white font-semibold shadow-md'
+                    : 'text-slate-400 hover:text-slate-200 font-medium hover:bg-white/[0.03]'
                 }`}
               >
                 <FileEdit className="w-3.5 h-3.5 shrink-0" />
@@ -371,10 +372,10 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               <button
                 type="button"
                 onClick={() => setActivePanel('RUBRIC')}
-                className={`py-2 px-2 sm:px-3 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.06em] ${
+                className={`flex-1 py-2 px-2 sm:px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs ${
                   activePanel === 'RUBRIC'
-                    ? 'bg-[#09ADEF] text-white border-[#09ADEF] shadow-[0_4px_20px_rgba(9,173,239,0.35)]'
-                    : 'bg-[#07090D] border-white/[0.07] text-neutral-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-brand-600 to-sky-500 text-white font-semibold shadow-md'
+                    : 'text-slate-400 hover:text-slate-200 font-medium hover:bg-white/[0.03]'
                 }`}
               >
                 <Award className="w-3.5 h-3.5 shrink-0" />
@@ -387,16 +388,16 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
           {activePanel === 'LESSON' && (
             <div className="glass-panel rounded-2xl p-5 sm:p-7 space-y-5 sm:space-y-6">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9]">
                   PART 1 · CORE LESSON PRINCIPLES
                 </span>
                 <ul className="space-y-2.5 mt-3">
                   {activeLesson.lessonBullets.map((b, idx) => (
                     <li
                       key={idx}
-                      className="p-3.5 sm:p-4 rounded-xl bg-[#040507] border border-white/[0.07] text-xs sm:text-sm text-neutral-200 flex items-start gap-3 leading-relaxed"
+                      className="p-3.5 sm:p-4 rounded-xl bg-[#080C14] border border-white/[0.07] text-xs sm:text-sm text-slate-200 flex items-start gap-3 leading-relaxed"
                     >
-                      <span className="w-5 h-5 rounded-full bg-[#09ADEF]/15 text-[#09ADEF] text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="w-5 h-5 rounded-full bg-[#0EA5E9]/15 text-[#0EA5E9] text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
                         {idx + 1}
                       </span>
                       <span>{b}</span>
@@ -409,7 +410,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               {refFigures.length > 0 && currentFigure && (
                 <div className="pt-4 border-t border-white/[0.07] space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9]">
                       WORKBOOK REFERENCE FIGURE ({safeFigureIdx + 1} OF {refFigures.length})
                     </span>
 
@@ -419,7 +420,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                           type="button"
                           disabled={safeFigureIdx === 0}
                           onClick={() => setFigureSlideIdx(i => Math.max(0, i - 1))}
-                          className="p-1.5 rounded-lg bg-[#0A0C10] border border-white/10 text-neutral-300 disabled:opacity-30 cursor-pointer"
+                          className="p-1.5 rounded-lg bg-[#151F34] border border-white/10 text-slate-300 disabled:opacity-30 cursor-pointer"
                           title="Previous Figure"
                         >
                           <ChevronLeft className="w-3.5 h-3.5" />
@@ -431,8 +432,8 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                             onClick={() => setFigureSlideIdx(fIdx)}
                             className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all ${
                               fIdx === safeFigureIdx
-                                ? 'bg-[#09ADEF] text-white'
-                                : 'bg-[#07090D] border border-white/10 text-neutral-400 hover:text-white'
+                                ? 'bg-[#0EA5E9] text-white'
+                                : 'bg-[#0F1626] border border-white/10 text-slate-400 hover:text-white'
                             }`}
                           >
                             {f.figNumber}
@@ -442,7 +443,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                           type="button"
                           disabled={safeFigureIdx >= refFigures.length - 1}
                           onClick={() => setFigureSlideIdx(i => Math.min(refFigures.length - 1, i + 1))}
-                          className="p-1.5 rounded-lg bg-[#0A0C10] border border-white/10 text-neutral-300 disabled:opacity-30 cursor-pointer"
+                          className="p-1.5 rounded-lg bg-[#151F34] border border-white/10 text-slate-300 disabled:opacity-30 cursor-pointer"
                           title="Next Figure"
                         >
                           <ChevronRight className="w-3.5 h-3.5" />
@@ -452,7 +453,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                   </div>
 
                   {/* Single Active Reference Figure Card */}
-                  <div className="rounded-xl bg-[#040507] border border-white/[0.08] p-4 sm:p-5 space-y-3">
+                  <div className="rounded-xl bg-[#080C14] border border-white/[0.08] p-4 sm:p-5 space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className="badge-2mm px-2.5 py-0.5 rounded-full text-[10px]">
@@ -461,7 +462,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                         <h4 className="text-xs sm:text-sm font-semibold text-white">{currentFigure.title}</h4>
                       </div>
                       {currentFigure.caption && (
-                        <span className="text-xs text-neutral-400">{currentFigure.caption}</span>
+                        <span className="text-xs text-slate-400">{currentFigure.caption}</span>
                       )}
                     </div>
 
@@ -481,9 +482,9 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                               )}
                             </div>
                             {card.subtitle && (
-                              <div className="text-[11px] font-medium text-[#09ADEF]">{card.subtitle}</div>
+                              <div className="text-[11px] font-medium text-[#0EA5E9]">{card.subtitle}</div>
                             )}
-                            <p className="text-xs text-neutral-300 leading-relaxed">{card.body}</p>
+                            <p className="text-xs text-slate-300 leading-relaxed">{card.body}</p>
                           </div>
                         ))}
                       </div>
@@ -493,7 +494,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                       <div className="overflow-x-auto rounded-xl border border-white/8">
                         <table className="w-full text-left border-collapse text-xs">
                           <thead>
-                            <tr className="bg-white/[0.04] border-b border-white/10 text-neutral-300">
+                            <tr className="bg-white/[0.04] border-b border-white/10 text-slate-300">
                               {currentFigure.headers.map((h, hIdx) => (
                                 <th key={hIdx} className="p-3 font-semibold">
                                   {h}
@@ -508,7 +509,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                                   <td
                                     key={cellIdx}
                                     className={`p-3 leading-relaxed ${
-                                      cellIdx === 0 ? 'font-semibold text-white' : 'text-neutral-300'
+                                      cellIdx === 0 ? 'font-semibold text-white' : 'text-slate-300'
                                     }`}
                                   >
                                     {cell}
@@ -525,7 +526,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               )}
 
               <div className="pt-4 border-t border-white/[0.07]">
-                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF] block mb-3">
+                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9] block mb-3">
                   PART 2 · DO THE WORK (ACTION CHECKLIST)
                 </span>
                 <div className="space-y-2">
@@ -539,16 +540,16 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                         onClick={() => onToggleTask(activeLesson.weekNumber, idx)}
                         className={`w-full text-left p-3.5 sm:p-4 rounded-xl border transition-all flex items-start gap-3 cursor-pointer ${
                           isChecked
-                            ? 'bg-[#09ADEF]/10 border-[#09ADEF]/30 text-neutral-300'
-                            : 'bg-[#040507] border-white/[0.07] hover:border-[#09ADEF]/50 text-white'
+                            ? 'bg-[#0EA5E9]/10 border-[#0EA5E9]/30 text-slate-300'
+                            : 'bg-[#080C14] border-white/[0.07] hover:border-[#0EA5E9]/50 text-white'
                         }`}
                       >
                         {isChecked ? (
-                          <CheckSquare className="w-5 h-5 text-[#09ADEF] shrink-0 mt-0.5" />
+                          <CheckSquare className="w-5 h-5 text-[#0EA5E9] shrink-0 mt-0.5" />
                         ) : (
-                          <Square className="w-5 h-5 text-neutral-500 shrink-0 mt-0.5" />
+                          <Square className="w-5 h-5 text-slate-500 shrink-0 mt-0.5" />
                         )}
-                        <span className={`text-xs sm:text-sm leading-relaxed ${isChecked ? 'line-through text-neutral-400' : ''}`}>
+                        <span className={`text-xs sm:text-sm leading-relaxed ${isChecked ? 'line-through text-slate-400' : ''}`}>
                           {taskText}
                         </span>
                       </button>
@@ -559,19 +560,19 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
 
               {/* Coaching Prompt & Failure Trap Callout */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 pt-4 border-t border-white/[0.07]">
-                <div className="p-4 rounded-xl bg-[#040507] border-l-2 border-[#09ADEF] space-y-1">
-                  <div className="text-[10px] font-bold text-[#09ADEF] uppercase tracking-[0.16em]">
+                <div className="p-4 rounded-xl bg-[#080C14] border-l-2 border-[#0EA5E9] space-y-1">
+                  <div className="text-[10px] font-bold text-[#0EA5E9] uppercase tracking-[0.16em]">
                     THE SHIFT · COACHING PROMPT
                   </div>
-                  <p className="text-xs sm:text-sm italic text-neutral-200 leading-relaxed">
+                  <p className="text-xs sm:text-sm italic text-slate-200 leading-relaxed">
                     “{activeLesson.coachingPrompt}”
                   </p>
                 </div>
-                <div className="p-4 rounded-xl bg-[#040507] border border-rose-500/20 space-y-1">
+                <div className="p-4 rounded-xl bg-[#080C14] border border-rose-500/20 space-y-1">
                   <div className="text-[10px] font-bold text-rose-400 uppercase tracking-[0.16em] flex items-center gap-1.5">
                     <AlertTriangle className="w-3.5 h-3.5" /> WHERE IT FAILS
                   </div>
-                  <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">{activeLesson.whereItFails}</p>
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">{activeLesson.whereItFails}</p>
                 </div>
               </div>
 
@@ -598,11 +599,11 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               <div className="flex flex-wrap items-center justify-between gap-2.5 pb-4 border-b border-white/[0.07]">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9]">
                       LESSON {activeLesson.weekNumber} WORKSHEET · {lessonFieldsFilledCount}/{activeLesson.fields.length} FIELDS COMPLETED
                     </span>
                     {[10, 11, 12, 13].includes(activeLesson.weekNumber) && (
-                      <span className="px-2 py-0.5 rounded bg-[#09ADEF]/10 border border-[#09ADEF]/30 text-[10px] font-semibold text-[#09ADEF]">
+                      <span className="px-2 py-0.5 rounded bg-[#0EA5E9]/10 border border-[#0EA5E9]/30 text-[10px] font-semibold text-[#0EA5E9]">
                         ⇄ Two-Way Synced with Core Video B{activeLesson.weekNumber - 9} in Video Studio
                       </span>
                     )}
@@ -645,16 +646,16 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               </div>
 
               {activeLesson.workedExample && showWorkedExample && (
-                <div className="p-4 rounded-xl bg-[#040507] border border-[#09ADEF]/25 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[#09ADEF]">
+                <div className="p-4 rounded-xl bg-[#080C14] border border-[#0EA5E9]/25 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[#0EA5E9]">
                     <span>◆ Worked Example · {activeLesson.workedExample.title}</span>
-                    <span className="text-neutral-400">{activeLesson.workedExample.company}</span>
+                    <span className="text-slate-400">{activeLesson.workedExample.company}</span>
                   </div>
                   <div className="space-y-1.5 pt-1">
                     {activeLesson.workedExample.items.map((item, i) => (
                       <div key={i} className="grid grid-cols-1 sm:grid-cols-12 gap-0.5 sm:gap-1 text-xs">
-                        <span className="sm:col-span-4 font-semibold text-neutral-400">{item.label}</span>
-                        <span className="sm:col-span-8 text-neutral-200">{item.value}</span>
+                        <span className="sm:col-span-4 font-semibold text-slate-400">{item.label}</span>
+                        <span className="sm:col-span-8 text-slate-200">{item.value}</span>
                       </div>
                     ))}
                   </div>
@@ -663,41 +664,41 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
 
               {/* Collapsible Foundation & Story Bank Reference Bar for Scripting & VSL Lessons (8, 10–18) */}
               {[8, 10, 11, 12, 13, 14, 15, 16, 17, 18].includes(activeLesson.weekNumber) && (
-                <details className="group rounded-xl bg-[#040507] border border-white/[0.08] p-3.5">
-                  <summary className="text-xs font-semibold text-neutral-200 cursor-pointer flex items-center justify-between list-none">
+                <details className="group rounded-xl bg-[#080C14] border border-white/[0.08] p-3.5">
+                  <summary className="text-xs font-semibold text-slate-200 cursor-pointer flex items-center justify-between list-none">
                     <span className="flex items-center gap-2">
-                      <Sparkles className="w-3.5 h-3.5 text-[#09ADEF]" />
+                      <Sparkles className="w-3.5 h-3.5 text-[#0EA5E9]" />
                       <span>
                         Your Foundation Messaging & Top 8 Story Bank Reference (Lessons 2–6)
                       </span>
                     </span>
-                    <span className="text-[#09ADEF] text-[11px] group-open:rotate-90 transition-transform">▸</span>
+                    <span className="text-[#0EA5E9] text-[11px] group-open:rotate-90 transition-transform">▸</span>
                   </summary>
                   <div className="mt-3 pt-3 border-t border-white/[0.07] space-y-3 text-xs">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
                       <div className="p-2.5 rounded-lg bg-black border border-white/10">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF]">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#0EA5E9]">
                           Q1 · Core Transformation
                         </div>
-                        <p className="text-neutral-200 mt-1 leading-relaxed">
+                        <p className="text-slate-200 mt-1 leading-relaxed">
                           {student.worksheetAnswers['m02_q1_transformation'] ||
                             'Not yet filled in Lesson 2'}
                         </p>
                       </div>
                       <div className="p-2.5 rounded-lg bg-black border border-white/10">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF]">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#0EA5E9]">
                           Q4 · Core Belief Statement
                         </div>
-                        <p className="text-neutral-200 mt-1 leading-relaxed">
+                        <p className="text-slate-200 mt-1 leading-relaxed">
                           {student.worksheetAnswers['m02_q4_belief'] ||
                             'Not yet filled in Lesson 2'}
                         </p>
                       </div>
                       <div className="p-2.5 rounded-lg bg-black border border-white/10">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF]">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#0EA5E9]">
                           Q7 · Unique Mechanism & Proof
                         </div>
-                        <p className="text-neutral-200 mt-1 leading-relaxed">
+                        <p className="text-slate-200 mt-1 leading-relaxed">
                           {student.worksheetAnswers['m02_q7_mechanism'] ||
                             student.worksheetAnswers['m03_proof'] ||
                             'Not yet filled in Lesson 4'}
@@ -706,7 +707,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                     </div>
 
                     <div>
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                         Top 8 Story Bank (Lesson 6):
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
@@ -732,7 +733,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                               #{st.num}: {st.title || 'Untitled Story'}
                             </div>
                             {st.snippet && (
-                              <div className="text-neutral-400 line-clamp-2 mt-0.5">
+                              <div className="text-slate-400 line-clamp-2 mt-0.5">
                                 {st.snippet}
                               </div>
                             )}
@@ -746,10 +747,10 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
 
               {/* 1-Panel Slider Controls when there are multiple worksheet panels */}
               {worksheetSlides.length > 1 && (
-                <div className="p-3.5 sm:p-4 rounded-xl bg-[#040507] border border-white/[0.08] space-y-3">
+                <div className="p-3.5 sm:p-4 rounded-xl bg-[#080C14] border border-white/[0.08] space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF] block">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9] block">
                         PANEL {safeSlideIdx + 1} OF {worksheetSlides.length}
                       </span>
                       <h3 className="text-sm sm:text-base font-bold text-white truncate mt-0.5">
@@ -762,7 +763,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                         type="button"
                         disabled={safeSlideIdx === 0}
                         onClick={() => setWorksheetSlideIdx(i => Math.max(0, i - 1))}
-                        className="px-2.5 py-1.5 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/12 text-xs font-semibold text-white disabled:opacity-30 cursor-pointer flex items-center gap-1"
+                        className="px-2.5 py-1.5 rounded-lg bg-[#151F34] hover:bg-white/[0.08] border border-white/12 text-xs font-semibold text-white disabled:opacity-30 cursor-pointer flex items-center gap-1"
                       >
                         <ChevronLeft className="w-3.5 h-3.5" />
                         <span className="hidden sm:inline">Prev</span>
@@ -771,7 +772,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                         type="button"
                         disabled={safeSlideIdx >= worksheetSlides.length - 1}
                         onClick={() => setWorksheetSlideIdx(i => Math.min(worksheetSlides.length - 1, i + 1))}
-                        className="px-2.5 py-1.5 rounded-lg bg-[#09ADEF] hover:bg-[#09B3F8] text-xs font-bold uppercase tracking-wider text-white disabled:opacity-30 cursor-pointer flex items-center gap-1"
+                        className="px-2.5 py-1.5 rounded-lg bg-[#0EA5E9] hover:bg-[#38BDF8] text-xs font-bold uppercase tracking-wider text-white disabled:opacity-30 cursor-pointer flex items-center gap-1"
                       >
                         <span className="hidden sm:inline">Next</span>
                         <ChevronRight className="w-3.5 h-3.5" />
@@ -788,7 +789,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                       value={safeSlideIdx}
                       onChange={e => setWorksheetSlideIdx(Number(e.target.value))}
                       aria-label="Slide between worksheet panels"
-                      className="w-full accent-[#09ADEF] cursor-pointer h-1.5 bg-white/10 rounded-lg"
+                      className="w-full accent-[#0EA5E9] cursor-pointer h-1.5 bg-white/10 rounded-lg"
                     />
 
                     <div className="flex overflow-x-auto no-scrollbar gap-1.5 pt-0.5">
@@ -805,10 +806,10 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                             onClick={() => setWorksheetSlideIdx(sIdx)}
                             className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
                               isCurrent
-                                ? 'bg-[#09ADEF] text-white shadow-[0_2px_12px_rgba(9,173,239,0.35)]'
+                                ? 'bg-[#0EA5E9] text-white shadow-[0_2px_12px_rgba(9,173,239,0.35)]'
                                 : isSlideComplete
-                                ? 'bg-[#09ADEF]/15 border border-[#09ADEF]/35 text-[#09ADEF]'
-                                : 'bg-[#0A0C10] border border-white/10 text-neutral-400 hover:text-white'
+                                ? 'bg-[#0EA5E9]/15 border border-[#0EA5E9]/35 text-[#0EA5E9]'
+                                : 'bg-[#151F34] border border-white/10 text-slate-400 hover:text-white'
                             }`}
                           >
                             <span>Panel {sIdx + 1}</span>
@@ -822,12 +823,12 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               )}
 
               {/* ACTIVE WORKSHEET PANEL */}
-              <div className="p-4 sm:p-6 rounded-2xl bg-[#040507] border border-white/[0.08] space-y-4">
+              <div className="p-4 sm:p-6 rounded-2xl bg-[#080C14] border border-white/[0.08] space-y-4">
                 <div className="flex items-center justify-between border-b border-white/[0.07] pb-3">
-                  <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                  <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">
                     {currentWorksheetSlide.title}
                   </h3>
-                  <span className="text-[11px] text-neutral-400">
+                  <span className="text-[11px] text-slate-400">
                     {
                       currentWorksheetSlide.fields.filter(
                         f => (student.worksheetAnswers[f.id] || '').trim().length > 0
@@ -854,17 +855,17 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                     return (
                       <div key={field.id} className="space-y-1.5">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <label htmlFor={field.id} className="block text-xs font-semibold text-neutral-200">
+                          <label htmlFor={field.id} className="block text-xs font-semibold text-slate-200">
                             {field.label}
                           </label>
                           {matrixCellNum && (
                             <div className="flex flex-wrap items-center gap-2">
                               {linkedMatrixTitle ? (
-                                <span className="px-2 py-0.5 rounded bg-[#09ADEF]/10 border border-[#09ADEF]/30 text-[10px] font-medium text-[#09ADEF]">
+                                <span className="px-2 py-0.5 rounded bg-[#0EA5E9]/10 border border-[#0EA5E9]/30 text-[10px] font-medium text-[#0EA5E9]">
                                   Lesson 7 Title: “{linkedMatrixTitle}”
                                 </span>
                               ) : (
-                                <span className="text-[10px] text-neutral-500">
+                                <span className="text-[10px] text-slate-500">
                                   (Lesson 7 Cell #{matrixCellNum} not yet titled)
                                 </span>
                               )}
@@ -889,7 +890,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                                       : `${headerLine}\n${withoutOldHeader}\n${bulletTemplate}`
                                   );
                                 }}
-                                className="px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-[#09ADEF]/20 border border-white/15 hover:border-[#09ADEF]/40 text-[10px] font-bold uppercase tracking-wider text-white cursor-pointer transition"
+                                className="px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-[#0EA5E9]/20 border border-white/15 hover:border-[#0EA5E9]/40 text-[10px] font-bold uppercase tracking-wider text-white cursor-pointer transition"
                               >
                                 + Insert S.H.I.F.T. Template
                               </button>
@@ -903,7 +904,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                             value={val}
                             onChange={e => onUpdateField(field.id, e.target.value)}
                             placeholder={field.placeholder}
-                            className="w-full rounded-lg bg-black border border-white/12 focus:border-[#09ADEF] p-3.5 text-sm text-white placeholder:text-neutral-600 focus:outline-none leading-relaxed"
+                            className="w-full rounded-lg bg-black border border-white/12 focus:border-[#0EA5E9] p-3.5 text-sm text-white placeholder:text-slate-600 focus:outline-none leading-relaxed"
                           />
                         ) : (
                           <input
@@ -912,7 +913,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                             value={val}
                             onChange={e => onUpdateField(field.id, e.target.value)}
                             placeholder={field.placeholder}
-                            className="w-full rounded-lg bg-black border border-white/12 focus:border-[#09ADEF] p-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none"
+                            className="w-full rounded-lg bg-black border border-white/12 focus:border-[#0EA5E9] p-3 text-sm text-white placeholder:text-slate-600 focus:outline-none"
                           />
                         )}
                       </div>
@@ -927,7 +928,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setWorksheetSlideIdx(i => Math.max(0, i - 1))}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-neutral-200 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#151F34] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-slate-200 cursor-pointer"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     <span>Prev Panel ({safeSlideIdx} of {worksheetSlides.length})</span>
@@ -936,7 +937,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setActivePanel('LESSON')}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#0A0C10] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-neutral-300 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#151F34] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-slate-300 cursor-pointer"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     <span>Back to Lesson</span>
@@ -1008,7 +1009,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                     {activeLesson.editingQaChecklist.map((group, gIdx) => (
                       <div
                         key={group.category}
-                        className="p-4 rounded-xl bg-[#0B0D14] border border-white/8 space-y-2.5"
+                        className="p-4 rounded-xl bg-[#080C14] border border-white/8 space-y-2.5"
                       >
                         <div className="text-xs font-bold uppercase tracking-wider text-sky-300 border-b border-white/8 pb-2">
                           {group.category}
@@ -1116,7 +1117,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                       ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'
                       : student.gateStatus?.[activeLesson.phase] === 'SUBMITTED'
                       ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
-                      : 'bg-[#09ADEF]/10 border-[#09ADEF]/30 text-neutral-200'
+                      : 'bg-[#0EA5E9]/10 border-[#0EA5E9]/30 text-slate-200'
                   }`}
                 >
                   <div>
@@ -1127,7 +1128,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                         ? `⏳ Phase 0${activeLesson.phase} Gate Submitted — Pending Coach Sign-Off`
                         : `◆ Phase 0${activeLesson.phase} Gate Milestone`}
                     </span>
-                    <span className="text-neutral-300 mt-0.5 block">
+                    <span className="text-slate-300 mt-0.5 block">
                       {student.gateStatus?.[activeLesson.phase] === 'APPROVED'
                         ? 'Your deliverables & rubric for this phase have been verified and signed off.'
                         : student.gateStatus?.[activeLesson.phase] === 'SUBMITTED'
@@ -1147,7 +1148,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                       <div className="font-bold uppercase tracking-wider text-amber-300">
                         Worksheet Incomplete ({lessonFieldsFilledCount} of {activeLesson.fields.length} fields filled)
                       </div>
-                      <p className="text-neutral-200 mt-0.5">
+                      <p className="text-slate-200 mt-0.5">
                         You still have blank worksheet prompts in Lesson {activeLesson.weekNumber}. Click the button again to advance anyway, or return to the Worksheet to finish.
                       </p>
                     </div>
@@ -1256,7 +1257,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 required
                 value={draftLesson.title}
                 onChange={e => setDraftLesson({ ...draftLesson, title: e.target.value })}
-                className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
+                className="w-full rounded-xl bg-[#080C14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
               />
             </div>
             <div>
@@ -1265,7 +1266,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 type="text"
                 value={draftLesson.moduleTitle}
                 onChange={e => setDraftLesson({ ...draftLesson, moduleTitle: e.target.value })}
-                className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
+                className="w-full rounded-xl bg-[#080C14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
               />
             </div>
           </div>
@@ -1276,7 +1277,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               rows={2}
               value={draftLesson.subtitle}
               onChange={e => setDraftLesson({ ...draftLesson, subtitle: e.target.value })}
-              className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
+              className="w-full rounded-xl bg-[#080C14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
             />
           </div>
 
@@ -1307,7 +1308,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                     updated[idx] = e.target.value;
                     setDraftLesson({ ...draftLesson, lessonBullets: updated });
                   }}
-                  className="flex-1 rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
+                  className="flex-1 rounded-xl bg-[#080C14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
                 />
                 <button
                   type="button"
@@ -1352,7 +1353,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                     updated[idx] = e.target.value;
                     setDraftLesson({ ...draftLesson, tasks: updated });
                   }}
-                  className="flex-1 rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
+                  className="flex-1 rounded-xl bg-[#080C14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
                 />
                 <button
                   type="button"
@@ -1377,7 +1378,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 rows={2}
                 value={draftLesson.deliverable}
                 onChange={e => setDraftLesson({ ...draftLesson, deliverable: e.target.value })}
-                className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
+                className="w-full rounded-xl bg-[#080C14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
               />
             </div>
             <div>
@@ -1386,7 +1387,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 rows={2}
                 value={draftLesson.doneWhen}
                 onChange={e => setDraftLesson({ ...draftLesson, doneWhen: e.target.value })}
-                className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
+                className="w-full rounded-xl bg-[#080C14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
               />
             </div>
           </div>
@@ -1398,7 +1399,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 type="text"
                 value={draftLesson.coachingPrompt}
                 onChange={e => setDraftLesson({ ...draftLesson, coachingPrompt: e.target.value })}
-                className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
+                className="w-full rounded-xl bg-[#080C14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
               />
             </div>
             <div>
@@ -1407,7 +1408,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                 type="text"
                 value={draftLesson.whereItFails}
                 onChange={e => setDraftLesson({ ...draftLesson, whereItFails: e.target.value })}
-                className="w-full rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
+                className="w-full rounded-xl bg-[#080C14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
               />
             </div>
           </div>
@@ -1448,7 +1449,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                     setDraftLesson({ ...draftLesson, fields: updated });
                   }}
                   placeholder="Field label"
-                  className="sm:col-span-6 rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
+                  className="sm:col-span-6 rounded-xl bg-[#080C14] border border-white/15 p-2.5 text-white focus:border-sky-400 focus:outline-none"
                 />
                 <input
                   type="text"
@@ -1459,7 +1460,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                     setDraftLesson({ ...draftLesson, fields: updated });
                   }}
                   placeholder="Placeholder hint"
-                  className="sm:col-span-5 rounded-xl bg-[#0B0D14] border border-white/15 p-2.5 text-slate-300 focus:border-sky-400 focus:outline-none"
+                  className="sm:col-span-5 rounded-xl bg-[#080C14] border border-white/15 p-2.5 text-slate-300 focus:border-sky-400 focus:outline-none"
                 />
                 <button
                   type="button"
@@ -1545,14 +1546,14 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
             return (
               <div
                 key={p.num}
-                className="rounded-2xl bg-[#040507] border border-white/10 p-3.5 space-y-2.5"
+                className="rounded-2xl bg-[#080C14] border border-white/10 p-3.5 space-y-2.5"
               >
                 <div className="flex items-center justify-between gap-2 pb-2 border-b border-white/[0.06]">
                   <div>
-                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#09ADEF]">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">
                       PHASE 0{p.num} · {p.name} ({p.desc})
                     </div>
-                    <div className="text-[11px] text-neutral-400 mt-0.5">
+                    <div className="text-[11px] text-slate-400 mt-0.5">
                       {phaseDone}/{phaseLessons.length} Lessons Completed · {p.range}
                     </div>
                   </div>
@@ -1562,7 +1563,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                         ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                         : gateState === 'SUBMITTED'
                         ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                        : 'bg-white/5 text-neutral-400 border border-white/10'
+                        : 'bg-white/5 text-slate-400 border border-white/10'
                     }`}
                   >
                     Gate: {gateState}
@@ -1585,7 +1586,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                         }}
                         className={`w-full text-left px-3 py-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 cursor-pointer ${
                           isSelected
-                            ? 'bg-[#09ADEF]/15 border-[#09ADEF] text-white'
+                            ? 'bg-[#0EA5E9]/15 border-[#0EA5E9] text-white'
                             : isCompleted
                             ? 'bg-white/[0.02] border-emerald-500/25 text-slate-200 hover:border-white/20'
                             : 'bg-black/40 border-white/[0.06] text-slate-300 hover:border-white/15'
@@ -1593,7 +1594,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                       >
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#09ADEF]">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#0EA5E9]">
                               Lesson {String(lesson.weekNumber).padStart(2, '0')}
                             </span>
                             {isAssigned && (
@@ -1616,7 +1617,7 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
                             <Check className="w-2.5 h-2.5 stroke-[3]" />
                           </span>
                         ) : (
-                          <ChevronRight className="w-4 h-4 text-neutral-500 shrink-0" />
+                          <ChevronRight className="w-4 h-4 text-slate-500 shrink-0" />
                         )}
                       </button>
                     );
