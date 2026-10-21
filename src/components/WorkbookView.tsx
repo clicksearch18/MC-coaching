@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   CheckSquare,
   Square,
@@ -15,10 +15,54 @@ import {
   RotateCcw,
   Magnet,
   Sparkles,
-  Layers
+  Layers,
+  Play,
+  X,
+  MessageSquare,
+  Send,
+  CheckCircle2,
+  ExternalLink
 } from 'lucide-react';
 import { WorkbookWeek, StudentProfile } from '../types';
 import { ModalDialog } from './ModalDialog';
+
+const parseLessonTimestampToSeconds = (ts: string): number => {
+  const parts = ts.trim().split(':').map(Number);
+  if (parts.some(isNaN)) return 0;
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  return parts[0] || 0;
+};
+
+const formatLessonSecondsToTimestamp = (rawSeconds: number): string => {
+  const total = Math.max(0, Math.floor(rawSeconds || 0));
+  const hrs = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  if (hrs > 0) {
+    return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+};
+
+const resolveLessonVimeoEmbedUrl = (rawUrl: string, startSeconds = 0): string => {
+  const url = (rawUrl || '').trim();
+  const unlistedMatch = url.match(/vimeo\.com\/(?:video\/)?(\d+)\/([a-zA-Z0-9]+)/i);
+  const queryHashMatch = url.match(/[?&]h=([a-zA-Z0-9]+)/i);
+  const idMatch = url.match(/vimeo\.com\/(?:.*\/)?(\d+)/i);
+  if (idMatch) {
+    const videoId = idMatch[1];
+    const hashToken = unlistedMatch?.[2] || queryHashMatch?.[1];
+    const params = new URLSearchParams();
+    if (hashToken) params.set('h', hashToken);
+    params.set('autoplay', '1');
+    params.set('api', '1');
+    params.set('dnt', '1');
+    const timeFrag = startSeconds > 0 ? `#t=${Math.floor(startSeconds)}s` : '';
+    return `https://player.vimeo.com/video/${videoId}?${params.toString()}${timeFrag}`;
+  }
+  return url;
+};
 
 interface WorkbookViewProps {
   student: StudentProfile;
@@ -32,6 +76,22 @@ interface WorkbookViewProps {
   onSubmitPhaseGate: (phaseNumber: number, nextLesson: number) => void;
   onCompleteLesson?: (lessonNumber: number, nextLesson: number) => void;
   onSyncShiftMagnetFromLesson21?: () => void;
+  onUpdateReplayProgress?: (
+    replayId: string,
+    currentTimeSeconds: number,
+    durationSeconds: number,
+    explicitPercent?: number
+  ) => void;
+  onToggleWatchedReplay?: (replayId: string) => void;
+  onAskLessonVideoQuestion?: (params: {
+    replayId: string;
+    replayTitle: string;
+    videoUrl: string;
+    timestampSeconds: number;
+    timestampLabel: string;
+    question: string;
+  }) => string;
+  onOpenGroupThread?: (postId?: string) => void;
   requestedLessonNumber?: number | null;
   onClearRequestedLesson?: () => void;
 }
@@ -56,6 +116,10 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
   onSubmitPhaseGate,
   onCompleteLesson,
   onSyncShiftMagnetFromLesson21,
+  onUpdateReplayProgress,
+  onToggleWatchedReplay,
+  onAskLessonVideoQuestion,
+  onOpenGroupThread,
   requestedLessonNumber,
   onClearRequestedLesson
 }) => {
@@ -70,11 +134,30 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
   const [confirmIncompleteAdvance, setConfirmIncompleteAdvance] = useState<boolean>(false);
   const [magnetSyncSaved, setMagnetSyncSaved] = useState<boolean>(false);
 
+  // Conditional Lesson Vimeo Video Player + Timestamp Question State
+  const [isPlayingLessonVideo, setIsPlayingLessonVideo] = useState<boolean>(false);
+  const [lessonMountStartSec, setLessonMountStartSec] = useState<number>(0);
+  const lessonPendingSeekSecRef = useRef<number>(0);
+  const [liveLessonSec, setLiveLessonSec] = useState<Record<string, number>>({});
+  const [liveLessonDur, setLiveLessonDur] = useState<Record<string, number>>({});
+  const lessonVimeoIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const lastLessonReportedSecRef = useRef<Record<string, number>>({});
+  const [askingLessonQuestion, setAskingLessonQuestion] = useState<boolean>(false);
+  const [lessonQuestionTimestamp, setLessonQuestionTimestamp] = useState<string>('00:00');
+  const [lessonQuestionText, setLessonQuestionText] = useState<string>('');
+  const [lessonQuestionConfirmation, setLessonQuestionConfirmation] = useState<{
+    lessonNum: number;
+    postId: string;
+    timestampLabel: string;
+  } | null>(null);
+
   React.useEffect(() => {
     setSelectedLessonNum(student.currentWeek || 1);
     setWorksheetSlideIdx(0);
     setFigureSlideIdx(0);
     setConfirmIncompleteAdvance(false);
+    setIsPlayingLessonVideo(false);
+    setAskingLessonQuestion(false);
   }, [student.id]);
 
   React.useEffect(() => {
@@ -83,12 +166,97 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
       setWorksheetSlideIdx(0);
       setFigureSlideIdx(0);
       setConfirmIncompleteAdvance(false);
+      setIsPlayingLessonVideo(false);
+      setAskingLessonQuestion(false);
       setActivePanel('LESSON');
       onClearRequestedLesson?.();
     }
   }, [requestedLessonNumber, onClearRequestedLesson]);
 
   const activeLesson = lessons.find(w => w.weekNumber === selectedLessonNum) || lessons[0];
+  const lessonProgressKey = `lesson-${activeLesson.weekNumber}`;
+
+  useEffect(() => {
+    if (!isPlayingLessonVideo || !activeLesson.videoUrl?.trim()) return;
+
+    const handleVimeoMessage = (event: MessageEvent) => {
+      if (!event.origin.includes('vimeo.com')) return;
+      let data: {
+        event?: string;
+        data?: { seconds?: number; duration?: number; percent?: number };
+      } = {};
+      try {
+        data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+      } catch {
+        return;
+      }
+
+      const activeIframe = lessonVimeoIframeRef.current;
+      if (data.event === 'ready' && activeIframe?.contentWindow) {
+        ['playProgress', 'timeupdate', 'pause', 'seeked', 'seek', 'ended'].forEach(evtName => {
+          activeIframe.contentWindow?.postMessage(
+            JSON.stringify({ method: 'addEventListener', value: evtName }),
+            '*'
+          );
+        });
+        if (lessonPendingSeekSecRef.current > 0) {
+          activeIframe.contentWindow.postMessage(
+            JSON.stringify({ method: 'seekTo', value: lessonPendingSeekSecRef.current }),
+            '*'
+          );
+        }
+        return;
+      }
+
+      const isTimeEvent =
+        data.event === 'playProgress' ||
+        data.event === 'timeupdate' ||
+        data.event === 'pause' ||
+        data.event === 'seeked' ||
+        data.event === 'seek';
+
+      if (
+        isTimeEvent &&
+        data.data &&
+        typeof data.data.seconds === 'number' &&
+        typeof data.data.duration === 'number' &&
+        data.data.duration > 0
+      ) {
+        const nowSec = Math.floor(data.data.seconds);
+        const totalDur = Math.floor(data.data.duration);
+        setLiveLessonSec(prev =>
+          prev[lessonProgressKey] === nowSec ? prev : { ...prev, [lessonProgressKey]: nowSec }
+        );
+        setLiveLessonDur(prev =>
+          prev[lessonProgressKey] === totalDur ? prev : { ...prev, [lessonProgressKey]: totalDur }
+        );
+
+        const isImmediate =
+          data.event === 'pause' || data.event === 'seeked' || data.event === 'seek';
+        const prevSec = lastLessonReportedSecRef.current[lessonProgressKey] ?? -10;
+        if (isImmediate || Math.abs(nowSec - prevSec) >= 1) {
+          lastLessonReportedSecRef.current[lessonProgressKey] = nowSec;
+          const pct =
+            typeof data.data.percent === 'number'
+              ? Math.round(data.data.percent * 100)
+              : Math.round((data.data.seconds / data.data.duration) * 100);
+          onUpdateReplayProgress?.(lessonProgressKey, nowSec, totalDur, pct);
+        }
+      } else if (data.event === 'ended') {
+        const dur = Math.floor(data.data?.duration || liveLessonDur[lessonProgressKey] || 0);
+        onUpdateReplayProgress?.(lessonProgressKey, dur, dur, 100);
+      }
+    };
+
+    window.addEventListener('message', handleVimeoMessage);
+    return () => window.removeEventListener('message', handleVimeoMessage);
+  }, [
+    isPlayingLessonVideo,
+    activeLesson.videoUrl,
+    lessonProgressKey,
+    liveLessonDur,
+    onUpdateReplayProgress
+  ]);
   const lessonsInCurrentPhase = lessons.filter(w => w.phase === activeLesson.phase);
 
   const isLessonFullyCompleted = React.useCallback(
@@ -169,6 +337,8 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
     setWorksheetSlideIdx(0);
     setFigureSlideIdx(0);
     setConfirmIncompleteAdvance(false);
+    setIsPlayingLessonVideo(false);
+    setAskingLessonQuestion(false);
     setActivePanel('LESSON');
   };
 
@@ -387,6 +557,280 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
           {/* SEQUENTIAL PANEL 1: THE LESSON, 1-PANEL REFERENCE FIGURE SLIDER & ACTION CHECKLIST */}
           {activePanel === 'LESSON' && (
             <div className="glass-panel rounded-2xl p-5 sm:p-7 space-y-5 sm:space-y-6">
+              {/* Conditional Lesson Vimeo Video Player — ONLY shown when Admin has added a videoUrl */}
+              {Boolean(activeLesson.videoUrl && activeLesson.videoUrl.trim()) && (() => {
+                const rawVideoUrl = activeLesson.videoUrl!.trim();
+                const isLessonVideoWatched = (student.watchedReplayIds || []).includes(
+                  lessonProgressKey
+                );
+                const savedProg = student.replayProgress?.[lessonProgressKey];
+                const progressPct = isLessonVideoWatched ? 100 : savedProg?.percent || 0;
+                const currentSec =
+                  liveLessonSec[lessonProgressKey] ?? savedProg?.currentTimeSeconds ?? 0;
+                const totalDur =
+                  liveLessonDur[lessonProgressKey] || savedProg?.durationSeconds || 0;
+                const currentTsLabel = formatLessonSecondsToTimestamp(currentSec);
+                const totalDurLabel =
+                  totalDur > 0 ? formatLessonSecondsToTimestamp(totalDur) : null;
+                const embedSrc = resolveLessonVimeoEmbedUrl(
+                  rawVideoUrl,
+                  isPlayingLessonVideo ? lessonMountStartSec : 0
+                );
+
+                const handleOpenLessonVideo = () => {
+                  const targetSec = savedProg?.currentTimeSeconds || 0;
+                  lessonPendingSeekSecRef.current = targetSec;
+                  setLiveLessonSec(prev => ({ ...prev, [lessonProgressKey]: targetSec }));
+                  setLessonMountStartSec(targetSec);
+                  setIsPlayingLessonVideo(true);
+                };
+
+                const handleToggleAskLessonQuestion = () => {
+                  if (askingLessonQuestion) {
+                    setAskingLessonQuestion(false);
+                    return;
+                  }
+                  if (isPlayingLessonVideo && lessonVimeoIframeRef.current?.contentWindow) {
+                    lessonVimeoIframeRef.current.contentWindow.postMessage(
+                      JSON.stringify({ method: 'pause' }),
+                      '*'
+                    );
+                  }
+                  setAskingLessonQuestion(true);
+                  setLessonQuestionTimestamp(formatLessonSecondsToTimestamp(currentSec));
+                  setLessonQuestionText('');
+                };
+
+                return (
+                  <div className="pb-5 border-b border-white/[0.08] space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#09ADEF]">
+                            LESSON {String(activeLesson.weekNumber).padStart(2, '0')} TRAINING VIDEO
+                          </span>
+                          {isLessonVideoWatched ? (
+                            <span className="text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              100% Watched
+                            </span>
+                          ) : currentSec > 0 || progressPct > 0 ? (
+                            <span className="text-xs font-semibold text-[#09ADEF]">
+                              {progressPct}% Watched ({currentTsLabel}
+                              {totalDurLabel ? ` / ${totalDurLabel}` : ''})
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="h-1.5 w-48 sm:w-64 rounded-full bg-white/[0.08] overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-300 ${
+                              isLessonVideoWatched ? 'bg-emerald-400' : 'bg-[#09ADEF]'
+                            }`}
+                            style={{ width: `${progressPct}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isPlayingLessonVideo) {
+                              setIsPlayingLessonVideo(false);
+                            } else {
+                              handleOpenLessonVideo();
+                            }
+                          }}
+                          className="px-3.5 py-2 rounded-lg bg-[#09ADEF] hover:bg-[#09B3F8] text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          {isPlayingLessonVideo ? (
+                            <>
+                              <X className="w-3.5 h-3.5" />
+                              <span>Close Video</span>
+                            </>
+                          ) : (
+                            <>
+                              <Play className="w-3.5 h-3.5" />
+                              <span>
+                                {currentSec > 0 && !isLessonVideoWatched
+                                  ? `Resume at ${currentTsLabel}`
+                                  : 'Watch Lesson Video'}
+                              </span>
+                            </>
+                          )}
+                        </button>
+
+                        {onAskLessonVideoQuestion && (
+                          <button
+                            type="button"
+                            onClick={handleToggleAskLessonQuestion}
+                            aria-expanded={askingLessonQuestion}
+                            className={`px-3 py-2 rounded-lg border text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer ${
+                              askingLessonQuestion
+                                ? 'bg-[#09ADEF]/15 border-[#09ADEF] text-white'
+                                : 'bg-white/[0.03] border-white/10 text-neutral-200 hover:text-white'
+                            }`}
+                          >
+                            <MessageSquare className="w-3.5 h-3.5 text-[#09ADEF]" />
+                            <span>
+                              {isPlayingLessonVideo || currentSec > 0
+                                ? `Ask Question @ ${currentTsLabel}`
+                                : 'Ask Question'}
+                            </span>
+                          </button>
+                        )}
+
+                        {onToggleWatchedReplay && (
+                          <button
+                            type="button"
+                            onClick={() => onToggleWatchedReplay(lessonProgressKey)}
+                            aria-pressed={isLessonVideoWatched}
+                            className={`px-3 py-2 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
+                              isLessonVideoWatched
+                                ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-300'
+                                : 'bg-white/[0.03] border-white/10 text-neutral-300 hover:text-white'
+                            }`}
+                          >
+                            {isLessonVideoWatched ? '✓ Watched' : 'Mark Watched'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {isPlayingLessonVideo && (
+                      <div className="space-y-2">
+                        <div className="rounded-xl overflow-hidden bg-black aspect-video w-full">
+                          <iframe
+                            ref={lessonVimeoIframeRef}
+                            src={embedSrc}
+                            title={`Lesson ${activeLesson.weekNumber}: ${activeLesson.title}`}
+                            allow="autoplay; fullscreen; picture-in-picture"
+                            allowFullScreen
+                            className="w-full h-full border-0"
+                          />
+                        </div>
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-neutral-400">
+                          <span>
+                            Playing in dashboard · Current position{' '}
+                            <strong className="font-mono text-white">
+                              {currentTsLabel}
+                              {totalDurLabel ? ` / ${totalDurLabel}` : ''}
+                            </strong>{' '}
+                            ({progressPct}% watched)
+                          </span>
+                          <div className="flex items-center gap-3">
+                            {onAskLessonVideoQuestion && !askingLessonQuestion && (
+                              <button
+                                type="button"
+                                onClick={handleToggleAskLessonQuestion}
+                                className="text-[#09ADEF] hover:underline font-semibold inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                <MessageSquare className="w-3 h-3" />
+                                <span>Ask Question at {currentTsLabel}</span>
+                              </button>
+                            )}
+                            <a
+                              href={rawVideoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-neutral-400 hover:text-white inline-flex items-center gap-1"
+                            >
+                              <span>Open on Vimeo</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {askingLessonQuestion && onAskLessonVideoQuestion && (
+                      <form
+                        onSubmit={e => {
+                          e.preventDefault();
+                          const q = lessonQuestionText.trim();
+                          if (!q) return;
+                          const cleanTs = lessonQuestionTimestamp.trim() || '00:00';
+                          const tsSec = parseLessonTimestampToSeconds(cleanTs);
+                          const postId = onAskLessonVideoQuestion({
+                            replayId: lessonProgressKey,
+                            replayTitle: `Lesson ${activeLesson.weekNumber}: ${activeLesson.title}`,
+                            videoUrl: rawVideoUrl,
+                            timestampSeconds: tsSec,
+                            timestampLabel: cleanTs,
+                            question: q
+                          });
+                          setAskingLessonQuestion(false);
+                          setLessonQuestionText('');
+                          setLessonQuestionConfirmation({
+                            lessonNum: activeLesson.weekNumber,
+                            postId,
+                            timestampLabel: cleanTs
+                          });
+                        }}
+                        className="pt-2 flex flex-col sm:flex-row sm:items-center gap-2"
+                      >
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[11px] font-semibold text-neutral-400">@</span>
+                          <input
+                            type="text"
+                            value={lessonQuestionTimestamp}
+                            onChange={e => setLessonQuestionTimestamp(e.target.value)}
+                            aria-label="Lesson video timestamp MM:SS"
+                            placeholder="00:00"
+                            className="w-20 rounded-lg bg-black border border-white/15 px-2.5 py-2 text-xs font-mono font-bold text-[#09ADEF] text-center focus:outline-none focus:border-[#09ADEF]"
+                          />
+                        </div>
+                        <input
+                          type="text"
+                          required
+                          value={lessonQuestionText}
+                          onChange={e => setLessonQuestionText(e.target.value)}
+                          placeholder={`Ask a question on Lesson ${activeLesson.weekNumber} — posts to Group & notifies Coach...`}
+                          className="flex-1 rounded-lg bg-black border border-white/15 px-3.5 py-2 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#09ADEF]"
+                        />
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="submit"
+                            className="px-3.5 py-2 rounded-lg bg-[#09ADEF] hover:bg-[#09B3F8] text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            <span>Post to Group</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAskingLessonQuestion(false)}
+                            className="px-2.5 py-2 rounded-lg bg-white/[0.04] text-xs text-neutral-400 hover:text-white cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    )}
+
+                    {lessonQuestionConfirmation?.lessonNum === activeLesson.weekNumber && (
+                      <div className="pt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-300">
+                        <span>
+                          ✓ Question at{' '}
+                          <strong className="font-mono">
+                            {lessonQuestionConfirmation.timestampLabel}
+                          </strong>{' '}
+                          posted to Group Discussion & Coach Josh notified.
+                        </span>
+                        {onOpenGroupThread && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenGroupThread(lessonQuestionConfirmation.postId)}
+                            className="text-[#09ADEF] hover:underline font-bold cursor-pointer"
+                          >
+                            View in Discussion →
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9]">
                   PART 1 · CORE LESSON PRINCIPLES
@@ -1278,6 +1722,24 @@ export const WorkbookView: React.FC<WorkbookViewProps> = ({
               value={draftLesson.subtitle}
               onChange={e => setDraftLesson({ ...draftLesson, subtitle: e.target.value })}
               className="w-full rounded-xl bg-[#080C14] border border-white/15 p-3 text-white focus:border-sky-400 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-300 mb-1">
+              Lesson Vimeo Video URL (Optional — Hidden from students if left blank)
+            </label>
+            <input
+              type="url"
+              value={draftLesson.videoUrl || ''}
+              onChange={e =>
+                setDraftLesson({
+                  ...draftLesson,
+                  videoUrl: e.target.value.trim() ? e.target.value : undefined
+                })
+              }
+              placeholder="https://vimeo.com/123456789 (Leave empty to hide video player on this lesson)"
+              className="w-full rounded-xl bg-[#080C14] border border-white/15 p-3 text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
             />
           </div>
 

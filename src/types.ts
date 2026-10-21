@@ -130,6 +130,7 @@ export interface WorkbookWeek {
   phaseName: string;
   title: string;
   subtitle: string;
+  videoUrl?: string;
   isPhaseGate?: boolean;
   isReuse?: boolean;
   reuseNote?: string;
@@ -345,6 +346,7 @@ export interface AppEmailAndAdminSettings {
   smtpHost: string;
   smtpPort: string;
   smtpUser: string;
+  ghlWebhookUrl?: string;
   templates: EmailTemplateConfig[];
 }
 

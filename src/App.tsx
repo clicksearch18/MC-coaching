@@ -46,6 +46,7 @@ import { DailyCadenceView } from './components/DailyCadenceView';
 import { LoginView } from './components/LoginView';
 import { ModalDialog } from './components/ModalDialog';
 import { parseStudentSpreadsheet } from './utils/excelParser';
+import { triggerGhlWebhook } from './lib/ghlWebhook';
 
 const WorkbookView = lazy(() =>
   import('./components/WorkbookView').then(m => ({ default: m.WorkbookView }))
@@ -1310,6 +1311,30 @@ export function App() {
         : `Your social link (${videoUrl}) has been queued for Coach Review and your streak is now ${nextStreak} days.`,
       'DAILY_LESSON'
     );
+
+    const submittedVid = currentStudent.supportingVideos.find(v => v.id === videoId);
+    triggerGhlWebhook(
+      {
+        event: 'STUDENT_VIDEO_SUBMITTED',
+        studentId: currentStudent.id,
+        studentName: currentStudent.name,
+        studentEmail: currentStudent.email,
+        studentCompany: currentStudent.company,
+        recipientRole: 'COACH',
+        coachEmail: appSettings.adminEmails[0] || 'joshbmagic@gmail.com',
+        subject: `${currentStudent.name} submitted ${
+          submittedVid ? `Day #${submittedVid.dayNumber}: ${submittedVid.title}` : 'Daily Video'
+        }`,
+        message:
+          options?.groupNote ||
+          `${currentStudent.name} submitted a video link for Coach review: ${videoUrl}`,
+        videoTitle: submittedVid
+          ? `Day #${String(submittedVid.dayNumber).padStart(2, '0')}: ${submittedVid.title}`
+          : 'Daily Video',
+        videoUrl
+      },
+      appSettings.ghlWebhookUrl
+    );
   };
 
   const handleUpdatePillarStatus = (pillarId: string, status: string) => {
@@ -1449,6 +1474,26 @@ export function App() {
           ? `Your Core Brand Video (${url}) is live in Discussion and queued for Coach Review.`
           : `Your Core Brand Video link (${url}) has been queued for Coach Review.`,
         'DAILY_LESSON'
+      );
+
+      const coreVid = currentStudent.coreVideos.find(c => c.id === coreId);
+      triggerGhlWebhook(
+        {
+          event: 'STUDENT_VIDEO_SUBMITTED',
+          studentId: currentStudent.id,
+          studentName: currentStudent.name,
+          studentEmail: currentStudent.email,
+          studentCompany: currentStudent.company,
+          recipientRole: 'COACH',
+          coachEmail: appSettings.adminEmails[0] || 'joshbmagic@gmail.com',
+          subject: `${currentStudent.name} submitted Core Video ${
+            coreVid ? `${coreVid.code}: ${coreVid.name}` : coreId
+          }`,
+          message: `${currentStudent.name} submitted Core Brand Video link for review: ${url}`,
+          videoTitle: coreVid ? `${coreVid.code}: ${coreVid.name}` : coreId,
+          videoUrl: url
+        },
+        appSettings.ghlWebhookUrl
       );
     }
   };
@@ -1596,6 +1641,28 @@ export function App() {
       feedback || `Marked video as ${reviewStatus} and updated Discussion Thread.`,
       reviewStatus === 'Needs Revision' ? 'MISSED_ALERT' : 'COACH_NUDGE'
     );
+
+    if (recipient) {
+      triggerGhlWebhook(
+        {
+          event: 'COACH_VIDEO_REVIEW',
+          studentId: recipient.id,
+          studentName: recipient.name,
+          studentEmail: recipient.email,
+          studentCompany: recipient.company,
+          recipientRole: 'STUDENT',
+          coachEmail: appSettings.adminEmails[0] || 'joshbmagic@gmail.com',
+          subject: `Coach Josh reviewed your video (${resolvedVideoLabel}): ${reviewStatus}`,
+          message:
+            feedback ||
+            `Coach Josh marked ${resolvedVideoLabel} as ${reviewStatus}.`,
+          videoTitle: resolvedVideoLabel,
+          reviewDecision: reviewStatus,
+          coachVideoUrl
+        },
+        appSettings.ghlWebhookUrl
+      );
+    }
   };
 
   // Discussion Handlers
@@ -1990,6 +2057,24 @@ export function App() {
       'COACH_NUDGE'
     );
 
+    triggerGhlWebhook(
+      {
+        event: 'STUDENT_VIDEO_QUESTION',
+        studentId: currentStudent.id,
+        studentName: currentStudent.name,
+        studentEmail: currentStudent.email,
+        studentCompany: currentStudent.company,
+        recipientRole: 'COACH',
+        coachEmail: appSettings.adminEmails[0] || 'joshbmagic@gmail.com',
+        subject: `${currentStudent.name} asked a question on "${params.replayTitle}" (@ ${params.timestampLabel})`,
+        message: params.question,
+        videoTitle: params.replayTitle,
+        videoUrl: timestampedUrl,
+        videoTimestamp: params.timestampLabel
+      },
+      appSettings.ghlWebhookUrl
+    );
+
     return newPostId;
   };
 
@@ -2279,6 +2364,23 @@ export function App() {
       `Your Phase 0${phaseNumber} deliverables and rubric have been sent to Coach Josh for sign-off.`,
       'DAILY_LESSON'
     );
+
+    triggerGhlWebhook(
+      {
+        event: 'STUDENT_GATE_SUBMITTED',
+        studentId: currentStudent.id,
+        studentName: currentStudent.name,
+        studentEmail: currentStudent.email,
+        studentCompany: currentStudent.company,
+        recipientRole: 'COACH',
+        coachEmail: appSettings.adminEmails[0] || 'joshbmagic@gmail.com',
+        subject: `${currentStudent.name} submitted Phase 0${phaseNumber} Gate for Coach Sign-Off`,
+        message: `${currentStudent.name} completed Lesson ${gateLessonNum} and submitted Phase 0${phaseNumber} Gate.`,
+        phaseNumber,
+        lessonNumber: gateLessonNum
+      },
+      appSettings.ghlWebhookUrl
+    );
   };
 
   const handleAddShiftMagnet = (magnet: ShiftMagnet) => {
@@ -2371,6 +2473,103 @@ export function App() {
         'COACH_NUDGE'
       );
     }
+
+    triggerGhlWebhook(
+      {
+        event: isCoachSender ? 'COACH_NUDGE' : 'STUDENT_DIRECT_MESSAGE',
+        studentId: targetStudent.id,
+        studentName: targetStudent.name,
+        studentEmail: targetStudent.email,
+        studentCompany: targetStudent.company,
+        recipientRole: isCoachSender ? 'STUDENT' : 'COACH',
+        coachEmail: appSettings.adminEmails[0] || 'joshbmagic@gmail.com',
+        subject: isCoachSender
+          ? `New message from Coach Josh Beechraft`
+          : `New message from ${targetStudent.name}`,
+        message: text
+      },
+      appSettings.ghlWebhookUrl
+    );
+  };
+
+  const handleBroadcastCoachMessage = (text: string) => {
+    const formattedTime = new Date().toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+
+    const updatedList = latestStudentsRef.current.map(st => {
+      const broadcastMsg: ChatMessage = {
+        id: `msg-broadcast-${Date.now()}-${st.id}`,
+        senderRole: 'COACH',
+        senderName: 'Coach Josh Beechraft · Broadcast',
+        text,
+        timestamp: formattedTime,
+        readByCoach: true,
+        readByStudent: false,
+        actionTarget: {
+          label: 'Open Vault & Calls',
+          tab: 'VAULT',
+          vaultSubTab: 'CALLS'
+        }
+      };
+
+      triggerGhlWebhook(
+        {
+          event: 'COACH_BROADCAST',
+          studentId: st.id,
+          studentName: st.name,
+          studentEmail: st.email,
+          studentCompany: st.company,
+          recipientRole: 'STUDENT',
+          coachEmail: appSettings.adminEmails[0] || 'joshbmagic@gmail.com',
+          subject: 'Announcement from Coach Josh Beechraft',
+          message: text
+        },
+        appSettings.ghlWebhookUrl
+      );
+
+      return {
+        ...st,
+        messages: [...st.messages, broadcastMsg]
+      };
+    });
+
+    latestStudentsRef.current = updatedList;
+    setStudents(updatedList);
+    if (isSupabaseConfigured) {
+      upsertStudentsToSupabase(updatedList);
+    }
+
+    triggerWebPushAndBanner(
+      `Broadcast Sent to All ${updatedList.length} Operators`,
+      `"${text}"`,
+      'COACH_NUDGE'
+    );
+  };
+
+  const handleTestGhlWebhook = async (webhookUrl?: string) => {
+    return triggerGhlWebhook(
+      {
+        event: 'GHL_WEBHOOK_TEST',
+        studentId: currentStudent.id,
+        studentName: currentStudent.name,
+        studentEmail: currentStudent.email || 'student@example.com',
+        studentCompany: currentStudent.company,
+        recipientRole: 'STUDENT',
+        coachEmail: appSettings.adminEmails[0] || 'joshbmagic@gmail.com',
+        subject: 'Test Notification from 2mm Shift Coaching Portal',
+        message:
+          'This is a live test payload from the Market Concussion / 2mm Shift Portal. Map these fields in your GoHighLevel workflow!',
+        videoTitle: 'Day #01: Sample Concussion Video',
+        videoUrl: 'https://vimeo.com/76979871#t=125s',
+        videoTimestamp: '02:05',
+        reviewDecision: 'Approved',
+        phaseNumber: currentStudent.currentPhase,
+        lessonNumber: currentStudent.currentWeek
+      },
+      webhookUrl || appSettings.ghlWebhookUrl
+    );
   };
 
   const handleTriggerMissedAlertPush = (missedStudent: StudentProfile) => {
@@ -2410,6 +2609,24 @@ export function App() {
       `Coach Alert Sent to ${missedStudent.name}`,
       `Delivered daily cadence nudge into ${missedStudent.name}’s inbox and push stream.`,
       'MISSED_ALERT'
+    );
+
+    triggerGhlWebhook(
+      {
+        event: 'COACH_NUDGE',
+        studentId: missedStudent.id,
+        studentName: missedStudent.name,
+        studentEmail: missedStudent.email,
+        studentCompany: missedStudent.company,
+        recipientRole: 'STUDENT',
+        coachEmail: appSettings.adminEmails[0] || 'joshbmagic@gmail.com',
+        subject: `Daily Video Check-In from Coach Josh`,
+        message: alertMsg.text,
+        videoTitle: nextPendingVideo
+          ? `Day #${String(nextPendingVideo.dayNumber).padStart(2, '0')}: ${nextPendingVideo.title}`
+          : 'Today’s Video'
+      },
+      appSettings.ghlWebhookUrl
     );
   };
 
@@ -2463,6 +2680,26 @@ export function App() {
       `${target?.name} is now cleared to advance to Phase 0${nextPhase}.`,
       'DAILY_LESSON'
     );
+
+    if (target) {
+      triggerGhlWebhook(
+        {
+          event: 'COACH_GATE_REVIEW',
+          studentId: target.id,
+          studentName: target.name,
+          studentEmail: target.email,
+          studentCompany: target.company,
+          recipientRole: 'STUDENT',
+          coachEmail: appSettings.adminEmails[0] || 'joshbmagic@gmail.com',
+          subject: `Phase 0${phaseNum} Gate Approved by Coach Josh!`,
+          message: `You are officially cleared for Phase 0${nextPhase} (Lesson ${nextPhaseStartLesson}).`,
+          reviewDecision: 'APPROVED',
+          phaseNumber: phaseNum,
+          lessonNumber: nextPhaseStartLesson
+        },
+        appSettings.ghlWebhookUrl
+      );
+    }
   };
 
   const handleRequestGateRevision = (studentId: string, phaseNum: number, feedback?: string) => {
@@ -2514,6 +2751,28 @@ export function App() {
       `Sent revision request for Phase 0${phaseNum} Gate to ${target?.name || 'Student'}.`,
       'MISSED_ALERT'
     );
+
+    if (target) {
+      triggerGhlWebhook(
+        {
+          event: 'COACH_GATE_REVIEW',
+          studentId: target.id,
+          studentName: target.name,
+          studentEmail: target.email,
+          studentCompany: target.company,
+          recipientRole: 'STUDENT',
+          coachEmail: appSettings.adminEmails[0] || 'joshbmagic@gmail.com',
+          subject: `Phase 0${phaseNum} Gate Revision Requested`,
+          message:
+            feedback ||
+            `Please review the Phase 0${phaseNum} Gate rubric items in Lesson ${gateLessonNum} and resubmit when ready.`,
+          reviewDecision: 'REVISION_REQUESTED',
+          phaseNumber: phaseNum,
+          lessonNumber: gateLessonNum
+        },
+        appSettings.ghlWebhookUrl
+      );
+    }
   };
 
   const handleSpreadsheetUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -3251,6 +3510,13 @@ export function App() {
                 onCompleteLesson={handleCompleteLesson}
                 onSubmitPhaseGate={handleSubmitPhaseGate}
                 onSyncShiftMagnetFromLesson21={handleSyncShiftMagnetFromLesson21}
+                onUpdateReplayProgress={handleUpdateReplayProgress}
+                onToggleWatchedReplay={handleToggleWatchedReplay}
+                onAskLessonVideoQuestion={handleAskReplayQuestion}
+                onOpenGroupThread={postId => {
+                  setActiveTab('GROUP');
+                  if (postId) setRequestedGroupPostId(postId);
+                }}
                 requestedLessonNumber={requestedLessonNumber}
                 onClearRequestedLesson={() => setRequestedLessonNumber(undefined)}
               />
@@ -3302,6 +3568,8 @@ export function App() {
                 onDeleteStudentVideo={handleDeleteStudentVideo}
                 onDeleteStudent={handleDeleteStudent}
                 onSendMessage={handleSendMessage}
+                onBroadcastMessage={handleBroadcastCoachMessage}
+                onTestGhlWebhook={handleTestGhlWebhook}
                 onMarkMessagesRead={handleMarkMessagesRead}
                 onNavigateFromChatAction={handleNavigateFromChatAction}
                 onReviewStudentVideo={handleReviewStudentVideo}

@@ -70,6 +70,8 @@ interface CoachDashboardViewProps {
   onDeleteStudentVideo?: (studentId: string, videoId: string) => void;
   onDeleteStudent: (studentId: string) => void;
   onSendMessage: (studentId: string, text: string, triggerPush?: boolean) => void;
+  onBroadcastMessage?: (text: string) => void;
+  onTestGhlWebhook?: (webhookUrl?: string) => Promise<{ ok: boolean; error?: string }>;
   onMarkMessagesRead?: (studentId: string) => void;
   onNavigateFromChatAction?: (studentId: string, target: ChatMessageActionTarget) => void;
   onReviewStudentVideo: (
@@ -95,6 +97,12 @@ const QUICK_FOLLOWUP_TEMPLATES = [
   "Quick check-in: your Day video is queued up in your Concussion Content (<10 mins). Drop your social link once it's live!",
   "Just reviewed your Workbook Messaging Canvas — strong Core Belief! Ready to clear your Phase Gate.",
   "Awesome streak this week! Keep protecting the daily post and the monthly event."
+];
+
+const QUICK_BROADCAST_TEMPLATES = [
+  "🔴 Live Coaching Call starts in 15 mins — join now in Vault & Calls!",
+  "🎬 New Call Replay just uploaded in Vault & Calls — watch at your pace & drop timestamp questions.",
+  "⚡ Mid-Week Check-In: Post today's video link in Studio so I can review it before our next call."
 ];
 
 const QUICK_REVIEW_NOTES = [
@@ -124,6 +132,8 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
   onDeleteStudentVideo,
   onDeleteStudent,
   onSendMessage,
+  onBroadcastMessage,
+  onTestGhlWebhook,
   onMarkMessagesRead,
   onNavigateFromChatAction,
   onReviewStudentVideo,
@@ -135,6 +145,8 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
   onUpdateAppSettings
 }) => {
   const [messageInput, setMessageInput] = useState('');
+  const [chatSendMode, setChatSendMode] = useState<'SINGLE' | 'BROADCAST'>('SINGLE');
+  const [testingGhlWebhook, setTestingGhlWebhook] = useState(false);
   // Consolidated 3-Tab Streamlined Architecture:
   // 1. LINKS: Review & Action Queue (Default — serves students immediately)
   // 2. MESSAGE: Direct Chat & Nudge
@@ -231,7 +243,13 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageInput.trim()) return;
-    onSendMessage(activeStudent.id, messageInput.trim(), true);
+    if (chatSendMode === 'BROADCAST' && onBroadcastMessage) {
+      onBroadcastMessage(messageInput.trim());
+      setSaveBanner(`Broadcast sent to all ${students.length} operators!`);
+      setTimeout(() => setSaveBanner(null), 4000);
+    } else {
+      onSendMessage(activeStudent.id, messageInput.trim(), true);
+    }
     setMessageInput('');
   };
 
@@ -1417,11 +1435,42 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
             </div>
           )}
 
-          {/* TAB 2: DIRECT CHAT & 1-TAP PUSH NUDGE */}
+          {/* TAB 2: DIRECT CHAT & 1-TAP PUSH NUDGE + COHORT BROADCAST */}
           {coachSubTab === 'MESSAGE' && (
             <div className="space-y-4">
+              {/* Recipient Mode Toggle: Selected Operator vs. All Operators */}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="inline-flex rounded-xl bg-[#0F1626] border border-white/10 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setChatSendMode('SINGLE')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                      chatSendMode === 'SINGLE'
+                        ? 'bg-[#09ADEF] text-white'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    1-on-1: {activeStudent.name.split(' ')[0]}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChatSendMode('BROADCAST')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                      chatSendMode === 'BROADCAST'
+                        ? 'bg-[#09ADEF] text-white'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Broadcast to All Operators ({students.length})
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {QUICK_FOLLOWUP_TEMPLATES.map((tpl, idx) => (
+                {(chatSendMode === 'BROADCAST'
+                  ? QUICK_BROADCAST_TEMPLATES
+                  : QUICK_FOLLOWUP_TEMPLATES
+                ).map((tpl, idx) => (
                   <button
                     key={idx}
                     type="button"
@@ -1476,7 +1525,11 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                   type="text"
                   value={messageInput}
                   onChange={e => setMessageInput(e.target.value)}
-                  placeholder={`Message ${activeStudent.name}...`}
+                  placeholder={
+                    chatSendMode === 'BROADCAST'
+                      ? `Broadcast announcement to all ${students.length} operators (in-app + GHL notification)...`
+                      : `Message ${activeStudent.name}...`
+                  }
                   className="flex-1 rounded-xl bg-[#0F1626] border border-white/15 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-[#0EA5E9]"
                 />
                 <button
@@ -1484,7 +1537,11 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                   className="px-4 py-2.5 rounded-xl btn-2mm font-semibold text-xs flex items-center gap-1.5 cursor-pointer shrink-0"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>Send</span>
+                  <span>
+                    {chatSendMode === 'BROADCAST'
+                      ? `Broadcast (${students.length})`
+                      : 'Send'}
+                  </span>
                 </button>
               </form>
             </div>
@@ -1794,64 +1851,120 @@ export const CoachDashboardView: React.FC<CoachDashboardViewProps> = ({
                 </div>
               </form>
 
-              {/* Collapsible Authorized Admin Coach Emails */}
-              <details className="rounded-xl bg-[#0F1626] border border-white/10 p-4 text-xs">
-                <summary className="cursor-pointer font-bold uppercase tracking-wider text-slate-400 select-none">
-                  Authorized Coach Emails ({appSettings.adminEmails.length})
-                </summary>
-                <div className="mt-3 space-y-2.5">
-                  <div className="flex flex-wrap gap-2">
-                    {appSettings.adminEmails.map(email => (
-                      <span
-                        key={email}
-                        className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-black border border-white/10 text-xs text-slate-200"
-                      >
-                        <span>{email}</span>
-                        {appSettings.adminEmails.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onUpdateAppSettings?.(prev => ({
-                                ...prev,
-                                adminEmails: prev.adminEmails.filter(item => item !== email)
-                              }))
-                            }
-                            className="text-rose-400 hover:text-rose-300 cursor-pointer"
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2 max-w-sm">
-                    <input
-                      type="email"
-                      value={newAdminEmailInput}
-                      onChange={e => setNewAdminEmailInput(e.target.value)}
-                      placeholder="coach@company.com"
-                      className="flex-1 rounded-lg bg-black border border-white/15 p-2 text-white focus:border-[#0EA5E9] focus:outline-none"
-                    />
+              {/* Card 3: GoHighLevel (GHL) Notification Webhook & Authorized Coach Emails */}
+              <div className="rounded-xl bg-[#0F1626] border border-white/10 p-4 sm:p-5 space-y-3.5 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#0EA5E9]">
+                    3. GoHighLevel (GHL) Notification Webhook
+                  </span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
+                      appSettings.ghlWebhookUrl?.trim()
+                        ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
+                        : 'bg-white/[0.04] border-white/10 text-slate-400'
+                    }`}
+                  >
+                    {appSettings.ghlWebhookUrl?.trim() ? '✓ Connected' : 'Optional'}
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="url"
+                    value={appSettings.ghlWebhookUrl || ''}
+                    onChange={e =>
+                      onUpdateAppSettings?.(prev => ({
+                        ...prev,
+                        ghlWebhookUrl: e.target.value
+                      }))
+                    }
+                    placeholder="Paste GoHighLevel Inbound Webhook URL (https://services.leadconnectorhq.com/hooks/...)..."
+                    className="flex-1 rounded-xl bg-black border border-white/15 p-2.5 text-white placeholder:text-slate-500 focus:border-[#0EA5E9] focus:outline-none"
+                  />
+                  {onTestGhlWebhook && (
                     <button
                       type="button"
-                      onClick={() => {
-                        const clean = newAdminEmailInput.trim().toLowerCase();
-                        if (!clean || !clean.includes('@')) return;
-                        onUpdateAppSettings?.(prev => ({
-                          ...prev,
-                          adminEmails: Array.from(new Set([...prev.adminEmails, clean]))
-                        }));
-                        setNewAdminEmailInput('');
-                        setSaveBanner(`Added ${clean} to Admin coaches.`);
-                        setTimeout(() => setSaveBanner(null), 3500);
+                      disabled={testingGhlWebhook || !appSettings.ghlWebhookUrl?.trim()}
+                      onClick={async () => {
+                        setTestingGhlWebhook(true);
+                        const res = await onTestGhlWebhook(appSettings.ghlWebhookUrl);
+                        setTestingGhlWebhook(false);
+                        if (res.ok) {
+                          setSaveBanner(
+                            'Sent test payload to GoHighLevel! You can now map the fields in your GHL workflow.'
+                          );
+                        } else {
+                          setSaveBanner(
+                            res.error || 'Could not reach GHL webhook URL. Check the URL and try again.'
+                          );
+                        }
+                        setTimeout(() => setSaveBanner(null), 4500);
                       }}
-                      className="px-3 py-2 rounded-lg btn-2mm text-[10px] font-bold uppercase cursor-pointer"
+                      className="px-4 py-2.5 rounded-xl btn-2mm font-bold text-xs cursor-pointer disabled:opacity-40 shrink-0"
                     >
-                      Add Coach
+                      {testingGhlWebhook ? 'Sending...' : 'Send Test to GHL'}
                     </button>
-                  </div>
+                  )}
                 </div>
-              </details>
+
+                <details className="pt-2 border-t border-white/10">
+                  <summary className="cursor-pointer font-bold uppercase tracking-wider text-slate-400 select-none">
+                    Authorized Coach Emails ({appSettings.adminEmails.length})
+                  </summary>
+                  <div className="mt-3 space-y-2.5">
+                    <div className="flex flex-wrap gap-2">
+                      {appSettings.adminEmails.map(email => (
+                        <span
+                          key={email}
+                          className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-black border border-white/10 text-xs text-slate-200"
+                        >
+                          <span>{email}</span>
+                          {appSettings.adminEmails.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onUpdateAppSettings?.(prev => ({
+                                  ...prev,
+                                  adminEmails: prev.adminEmails.filter(item => item !== email)
+                                }))
+                              }
+                              className="text-rose-400 hover:text-rose-300 cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2 max-w-sm">
+                      <input
+                        type="email"
+                        value={newAdminEmailInput}
+                        onChange={e => setNewAdminEmailInput(e.target.value)}
+                        placeholder="coach@company.com"
+                        className="flex-1 rounded-lg bg-black border border-white/15 p-2 text-white focus:border-[#0EA5E9] focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const clean = newAdminEmailInput.trim().toLowerCase();
+                          if (!clean || !clean.includes('@')) return;
+                          onUpdateAppSettings?.(prev => ({
+                            ...prev,
+                            adminEmails: Array.from(new Set([...prev.adminEmails, clean]))
+                          }));
+                          setNewAdminEmailInput('');
+                          setSaveBanner(`Added ${clean} to Admin coaches.`);
+                          setTimeout(() => setSaveBanner(null), 3500);
+                        }}
+                        className="px-3 py-2 rounded-lg btn-2mm text-[10px] font-bold uppercase cursor-pointer"
+                      >
+                        Add Coach
+                      </button>
+                    </div>
+                  </div>
+                </details>
+              </div>
             </div>
           )}
         </div>
