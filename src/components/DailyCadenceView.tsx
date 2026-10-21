@@ -113,6 +113,8 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
   const [showQueueDrawer, setShowQueueDrawer] = useState(false);
   const [teleprompterLargeText, setTeleprompterLargeText] = useState(false);
   const [fullscreenPrompter, setFullscreenPrompter] = useState(false);
+  const [teleprompterTakeMode, setTeleprompterTakeMode] = useState<'ALL' | 1 | 2 | 3 | 4 | 5>('ALL');
+  const [activeTakeNum, setActiveTakeNum] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [showCoachVideoPlayer, setShowCoachVideoPlayer] = useState(false);
 
   // Reset local studio & slider state when switching active student
@@ -889,363 +891,475 @@ export const DailyCadenceView: React.FC<DailyCadenceViewProps> = ({
             )}
 
             {/* PANEL 3: ON-CAMERA TELEPROMPTER & 5-TAKE GUIDE */}
-            {activeStep === 3 && (
-              <div className="space-y-4 sm:space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-2.5">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9]">
-                    STEP 3 · TELEPROMPTER & 5-TAKE SHOOT
-                  </div>
+            {activeStep === 3 && (() => {
+              const sequentialTakes: Array<{
+                num: 1 | 2 | 3 | 4 | 5;
+                shortLabel: string;
+                title: string;
+                time: string;
+                camera: string;
+                script: string;
+                subLabel?: string;
+                subText?: string;
+                subTone?: 'amber' | 'sky';
+              }> = [
+                {
+                  num: 1,
+                  shortLabel: '1 · Hook',
+                  title: 'TAKE 1 · SIGNAL HOOK',
+                  time: '0:00–0:15',
+                  camera: 'Tight & direct close-up',
+                  script: `“${activeHookText}”`,
+                },
+                {
+                  num: 2,
+                  shortLabel: '2 · Humanize',
+                  title: 'TAKE 2 · HUMANIZE & KEYWORD SETUP',
+                  time: '0:15–0:30',
+                  camera: 'Shift camera 30° / medium shot',
+                  script: buildTake2Pitch(true),
+                },
+                {
+                  num: 3,
+                  shortLabel: '3 · Old Belief',
+                  title: 'TAKE 3 · ILLUMINATE OLD BELIEF',
+                  time: '0:30–1:45',
+                  camera: 'Steady real-talk shot',
+                  script:
+                    matchingPillar?.breaksBelief ||
+                    'Call out the old industry myth that keeps your audience stuck.',
+                  subLabel: currentVideo.notes?.trim() ? 'STORY / EXAMPLE BEAT TO DROP IN TAKE 3' : undefined,
+                  subText: currentVideo.notes?.trim() || undefined,
+                  subTone: 'amber',
+                },
+                {
+                  num: 4,
+                  shortLabel: '4 · 2mm Shift',
+                  title: 'TAKE 4 · FORMULATE THE 2MM SHIFT',
+                  time: '1:45–3:00',
+                  camera: 'Teaching angle · 3 clear steps',
+                  script:
+                    matchingPillar?.installsBelief ||
+                    'Walk through the 2mm Shift perspective and how to apply it today.',
+                  subLabel: matchingPillar?.mustHitBeats ? 'MUST-HIT TEACHING BEATS' : undefined,
+                  subText: matchingPillar?.mustHitBeats || undefined,
+                  subTone: 'sky',
+                },
+                {
+                  num: 5,
+                  shortLabel: '5 · Transfer CTA',
+                  title: 'TAKE 5 · TRANSFER CTA',
+                  time: '3:00–3:10',
+                  camera: 'Urgent punch-in close-up',
+                  script: attachedMagnet
+                    ? `“Comment ‘${attachedMagnet.keywordTrigger}’ below and I’ll DM you the ${attachedMagnet.workingTitle} (${attachedMagnet.completionTime}).”`
+                    : '“Drop your biggest takeaway in the comments and follow for the next 2mm Shift.”',
+                },
+              ];
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    {/* 1-Tap Full-Screen Camera-Aligned Mode */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFullscreenPrompter(true);
-                        setTimerRunning(true);
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0EA5E9] text-white text-[10px] font-bold uppercase tracking-wider shadow-[0_4px_16px_rgba(9,173,239,0.35)] cursor-pointer"
-                    >
-                      <Maximize2 className="w-3 h-3" />
-                      <span>Full-Screen Camera Mode</span>
-                    </button>
+              const visibleTakes =
+                teleprompterTakeMode === 'ALL'
+                  ? sequentialTakes
+                  : sequentialTakes.filter(t => t.num === teleprompterTakeMode);
 
-                    {/* Large Text Toggle */}
-                    <button
-                      type="button"
-                      onClick={() => setTeleprompterLargeText(v => !v)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
-                        teleprompterLargeText
-                          ? 'bg-[#0EA5E9]/20 border-[#0EA5E9] text-white'
-                          : 'bg-[#080C14] border-white/12 text-slate-300 hover:text-white'
-                      }`}
-                    >
-                      <span>{teleprompterLargeText ? 'A- Standard' : 'A+ Large Text'}</span>
-                    </button>
+              return (
+                <div className="space-y-4 sm:space-y-5">
+                  <div className="flex flex-wrap items-center justify-between gap-2.5">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9]">
+                      STEP 3 · TELEPROMPTER & 5-TAKE SHOOT
+                    </div>
 
-                    {/* Sleek Pill Timer */}
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#080C14] border border-white/12">
-                      <Clock className="w-3.5 h-3.5 text-[#0EA5E9]" />
-                      <span className="font-mono-tech text-xs font-semibold text-white">
-                        {formatTimer(timerSeconds)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setTimerRunning(r => !r)}
-                        className="text-[11px] font-bold uppercase tracking-wider text-[#0EA5E9] cursor-pointer"
-                      >
-                        {timerRunning ? 'Pause' : 'Start'}
-                      </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* 1-Tap Full-Screen Camera-Aligned Mode */}
                       <button
                         type="button"
                         onClick={() => {
-                          setTimerRunning(false);
-                          setTimerSeconds(0);
+                          setFullscreenPrompter(true);
+                          setTimerRunning(true);
                         }}
-                        className="text-slate-400 hover:text-white cursor-pointer"
-                        title="Reset timer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0EA5E9] text-white text-[10px] font-bold uppercase tracking-wider shadow-[0_4px_16px_rgba(9,173,239,0.35)] cursor-pointer"
                       >
-                        <RotateCcw className="w-3.5 h-3.5" />
+                        <Maximize2 className="w-3 h-3" />
+                        <span>Full-Screen Camera Mode</span>
                       </button>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Full-Screen Camera-Aligned Teleprompter Overlay (Keeps eyes locked near top selfie camera) */}
-                {fullscreenPrompter && (
-                  <div className="fixed inset-0 z-50 bg-black flex flex-col justify-between pt-safe pb-safe px-4 sm:px-10">
-                    {/* Top Camera-Line Bar */}
-                    <div className="flex items-center justify-between gap-2 py-2.5 border-b border-white/10">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
-                        <span className="font-mono-tech text-xs font-bold text-white">
+                      {/* Large Text Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setTeleprompterLargeText(v => !v)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
+                          teleprompterLargeText
+                            ? 'bg-[#0EA5E9]/20 border-[#0EA5E9] text-white'
+                            : 'bg-[#080C14] border-white/12 text-slate-300 hover:text-white'
+                        }`}
+                      >
+                        <span>{teleprompterLargeText ? 'A- Standard' : 'A+ Large Text'}</span>
+                      </button>
+
+                      {/* Sleek Pill Timer */}
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#080C14] border border-white/12">
+                        <Clock className="w-3.5 h-3.5 text-[#0EA5E9]" />
+                        <span className="font-mono-tech text-xs font-semibold text-white">
                           {formatTimer(timerSeconds)}
                         </span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#0EA5E9] ml-1">
-                          LOOK HERE ↑ AT CAMERA
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => setTeleprompterLargeText(v => !v)}
-                          className="px-2.5 py-1 rounded-lg bg-white/10 text-xs font-bold text-white cursor-pointer"
+                          onClick={() => setTimerRunning(r => !r)}
+                          className="text-[11px] font-bold uppercase tracking-wider text-[#0EA5E9] cursor-pointer"
                         >
-                          {teleprompterLargeText ? 'A-' : 'A+'}
+                          {timerRunning ? 'Pause' : 'Start'}
                         </button>
                         <button
                           type="button"
-                          onClick={() => setFullscreenPrompter(false)}
-                          className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-slate-200 cursor-pointer"
+                          onClick={() => {
+                            setTimerRunning(false);
+                            setTimerSeconds(0);
+                          }}
+                          className="text-slate-400 hover:text-white cursor-pointer"
+                          title="Reset timer"
                         >
-                          ✕ Exit
+                          <RotateCcw className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Upper-Screen Eye-Line Script Reader */}
-                    <div className="flex-1 overflow-y-auto py-4 space-y-5 max-w-2xl mx-auto w-full">
-                      <div className="p-4 rounded-2xl bg-[#070A0F] border border-[#0EA5E9]/40">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9] mb-1">
-                          TAKE 1 · OPENING HOOK (0:00–0:15)
-                        </div>
-                        <p
-                          className={`${
-                            teleprompterLargeText ? 'text-2xl sm:text-4xl' : 'text-xl sm:text-3xl'
-                          } font-bold text-white leading-snug`}
+                  {/* Sequential 5-Take Navigator Bar */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                    <button
+                      type="button"
+                      onClick={() => setTeleprompterTakeMode('ALL')}
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider whitespace-nowrap transition cursor-pointer border ${
+                        teleprompterTakeMode === 'ALL'
+                          ? 'bg-[#0EA5E9] text-white border-[#0EA5E9]'
+                          : 'bg-[#080C14] text-slate-400 border-white/10 hover:text-white'
+                      }`}
+                    >
+                      All 5 in Sequence
+                    </button>
+                    {sequentialTakes.map(take => {
+                      const isFocused = teleprompterTakeMode === take.num;
+                      const isHighlighted = teleprompterTakeMode === 'ALL' && activeTakeNum === take.num;
+                      return (
+                        <button
+                          key={take.num}
+                          type="button"
+                          onClick={() => {
+                            setActiveTakeNum(take.num);
+                            setTeleprompterTakeMode(take.num);
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition cursor-pointer border ${
+                            isFocused
+                              ? 'bg-[#0EA5E9]/20 text-white border-[#0EA5E9]'
+                              : isHighlighted
+                              ? 'bg-white/[0.06] text-white border-white/20'
+                              : 'bg-[#080C14] text-slate-400 border-white/10 hover:text-white'
+                          }`}
                         >
-                          “{activeHookText}”
-                        </p>
+                          {take.shortLabel}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Full-Screen Camera-Aligned Teleprompter Overlay (Keeps eyes locked near top selfie camera) */}
+                  {fullscreenPrompter && (
+                    <div className="fixed inset-0 z-50 bg-black flex flex-col justify-between pt-safe pb-safe px-4 sm:px-10">
+                      {/* Top Camera-Line Bar */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 py-2.5 border-b border-white/10">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+                          <span className="font-mono-tech text-xs font-bold text-white">
+                            {formatTimer(timerSeconds)}
+                          </span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#0EA5E9] ml-1">
+                            LOOK HERE ↑ AT CAMERA
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setTeleprompterTakeMode(teleprompterTakeMode === 'ALL' ? activeTakeNum : 'ALL')}
+                            className="px-2.5 py-1 rounded-lg bg-white/10 text-xs font-semibold text-white cursor-pointer"
+                          >
+                            {teleprompterTakeMode === 'ALL' ? '1-Take Focus' : 'All 5 Takes'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTeleprompterLargeText(v => !v)}
+                            className="px-2.5 py-1 rounded-lg bg-white/10 text-xs font-bold text-white cursor-pointer"
+                          >
+                            {teleprompterLargeText ? 'A-' : 'A+'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFullscreenPrompter(false)}
+                            className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-slate-200 cursor-pointer"
+                          >
+                            ✕ Exit
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="p-4 rounded-2xl bg-[#05070B] border border-white/10">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9] mb-1">
-                          TAKE 2 · HUMANIZE & KEYWORD (0:15–0:30)
-                        </div>
-                        <p
-                          className={`${
-                            teleprompterLargeText ? 'text-xl sm:text-2xl' : 'text-base sm:text-xl'
-                          } text-slate-100 leading-relaxed font-medium`}
-                        >
-                          {buildTake2Pitch(false)}
-                        </p>
-                      </div>
-
-                      {matchingPillar && (
-                        <>
-                          <div className="p-4 rounded-2xl bg-[#05070B] border border-white/10 space-y-2">
-                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-                              TAKE 3 · BREAK OLD BELIEF (0:30–1:45)
+                      {/* Upper-Screen Sequential Eye-Line Script Reader */}
+                      <div className="flex-1 overflow-y-auto py-4 space-y-4 max-w-2xl mx-auto w-full">
+                        {visibleTakes.map(take => (
+                          <div
+                            key={take.num}
+                            onClick={() => setActiveTakeNum(take.num)}
+                            className={`p-4 sm:p-5 rounded-2xl border transition cursor-pointer ${
+                              activeTakeNum === take.num
+                                ? 'bg-[#070A0F] border-[#0EA5E9]'
+                                : 'bg-[#05070B] border-white/10'
+                            }`}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                              <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">
+                                {take.title} ({take.time})
+                              </span>
+                              <span className="text-[11px] text-slate-400">{take.camera}</span>
                             </div>
                             <p
                               className={`${
-                                teleprompterLargeText ? 'text-xl sm:text-2xl' : 'text-base sm:text-xl'
-                              } text-slate-200 leading-relaxed`}
+                                teleprompterLargeText ? 'text-xl sm:text-3xl' : 'text-lg sm:text-2xl'
+                              } font-semibold text-white leading-relaxed`}
                             >
-                              {matchingPillar.breaksBelief}
+                              {take.script}
                             </p>
-                            {currentVideo.notes?.trim() && (
-                              <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-sm font-medium">
-                                ★ Story Beat: {currentVideo.notes}
+                            {take.subText && (
+                              <div className="mt-3 pt-2.5 border-t border-white/10">
+                                <span
+                                  className={`text-[10px] font-bold uppercase tracking-[0.16em] block mb-0.5 ${
+                                    take.subTone === 'amber' ? 'text-amber-300' : 'text-[#0EA5E9]'
+                                  }`}
+                                >
+                                  {take.subLabel}:
+                                </span>
+                                <p
+                                  className={`${
+                                    teleprompterLargeText ? 'text-base sm:text-xl' : 'text-sm sm:text-base'
+                                  } ${take.subTone === 'amber' ? 'text-amber-100' : 'text-slate-100'} font-medium leading-relaxed`}
+                                >
+                                  {take.subText}
+                                </p>
                               </div>
                             )}
                           </div>
+                        ))}
+                      </div>
 
-                          <div className="p-4 rounded-2xl bg-[#070A0F] border-l-4 border-[#0EA5E9] space-y-2">
-                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9]">
-                              TAKE 4 · INSTALL THE 2MM SHIFT (1:45–3:00)
+                      {/* Bottom Thumb Bar */}
+                      <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-2 max-w-2xl mx-auto w-full">
+                        {teleprompterTakeMode !== 'ALL' ? (
+                          <>
+                            <button
+                              type="button"
+                              disabled={teleprompterTakeMode === 1}
+                              onClick={() => {
+                                const prev = Math.max(1, (teleprompterTakeMode as number) - 1) as 1 | 2 | 3 | 4 | 5;
+                                setTeleprompterTakeMode(prev);
+                                setActiveTakeNum(prev);
+                              }}
+                              className="px-4 py-3 rounded-xl bg-white/10 disabled:opacity-40 text-xs font-bold uppercase tracking-wider text-white cursor-pointer"
+                            >
+                              ← Prev Take
+                            </button>
+                            {teleprompterTakeMode < 5 ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = Math.min(5, (teleprompterTakeMode as number) + 1) as 1 | 2 | 3 | 4 | 5;
+                                  setTeleprompterTakeMode(next);
+                                  setActiveTakeNum(next);
+                                }}
+                                className="flex-1 py-3 px-5 rounded-xl btn-2mm text-xs font-bold uppercase tracking-wider text-center cursor-pointer"
+                              >
+                                Next: Take {(teleprompterTakeMode as number) + 1} →
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFullscreenPrompter(false);
+                                  setActiveStep(4);
+                                }}
+                                className="flex-1 py-3 px-5 rounded-xl btn-2mm text-xs font-bold uppercase tracking-wider text-center cursor-pointer"
+                              >
+                                Done Shooting → Verify Link
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setTimerRunning(r => !r)}
+                              className="px-4 py-3 rounded-xl bg-white/10 text-xs font-bold uppercase tracking-wider text-white cursor-pointer"
+                            >
+                              {timerRunning ? 'Pause Timer' : 'Resume Timer'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFullscreenPrompter(false);
+                                setActiveStep(4);
+                              }}
+                              className="flex-1 py-3 px-5 rounded-xl btn-2mm text-xs font-bold uppercase tracking-wider text-center cursor-pointer"
+                            >
+                              Done Shooting → Verify Link
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Strictly Sequential 1-Column 5-Take Teleprompter */}
+                  <div className="p-4 sm:p-6 rounded-2xl bg-[#080C14] border border-[#0EA5E9]/30 divide-y divide-white/[0.08]">
+                    {visibleTakes.map((take, idx) => {
+                      const isCurrent = activeTakeNum === take.num;
+                      return (
+                        <div
+                          key={take.num}
+                          onClick={() => setActiveTakeNum(take.num)}
+                          className={`${idx === 0 ? 'pb-4 sm:pb-5' : idx === visibleTakes.length - 1 ? 'pt-4 sm:pt-5' : 'py-4 sm:py-5'} flex items-start gap-3.5 sm:gap-4 cursor-pointer`}
+                        >
+                          {/* Left Sequential Take Number Badge */}
+                          <div
+                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 transition ${
+                              isCurrent
+                                ? 'bg-[#0EA5E9] text-white shadow-[0_0_12px_rgba(9,173,239,0.4)]'
+                                : 'bg-white/[0.06] text-slate-400 border border-white/10'
+                            }`}
+                          >
+                            {take.num}
+                          </div>
+
+                          {/* Right Sequential Take Script & Framing */}
+                          <div className="flex-1 min-w-0 space-y-1.5">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span
+                                className={`text-[10px] font-bold uppercase tracking-[0.16em] ${
+                                  isCurrent ? 'text-[#0EA5E9]' : 'text-slate-400'
+                                }`}
+                              >
+                                {take.title} ({take.time})
+                              </span>
+                              <span className="text-[11px] text-slate-400 font-medium">
+                                {take.camera}
+                              </span>
                             </div>
+
                             <p
                               className={`${
-                                teleprompterLargeText ? 'text-xl sm:text-2xl' : 'text-base sm:text-xl'
-                              } text-white font-semibold leading-relaxed`}
+                                teleprompterLargeText ? 'text-xl sm:text-2xl' : 'text-base sm:text-lg'
+                              } ${
+                                take.num === 1 || take.num === 4 || take.num === 5
+                                  ? 'font-semibold text-white'
+                                  : 'font-normal text-slate-100'
+                              } leading-relaxed`}
                             >
-                              {matchingPillar.installsBelief}
+                              {take.script}
                             </p>
-                            {matchingPillar.mustHitBeats && (
-                              <p className="text-sm text-[#0EA5E9] font-semibold">
-                                Beats: {matchingPillar.mustHitBeats}
-                              </p>
+
+                            {take.subText && (
+                              <div
+                                className={`pt-2 border-l-2 pl-3 ${
+                                  take.subTone === 'amber' ? 'border-amber-400/60' : 'border-[#0EA5E9]/60'
+                                }`}
+                              >
+                                <span
+                                  className={`text-[9px] font-bold uppercase tracking-[0.16em] block mb-0.5 ${
+                                    take.subTone === 'amber' ? 'text-amber-300' : 'text-[#0EA5E9]'
+                                  }`}
+                                >
+                                  {take.subLabel}:
+                                </span>
+                                <p
+                                  className={`${
+                                    teleprompterLargeText ? 'text-base sm:text-xl' : 'text-xs sm:text-sm'
+                                  } ${
+                                    take.subTone === 'amber' ? 'text-amber-100' : 'text-slate-200 font-medium'
+                                  } leading-relaxed`}
+                                >
+                                  {take.subText}
+                                </p>
+                              </div>
                             )}
                           </div>
-                        </>
-                      )}
-
-                      {attachedMagnet && (
-                        <div className="p-4 rounded-2xl bg-[#070A0F] border border-[#0EA5E9]/40">
-                          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0EA5E9] mb-1">
-                            TAKE 5 · DIRECT CTA (3:00–3:10)
-                          </div>
-                          <p
-                            className={`${
-                              teleprompterLargeText ? 'text-xl sm:text-3xl' : 'text-lg sm:text-2xl'
-                            } font-bold text-white leading-snug`}
-                          >
-                            “Comment <span className="text-[#0EA5E9]">‘{attachedMagnet.keywordTrigger}’</span> below and I’ll DM you the {attachedMagnet.workingTitle}!”
-                          </p>
                         </div>
-                      )}
-                    </div>
+                      );
+                    })}
 
-                    {/* Bottom Thumb Bar */}
-                    <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-3 max-w-2xl mx-auto w-full">
-                      <button
-                        type="button"
-                        onClick={() => setTimerRunning(r => !r)}
-                        className="px-4 py-3 rounded-xl bg-white/10 text-xs font-bold uppercase tracking-wider text-white cursor-pointer"
-                      >
-                        {timerRunning ? 'Pause Timer' : 'Resume Timer'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFullscreenPrompter(false);
-                          setActiveStep(4);
-                        }}
-                        className="flex-1 py-3 px-5 rounded-xl btn-2mm text-xs font-bold uppercase tracking-wider text-center cursor-pointer"
-                      >
-                        Done Shooting → Verify Link
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Large Readable 5-Take Teleprompter Card */}
-                <div className="p-4 sm:p-6 rounded-2xl bg-[#080C14] border border-[#0EA5E9]/30 space-y-4 sm:space-y-5">
-                  {/* TAKE 1: SIGNAL */}
-                  <div>
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">
-                        TAKE 1 · SIGNAL HOOK (0:00–0:15)
-                      </span>
-                      <span className="text-[10px] text-slate-500">Tight & direct close-up</span>
-                    </div>
-                    <p
-                      className={`${
-                        teleprompterLargeText ? 'text-xl sm:text-3xl' : 'text-lg sm:text-2xl'
-                      } font-semibold text-white leading-relaxed`}
-                    >
-                      “{activeHookText}”
-                    </p>
-                  </div>
-
-                  {/* TAKE 2: HUMANIZE */}
-                  <div className="pt-4 border-t border-white/[0.07]">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">
-                        TAKE 2 · HUMANIZE & KEYWORD SETUP (0:15–0:30)
-                      </span>
-                      <span className="text-[10px] text-slate-500">Shift camera 30° / medium shot</span>
-                    </div>
-                    <p
-                      className={`${
-                        teleprompterLargeText ? 'text-base sm:text-xl' : 'text-xs sm:text-sm'
-                      } text-slate-200 leading-relaxed`}
-                    >
-                      {buildTake2Pitch(true)}
-                    </p>
-                  </div>
-
-                  {/* TAKE 3 & 4: ILLUMINATE & FORMULATE */}
-                  {matchingPillar && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-white/[0.07]">
-                      <div>
-                        <div className="flex items-center justify-between gap-1 mb-1">
-                          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                            TAKE 3 · ILLUMINATE OLD BELIEF (0:30–1:45)
-                          </span>
-                        </div>
-                        <p
-                          className={`${
-                            teleprompterLargeText ? 'text-base sm:text-xl' : 'text-xs sm:text-sm'
-                          } text-slate-300 leading-relaxed`}
+                    {/* Single-Take Stepper Controls when viewing 1 Take at a time */}
+                    {teleprompterTakeMode !== 'ALL' && (
+                      <div className="pt-4 flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          disabled={teleprompterTakeMode === 1}
+                          onClick={() => {
+                            const prev = Math.max(1, (teleprompterTakeMode as number) - 1) as 1 | 2 | 3 | 4 | 5;
+                            setTeleprompterTakeMode(prev);
+                            setActiveTakeNum(prev);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#151F34] hover:bg-white/[0.08] disabled:opacity-40 border border-white/10 text-xs font-medium text-slate-300 cursor-pointer"
                         >
-                          {matchingPillar.breaksBelief}
-                        </p>
-                        {currentVideo.notes?.trim() && (
-                          <div className="mt-2.5 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/25">
-                            <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-amber-300 block mb-0.5">
-                              STORY / EXAMPLE BEAT TO DROP IN TAKE 3:
-                            </span>
-                            <p
-                              className={`${
-                                teleprompterLargeText ? 'text-sm sm:text-lg' : 'text-xs'
-                              } text-amber-100 leading-relaxed`}
-                            >
-                              {currentVideo.notes}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="border-l-2 border-[#0EA5E9]/50 pl-3.5 space-y-2.5">
-                        <div>
-                          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9] block mb-1">
-                            TAKE 4 · FORMULATE THE 2MM SHIFT (1:45–3:00)
-                          </span>
-                          <p
-                            className={`${
-                              teleprompterLargeText ? 'text-base sm:text-xl' : 'text-xs sm:text-sm'
-                            } text-white leading-relaxed font-medium`}
+                          <ChevronLeft className="w-3.5 h-3.5" /> Prev Take
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTeleprompterTakeMode('ALL')}
+                          className="text-xs font-semibold text-slate-400 hover:text-white cursor-pointer"
+                        >
+                          Show All 5 Takes
+                        </button>
+                        {teleprompterTakeMode < 5 ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = Math.min(5, (teleprompterTakeMode as number) + 1) as 1 | 2 | 3 | 4 | 5;
+                              setTeleprompterTakeMode(next);
+                              setActiveTakeNum(next);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#0EA5E9] text-white text-xs font-bold cursor-pointer"
                           >
-                            {matchingPillar.installsBelief}
-                          </p>
-                        </div>
-
-                        {matchingPillar.mustHitBeats && (
-                          <div className="p-2.5 rounded-lg bg-[#0EA5E9]/10 border border-[#0EA5E9]/25">
-                            <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9] block mb-0.5">
-                              MUST-HIT TEACHING BEATS:
-                            </span>
-                            <p
-                              className={`${
-                                teleprompterLargeText ? 'text-sm sm:text-lg' : 'text-xs'
-                              } text-zinc-100 font-semibold leading-relaxed`}
-                            >
-                              {matchingPillar.mustHitBeats}
-                            </p>
-                          </div>
+                            <span>Next: Take {(teleprompterTakeMode as number) + 1}</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setActiveStep(4)}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500 text-slate-950 text-xs font-bold cursor-pointer"
+                          >
+                            <span>Finish Shoot</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
                         )}
                       </div>
-                    </div>
-                  )}
-
-                  {/* TAKE 5: TRANSFER CTA */}
-                  {attachedMagnet && (
-                    <div className="pt-4 border-t border-white/[0.07]">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0EA5E9]">
-                          TAKE 5 · TRANSFER CTA (3:00–3:10)
-                        </span>
-                        <span className="text-[10px] text-slate-500">Urgent punch-in close-up</span>
-                      </div>
-                      <p
-                        className={`${
-                          teleprompterLargeText ? 'text-lg sm:text-2xl' : 'text-sm sm:text-base'
-                        } font-medium text-white leading-relaxed`}
-                      >
-                        “Comment <span className="text-[#0EA5E9] font-bold">‘{attachedMagnet.keywordTrigger}’</span> below and I’ll DM you the {attachedMagnet.workingTitle} ({attachedMagnet.completionTime}).”
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Collapsible 5-Take Camera Angles Guide */}
-                <details className="group rounded-xl bg-[#080C14] border border-white/[0.07] p-3.5">
-                  <summary className="text-xs font-semibold text-slate-300 cursor-pointer flex items-center justify-between list-none">
-                    <span>5-Take Camera Framing Guide</span>
-                    <span className="text-[#0EA5E9] text-[11px] group-open:rotate-90 transition-transform">▸</span>
-                  </summary>
-                  <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5 mt-3 pt-3 border-t border-white/[0.07]">
-                    {FIVE_TAKES_GUIDE.map(row => (
-                      <div key={row.take} className="p-2.5 rounded-xl bg-black border border-white/[0.07] text-xs">
-                        <div className="font-bold text-[#0EA5E9]">{row.take}</div>
-                        <div className="text-[10px] text-slate-500 mb-1">{row.time}</div>
-                        <p className="text-slate-300 text-[11px] leading-relaxed">{row.camera}</p>
-                      </div>
-                    ))}
+                    )}
                   </div>
-                </details>
 
-                <div className="pt-4 border-t border-white/[0.07] flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setActiveStep(2)}
-                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#151F34] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-slate-300 cursor-pointer"
-                  >
-                    <ChevronLeft className="w-4 h-4" /> Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveStep(4)}
-                    className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg btn-2mm text-xs cursor-pointer"
-                  >
-                    <span>Next: Verify Link</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
+                  <div className="pt-4 border-t border-white/[0.07] flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setActiveStep(2)}
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#151F34] hover:bg-white/[0.08] border border-white/10 text-xs font-medium text-slate-300 cursor-pointer"
+                    >
+                      <ChevronLeft className="w-4 h-4" /> Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveStep(4)}
+                      className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg btn-2mm text-xs cursor-pointer"
+                    >
+                      <span>Next: Verify Link</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* PANEL 4: PASTE PUBLISHED SOCIAL PROOF LINK & COMPLETE */}
             {activeStep === 4 && (
